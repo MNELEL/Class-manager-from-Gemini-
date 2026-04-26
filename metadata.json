@@ -1,0 +1,6 @@
+{
+  "name": "ClassManager Pro",
+  "description": "מערכת ניהול הושבה חכמה ופדגוגית לכיתה עם בינה מלאכותית",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI-powered sorting", "Excel import/export", "PWA support"]
+}
