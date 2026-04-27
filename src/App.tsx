@@ -23,6 +23,7 @@ import {
   Check,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   LayoutGrid,
   Square,
   Columns,
@@ -41,13 +42,16 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI } from "@google/genai";
-import { ClassroomState, Student, EditMode, ClassroomConfig, Notification, AccessibilitySettings } from './types';
+import { ClassroomState, Student, StudentGroup, EditMode, ClassroomConfig, Notification, AccessibilitySettings } from './types';
 import { cn } from './lib/utils';
 
 // --- Components ---
 
-const Badge = ({ children, className }: { children: React.ReactNode, className?: string, key?: any }) => (
-  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider", className)}>
+const Badge = ({ children, className, style }: { children: React.ReactNode, className?: string, key?: any, style?: React.CSSProperties }) => (
+  <span 
+    style={style}
+    className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider", className)}
+  >
     {children}
   </span>
 );
@@ -81,9 +85,19 @@ export default function App() {
     };
   });
 
-  const currentConfig = useMemo(() => 
-    state.configs.find(c => c.id === state.currentConfigId) || state.configs[0],
-  [state]);
+  const currentConfig = useMemo(() => {
+    const config = state.configs.find(c => c.id === state.currentConfigId) || state.configs[0];
+    return {
+      ...config,
+      students: config.students || [],
+      grid: config.grid || [],
+      locked: config.locked || [],
+      hiddenDesks: config.hiddenDesks || [],
+      columnGaps: config.columnGaps || [],
+      rowGaps: config.rowGaps || [],
+      groups: config.groups || [],
+    };
+  }, [state]);
 
   const [history, setHistory] = useState<ClassroomConfig[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -105,8 +119,10 @@ export default function App() {
     includeIds: false,
     includeRowCol: true,
     includePreferences: true,
-    includeGroups: true
+    includeGroups: true,
+    includeFullGroups: true
   });
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [aiResponse, setAiResponse] = useState("");
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
@@ -121,7 +137,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
   const filteredAndSortedStudents = useMemo(() => {
-    return [...currentConfig.students]
+    return [...(currentConfig.students || [])]
       .filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
         if (!matchesSearch) return false;
@@ -151,8 +167,115 @@ export default function App() {
       });
   }, [currentConfig.students, currentConfig.grid, currentConfig.cols, searchQuery, sortBy, groupFilter]);
 
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   // --- Persistence & History ---
   
+  // Bootstrap user requests
+  useEffect(() => {
+    const bootstrapFlag = 'cm_bootstrapped_v2';
+    if (localStorage.getItem(bootstrapFlag)) return;
+
+    setState(prev => {
+      const configIndex = prev.configs.findIndex(c => c.id === prev.currentConfigId);
+      if (configIndex === -1) return prev;
+      
+      const newConfigs = [...prev.configs];
+      const config = { ...newConfigs[configIndex] };
+      const students = [...(config.students || [])];
+      const groups = [...(config.groups || [])];
+      const locked = [...(config.locked || [])];
+
+      // 1. Add 'תלמיד חדש 1'
+      if (!students.find(s => s.name === 'תלמיד חדש 1')) {
+        students.push({
+          id: 's-new-1',
+          name: 'תלמיד חדש 1',
+          preferred: [],
+          forbidden: [],
+          separateFrom: [],
+          forbiddenNeighbors: []
+        });
+      }
+
+      // 2. Add תלמיד א, ב, ג, ד, ה if they don't exist
+      const names = ['תלמיד א', 'תלמיד ב', 'תלמיד ג', 'תלמיד ד', 'תלמיד ה'];
+      names.forEach(name => {
+        if (!students.find(s => s.name === name)) {
+          students.push({
+            id: `s-${name}`,
+            name,
+            preferred: [],
+            forbidden: [],
+            separateFrom: [],
+            forbiddenNeighbors: []
+          });
+        }
+      });
+
+      // Update תלמיד ג
+      const sC = students.find(s => s.name === 'תלמיד ג');
+      if (sC) {
+        sC.preferredRow = 'front';
+        sC.height = 'short';
+      }
+
+      // Update תלמיד ד and ה link
+      const sD = students.find(s => s.name === 'תלמיד ד');
+      const sE = students.find(s => s.name === 'תלמיד ה');
+      if (sD && sE) {
+        if (!sD.preferred.includes(sE.id)) {
+          sD.preferred.push(sE.id);
+        }
+      }
+
+      // 3. Create Group 'קבוצת שיתוף פעולה'
+      if (!groups.find(g => g.name === 'קבוצת שיתוף פעולה')) {
+        const sA = students.find(s => s.name === 'תלמיד א');
+        const sB = students.find(s => s.name === 'תלמיד ב');
+        groups.push({
+          id: 'g-coop',
+          name: 'קבוצת שיתוף פעולה',
+          color: '#3b82f6',
+          studentIds: [sA?.id, sB?.id].filter(Boolean) as (string | number)[],
+          constraints: { together: true }
+        });
+      }
+
+      // 4. Add 'תלמיד ד' to 'קבוצת עבודה'
+      let gWork = groups.find(g => g.name === 'קבוצת עבודה');
+      if (!gWork) {
+        gWork = {
+          id: 'g-work',
+          name: 'קבוצת עבודה',
+          color: '#10b981',
+          studentIds: [],
+          constraints: { together: true }
+        };
+        groups.push(gWork);
+      }
+      const sD_obj = students.find(s => s.name === 'תלמיד ד');
+      if (sD_obj && !gWork.studentIds.includes(sD_obj.id)) {
+        gWork.studentIds.push(sD_obj.id);
+      }
+
+      // 5. Lock desk (3, 4) -> 3*8 + 4 = 28
+      if (!locked.includes(28)) {
+        locked.push(28);
+      }
+
+      config.students = students;
+      config.groups = groups;
+      config.locked = locked;
+      newConfigs[configIndex] = config;
+
+      return { ...prev, configs: newConfigs };
+    });
+
+    localStorage.setItem(bootstrapFlag, 'true');
+  }, []);
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 3000);
@@ -160,8 +283,24 @@ export default function App() {
     }
   }, [toast]);
   
+  // Continuous auto-save on state change
   useEffect(() => {
+    setIsSaving(true);
     localStorage.setItem('cm_state_multi', JSON.stringify(state));
+    const now = new Date();
+    setLastSaved(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    
+    const timer = setTimeout(() => setIsSaving(false), 800);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Periodic auto-save every 2 minutes (as requested, though redundant)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      localStorage.setItem('cm_state_multi', JSON.stringify(state));
+      setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 120000);
+    return () => clearInterval(interval);
   }, [state]);
 
   const pushHistory = useCallback((newConfig: ClassroomConfig) => {
@@ -196,19 +335,31 @@ export default function App() {
 
   const updateCurrentConfig = (updater: (prev: ClassroomConfig) => ClassroomConfig) => {
     setState(prev => {
-      const current = prev.configs.find(c => c.id === prev.currentConfigId) || prev.configs[0];
+      const rawCurrent = prev.configs.find(c => c.id === prev.currentConfigId) || prev.configs[0];
+      const current = {
+        ...rawCurrent,
+        students: rawCurrent.students || [],
+        grid: rawCurrent.grid || [],
+        locked: rawCurrent.locked || [],
+        hiddenDesks: rawCurrent.hiddenDesks || [],
+        columnGaps: rawCurrent.columnGaps || [],
+        rowGaps: rawCurrent.rowGaps || [],
+        groups: rawCurrent.groups || [],
+      };
       const nextConfig = { ...updater(current), updatedAt: Date.now() };
       
       // Update history
       const nextDeskHistory = { ...(nextConfig.deskHistory || {}) };
-      nextConfig.grid.forEach((id, idx) => {
-        if (id !== current.grid[idx]) {
-          const history = nextDeskHistory[idx] || [];
-          if (history.length === 0 || history[history.length - 1].studentId !== id) {
-            nextDeskHistory[idx] = [...history, { studentId: id, timestamp: Date.now() }];
+      if (nextConfig.grid) {
+        nextConfig.grid.forEach((id, idx) => {
+          if (id !== current.grid[idx]) {
+            const history = nextDeskHistory[idx] || [];
+            if (history.length === 0 || history[history.length - 1].studentId !== id) {
+              nextDeskHistory[idx] = [...history, { studentId: id, timestamp: Date.now() }];
+            }
           }
-        }
-      });
+        });
+      }
       nextConfig.deskHistory = nextDeskHistory;
 
       pushHistory(nextConfig);
@@ -240,11 +391,11 @@ export default function App() {
   const satisfaction = useMemo(() => {
     let total = 0, satisfied = 0, violated = 0, partial = 0;
     const seatOf: Record<string | number, number> = {};
-    currentConfig.grid.forEach((id, idx) => {
+    (currentConfig.grid || []).forEach((id, idx) => {
       if (id !== null && !(currentConfig.hiddenDesks || []).includes(idx)) seatOf[id] = idx;
     });
 
-    currentConfig.students.forEach(student => {
+    (currentConfig.students || []).forEach(student => {
       const idx = seatOf[student.id];
       if (idx === undefined) return;
       const { col, row } = idxToColRow(idx);
@@ -310,7 +461,7 @@ export default function App() {
   const getGroupStudentIds = useCallback((groupId: string): (string | number)[] => {
     const group = currentConfig.groups?.find(g => g.id === groupId);
     if (!group) return [];
-    let ids = [...group.studentIds];
+    let ids = [...(group.studentIds || [])];
     (group.subgroupIds || []).forEach(sid => {
       ids = [...ids, ...getGroupStudentIds(sid)];
     });
@@ -321,7 +472,7 @@ export default function App() {
     const list: Notification[] = [];
     
     // 1. Unassigned Students
-    const unassigned = currentConfig.students.filter(s => !currentConfig.grid.includes(s.id));
+    const unassigned = (currentConfig.students || []).filter(s => !(currentConfig.grid || []).includes(s.id));
     if (unassigned.length > 0) {
       list.push({
         id: 'unassigned',
@@ -333,11 +484,11 @@ export default function App() {
 
     // 2. Direct Conflicts (Forbidden Neighbors)
     const seatOf: Record<string | number, number> = {};
-    currentConfig.grid.forEach((id, idx) => {
+    (currentConfig.grid || []).forEach((id, idx) => {
       if (id !== null) seatOf[id] = idx;
     });
 
-    currentConfig.students.forEach(student => {
+    (currentConfig.students || []).forEach(student => {
       const idx = seatOf[student.id];
       if (idx === undefined) return;
       
@@ -638,6 +789,28 @@ export default function App() {
       if (exportOptions.includeGroups) {
         data['קבוצות'] = (currentConfig.groups || []).filter(g => g.studentIds.includes(s.id)).map(g => g.name).join(', ');
       }
+      if (exportOptions.includeFullGroups) {
+        // Find all groups where the student is directly or indirectly a member
+        const getAllStudentGroups = (studentId: string | number) => {
+          const directGroups = (currentConfig.groups || []).filter(g => g.studentIds.includes(studentId));
+          const allGroups = new Set<string>();
+          
+          const addGroupAndParents = (group: StudentGroup) => {
+            if (allGroups.has(group.name)) return;
+            allGroups.add(group.name);
+            // Find parent groups (groups that have this group as a subgroup)
+            (currentConfig.groups || []).forEach(parent => {
+              if ((parent.subgroupIds || []).includes(group.id)) {
+                addGroupAndParents(parent);
+              }
+            });
+          };
+
+          directGroups.forEach(g => addGroupAndParents(g));
+          return Array.from(allGroups);
+        };
+        data['קבוצות (מורחב)'] = getAllStudentGroups(s.id).join(', ');
+      }
       
       return data;
     });
@@ -717,8 +890,13 @@ Current Satisfaction: ${satisfaction}%.`;
       const systemInstruction = `You are a professional pedagogical assistant helping a teacher arrange a classroom.
 Analyze social dynamics, physical constraints (height/tall students shouldn't block shorter ones), and group rules.
 PEDAGOGICAL RULES:
-1. "Tall" or "tall height" students should generally NOT be in the front rows (rows 0, 1) unless requested.
-2. Short students prefer front rows.
+1. Respect "preferredRow" strictly: 
+   - "front": Rows 0 and 1.
+   - "middle": Middle rows (around index ${Math.floor(currentConfig.rows / 2)}).
+   - "back": Last two rows.
+2. Respect "height":
+   - "tall" students should NOT be in the front rows unless they prefer "front". They belong in the back.
+   - "short" students MUST be in rows 0 or 1.
 3. Groups with "together: true" must be seated in adjacent desks (neighbors).
 4. Respect social "forbidden", "forbiddenNeighbors", and "separateFrom" rules strictly. "forbiddenNeighbors" must NOT be seated adjacent (up, down, left, right).
 5. Provide a constructive pedagogical analysis in Hebrew first.
@@ -1396,6 +1574,13 @@ IMPORTANT: Maximize "together" group clustering.`,
             >
               נעילה
             </button>
+            <div className="w-px h-4 bg-slate-200 mx-2" />
+            <div className="flex items-center gap-2 px-2">
+               <div className={cn("w-1.5 h-1.5 rounded-full transition-colors", isSaving ? "bg-amber-500 animate-pulse" : "bg-emerald-500")} />
+               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                 {isSaving ? "שומר..." : lastSaved ? `נשמר ב-${lastSaved}` : "ממתין לשמירה"}
+               </span>
+            </div>
             <div className="w-px h-4 bg-slate-200 mx-2" />
             <button 
               onClick={() => setShowDeskNumbers(!showDeskNumbers)}
@@ -2130,14 +2315,26 @@ IMPORTANT: Maximize "together" group clustering.`,
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  {(currentConfig.groups || []).map(group => (
+                  {(currentConfig.groups || []).map(group => {
+                    const isParent = (group.subgroupIds || []).length > 0;
+                    const isExpanded = expandedGroups[group.id] || false;
+                    const subGroups = (currentConfig.groups || []).filter(g => (group.subgroupIds || []).includes(g.id));
+
+                    return (
                     <div key={group.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div 
+                          className="flex items-center gap-2 cursor-pointer group/title"
+                          onClick={() => isParent && setExpandedGroups(prev => ({ ...prev, [group.id]: !isExpanded }))}
+                        >
+                          {isParent && (
+                            isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronLeft className="w-4 h-4 text-slate-400" />
+                          )}
                           <div 
-                            className="w-4 h-4 rounded-full cursor-pointer border border-slate-200" 
-                            style={{ backgroundColor: group.color || '#6366f1' }}
-                            onClick={() => {
+                            className="w-4 h-4 rounded-full border border-slate-200" 
+                            style={{ backgroundColor: group.color || '#6366f1', cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6', '#f97316'];
                               const nextIdx = (colors.indexOf(group.color || '') + 1) % colors.length;
                               updateCurrentConfig(prev => ({
@@ -2147,6 +2344,11 @@ IMPORTANT: Maximize "together" group clustering.`,
                             }}
                           />
                           <h3 className="font-black text-slate-800">{group.name}</h3>
+                          {isParent && !isExpanded && (
+                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                              {subGroups.length} תתי-קבוצות
+                            </span>
+                          )}
                         </div>
                         <button 
                           onClick={() => updateCurrentConfig(prev => ({
@@ -2159,115 +2361,170 @@ IMPORTANT: Maximize "together" group clustering.`,
                         </button>
                       </div>
                       
-                      <div className="flex flex-wrap gap-1">
-                        {group.studentIds.map(sid => (
-                          <Badge key={sid} className="bg-white border border-slate-200 text-slate-600">
-                            {currentConfig.students.find(s => s.id === sid)?.name || sid}
-                          </Badge>
-                        ))}
-                      </div>
+                      {(!isParent || isExpanded) && (
+                        <motion.div 
+                          initial={isParent ? { height: 0, opacity: 0 } : {}}
+                          animate={isParent ? { height: 'auto', opacity: 1 } : {}}
+                          className="space-y-4 overflow-hidden"
+                        >
+                          {isParent ? (
+                            <div className="space-y-3">
+                              <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">תתי-קבוצות:</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {subGroups.map(sg => (
+                                    <Badge key={sg.id} style={{ backgroundColor: sg.color + '20', color: sg.color }} className="border-0">
+                                      {sg.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ניהול תת-קבוצות:</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {(currentConfig.groups || []).filter(g => g.id !== group.id).map(g => {
+                                    const isSubgroup = (group.subgroupIds || []).includes(g.id);
+                                    return (
+                                      <button
+                                        key={g.id}
+                                        onClick={() => updateCurrentConfig(prev => ({
+                                          ...prev,
+                                          groups: (prev.groups || []).map(pg => pg.id === group.id ? {
+                                            ...pg,
+                                            subgroupIds: isSubgroup 
+                                              ? (pg.subgroupIds || []).filter(id => id !== g.id)
+                                              : [...(pg.subgroupIds || []), g.id]
+                                          } : pg)
+                                        }))}
+                                        className={cn(
+                                          "px-2 py-1 rounded-full text-[9px] font-bold border transition-all",
+                                          isSubgroup ? "bg-indigo-600 border-indigo-600 text-white" : "bg-slate-50 border-slate-100 text-slate-400"
+                                        )}
+                                      >
+                                        {g.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap gap-1">
+                                {group.studentIds.map(sid => (
+                                  <Badge key={sid} className="bg-white border border-slate-200 text-slate-600">
+                                    {currentConfig.students.find(s => s.id === sid)?.name || sid}
+                                  </Badge>
+                                ))}
+                              </div>
 
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => updateCurrentConfig(prev => ({
-                              ...prev,
-                              groups: (prev.groups || []).map(g => g.id === group.id ? {
-                                ...g,
-                                constraints: { ...g.constraints, together: !g.constraints?.together, separate: false }
-                              } : g)
-                            }))}
-                            className={cn(
-                              "flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
-                              group.constraints?.together ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-slate-400"
-                            )}
-                          >
-                            ישיבה ביחד
-                          </button>
-                          <button 
-                            onClick={() => updateCurrentConfig(prev => ({
-                              ...prev,
-                              groups: (prev.groups || []).map(g => g.id === group.id ? {
-                                ...g,
-                                constraints: { ...g.constraints, separate: !g.constraints?.separate, together: false }
-                              } : g)
-                            }))}
-                            className={cn(
-                              "flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
-                              group.constraints?.separate ? "bg-red-600 text-white" : "bg-white border border-slate-200 text-slate-400"
-                            )}
-                          >
-                            הפרדה
-                          </button>
-                        </div>
-
-                        {(currentConfig.groups || []).length > 1 && (
-                          <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">תת-קבוצות (ירושת אילוצים):</span>
-                            <div className="flex flex-wrap gap-2">
-                              {(currentConfig.groups || []).filter(g => g.id !== group.id).map(g => {
-                                const isSubgroup = (group.subgroupIds || []).includes(g.id);
-                                return (
-                                  <button
-                                    key={g.id}
+                              <div className="space-y-3">
+                                <div className="flex gap-2">
+                                  <button 
                                     onClick={() => updateCurrentConfig(prev => ({
                                       ...prev,
-                                      groups: (prev.groups || []).map(pg => pg.id === group.id ? {
-                                        ...pg,
-                                        subgroupIds: isSubgroup 
-                                          ? (pg.subgroupIds || []).filter(id => id !== g.id)
-                                          : [...(pg.subgroupIds || []), g.id]
-                                      } : pg)
+                                      groups: (prev.groups || []).map(g => g.id === group.id ? {
+                                        ...g,
+                                        constraints: { ...g.constraints, together: !g.constraints?.together, separate: false }
+                                      } : g)
                                     }))}
                                     className={cn(
-                                      "px-2 py-1 rounded-full text-[9px] font-bold border transition-all",
-                                      isSubgroup ? "bg-indigo-600 border-indigo-600 text-white" : "bg-slate-50 border-slate-100 text-slate-400"
+                                      "flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
+                                      group.constraints?.together ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-slate-400"
                                     )}
                                   >
-                                    {g.name}
+                                    ישיבה ביחד
                                   </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {(currentConfig.groups || []).length > 1 && (
-                          <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">התרחקות מקבוצות אחרות:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {currentConfig.configs.find(c => c.id === state.currentConfigId)?.groups?.filter(g => g.id !== group.id).map(g => {
-                                const isAvoiding = (group.constraints?.avoidGroupIds || []).includes(g.id);
-                                return (
-                                  <button
-                                    key={g.id}
+                                  <button 
                                     onClick={() => updateCurrentConfig(prev => ({
                                       ...prev,
-                                      groups: (prev.groups || []).map(pg => pg.id === group.id ? {
-                                        ...pg,
-                                        constraints: {
-                                          ...pg.constraints,
-                                          avoidGroupIds: isAvoiding 
-                                            ? (pg.constraints?.avoidGroupIds || []).filter(id => id !== g.id)
-                                            : [...(pg.constraints?.avoidGroupIds || []), g.id]
-                                        }
-                                      } : pg)
+                                      groups: (prev.groups || []).map(g => g.id === group.id ? {
+                                        ...g,
+                                        constraints: { ...g.constraints, separate: !g.constraints?.separate, together: false }
+                                      } : g)
                                     }))}
                                     className={cn(
-                                      "px-2 py-1 rounded-full text-[9px] font-bold border transition-all",
-                                      isAvoiding ? "bg-amber-600 border-amber-600 text-white" : "bg-slate-50 border-slate-100 text-slate-400"
+                                      "flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
+                                      group.constraints?.separate ? "bg-red-600 text-white" : "bg-white border border-slate-200 text-slate-400"
                                     )}
                                   >
-                                    {g.name}
+                                    הפרדה
                                   </button>
-                                );
-                              })}
+                                </div>
+
+                                {(currentConfig.groups || []).length > 1 && (
+                                  <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">תת-קבוצות (ירושת אילוצים):</span>
+                                    <div className="flex flex-wrap gap-2">
+                                      {(currentConfig.groups || []).filter(g => g.id !== group.id).map(g => {
+                                        const isSubgroup = (group.subgroupIds || []).includes(g.id);
+                                        return (
+                                          <button
+                                            key={g.id}
+                                            onClick={() => updateCurrentConfig(prev => ({
+                                              ...prev,
+                                              groups: (prev.groups || []).map(pg => pg.id === group.id ? {
+                                                ...pg,
+                                                subgroupIds: isSubgroup 
+                                                  ? (pg.subgroupIds || []).filter(id => id !== g.id)
+                                                  : [...(pg.subgroupIds || []), g.id]
+                                              } : pg)
+                                            }))}
+                                            className={cn(
+                                              "px-2 py-1 rounded-full text-[9px] font-bold border transition-all",
+                                              isSubgroup ? "bg-indigo-600 border-indigo-600 text-white" : "bg-slate-50 border-slate-100 text-slate-400"
+                                            )}
+                                          >
+                                            {g.name}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {(currentConfig.groups || []).length > 1 && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-2">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">התרחקות מקבוצות אחרות:</span>
+                              <div className="flex flex-wrap gap-2">
+                                {currentConfig.groups.filter(g => g.id !== group.id).map(g => {
+                                  const isAvoiding = (group.constraints?.avoidGroupIds || []).includes(g.id);
+                                  return (
+                                    <button
+                                      key={g.id}
+                                      onClick={() => updateCurrentConfig(prev => ({
+                                        ...prev,
+                                        groups: (prev.groups || []).map(pg => pg.id === group.id ? {
+                                          ...pg,
+                                          constraints: {
+                                            ...pg.constraints,
+                                            avoidGroupIds: isAvoiding 
+                                              ? (pg.constraints?.avoidGroupIds || []).filter(id => id !== g.id)
+                                              : [...(pg.constraints?.avoidGroupIds || []), g.id]
+                                          }
+                                        } : pg)
+                                      }))}
+                                      className={cn(
+                                        "px-2 py-1 rounded-full text-[9px] font-bold border transition-all",
+                                        isAvoiding ? "bg-amber-600 border-amber-600 text-white" : "bg-slate-50 border-slate-100 text-slate-400"
+                                      )}
+                                    >
+                                      {g.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </motion.div>
+                      )}
                     </div>
-                  ))}
+                  );
+                  })}
 
                   {(currentConfig.groups || []).length === 0 && (
                     <div className="text-center py-20 text-slate-400">
@@ -2464,7 +2721,8 @@ IMPORTANT: Maximize "together" group clustering.`,
                         {key === 'includeNames' ? 'כלול שמות תלמידים' :
                          key === 'includeIds' ? 'כלול מזהי תלמידים' :
                          key === 'includeRowCol' ? 'כלול שורה וטור' :
-                         key === 'includePreferences' ? 'כלול העדפות ודחיות' : 'כלול שיוך לקבוצות'}
+                         key === 'includePreferences' ? 'כלול העדפות ודחיות' : 
+                         key === 'includeGroups' ? 'כלול שיוך לקבוצות' : 'כלול קבוצות ותת-קבוצות'}
                       </span>
                       <input 
                         type="checkbox" 
