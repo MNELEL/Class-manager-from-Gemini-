@@ -50,7 +50,7 @@ import { cn } from './lib/utils';
 const Badge = ({ children, className, style }: { children: React.ReactNode, className?: string, key?: any, style?: React.CSSProperties }) => (
   <span 
     style={style}
-    className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider", className)}
+    className={cn("px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-tight shadow-sm border", className)}
   >
     {children}
   </span>
@@ -128,13 +128,15 @@ export default function App() {
   const [newStudentName, setNewStudentName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'row' | 'col' | 'preferred' | 'forbidden' | 'groups'>('name');
   const [selectedSidebarStudentIds, setSelectedSidebarStudentIds] = useState<(string | number)[]>([]);
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
   const [viewType, setViewType] = useState<'grid' | 'table'>('grid');
-  const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 7, height: 6, position: 6 });
+  const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 7, keepDistant: 5, height: 6, position: 6 });
   const [confirmModal, setConfirmModal] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [showLanding, setShowLanding] = useState(!localStorage.getItem('cm_visited'));
+  const [selectedDeskIndex, setSelectedDeskIndex] = useState<number | null>(null);
 
   const filteredAndSortedStudents = useMemo(() => {
     return [...(currentConfig.students || [])]
@@ -163,9 +165,20 @@ export default function App() {
           const colB = idxB === -1 ? 999 : idxB % currentConfig.cols;
           return colA - colB || a.name.localeCompare(b.name, 'he');
         }
+        if (sortBy === 'preferred') {
+          return (b.preferred?.length || 0) - (a.preferred?.length || 0) || a.name.localeCompare(b.name, 'he');
+        }
+        if (sortBy === 'forbidden') {
+          return (b.forbidden?.length || 0) - (a.forbidden?.length || 0) || a.name.localeCompare(b.name, 'he');
+        }
+        if (sortBy === 'groups') {
+          const countA = (currentConfig.groups || []).filter(g => g.studentIds.includes(a.id)).length;
+          const countB = (currentConfig.groups || []).filter(g => g.studentIds.includes(b.id)).length;
+          return countB - countA || a.name.localeCompare(b.name, 'he');
+        }
         return 0;
       });
-  }, [currentConfig.students, currentConfig.grid, currentConfig.cols, searchQuery, sortBy, groupFilter]);
+  }, [currentConfig.students, currentConfig.grid, currentConfig.cols, currentConfig.groups, searchQuery, sortBy, groupFilter]);
 
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -174,7 +187,7 @@ export default function App() {
   
   // Bootstrap user requests
   useEffect(() => {
-    const bootstrapFlag = 'cm_bootstrapped_v2';
+    const bootstrapFlag = 'cm_bootstrapped_v5';
     if (localStorage.getItem(bootstrapFlag)) return;
 
     setState(prev => {
@@ -195,7 +208,8 @@ export default function App() {
           preferred: [],
           forbidden: [],
           separateFrom: [],
-          forbiddenNeighbors: []
+          forbiddenNeighbors: [],
+          keepDistantFrom: []
         });
       }
 
@@ -209,16 +223,27 @@ export default function App() {
             preferred: [],
             forbidden: [],
             separateFrom: [],
-            forbiddenNeighbors: []
+            forbiddenNeighbors: [],
+            keepDistantFrom: []
           });
         }
       });
 
       // Update תלמיד ג
       const sC = students.find(s => s.name === 'תלמיד ג');
+      const sD_target = students.find(s => s.name === 'תלמיד ד');
       if (sC) {
         sC.preferredRow = 'front';
         sC.height = 'short';
+        if (sD_target && !(sC.forbiddenNeighbors || []).includes(sD_target.id)) {
+          sC.forbiddenNeighbors = [...(sC.forbiddenNeighbors || []), sD_target.id];
+        }
+      }
+
+      // Update תלמיד ה
+      const sE_target = students.find(s => s.name === 'תלמיד ה');
+      if (sE_target) {
+        sE_target.preferredRow = 'back';
       }
 
       // Update תלמיד ד and ה link
@@ -736,7 +761,8 @@ export default function App() {
         preferred: [],
         forbidden: [],
         separateFrom: [],
-        forbiddenNeighbors: []
+        forbiddenNeighbors: [],
+        keepDistantFrom: []
       }]
     }));
     setNewStudentName("");
@@ -847,6 +873,45 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
+        
+        // Check if it's a batch preferences update
+        if (Array.isArray(data) && data.length > 0 && data[0].name) {
+          updateCurrentConfig(prev => {
+            const newStudents = [...prev.students];
+            data.forEach((pref: any) => {
+              const student = newStudents.find(s => s.name === pref.name);
+              if (student) {
+                if (pref.preferredRow) student.preferredRow = pref.preferredRow;
+                if (pref.height) student.height = pref.height;
+                if (pref.preferred) {
+                  // Map names to IDs if possible, or use IDs directly
+                  student.preferred = pref.preferred.map((pName: string) => 
+                    newStudents.find(ns => ns.name === pName)?.id || pName
+                  );
+                }
+                if (pref.forbidden) {
+                  student.forbidden = pref.forbidden.map((fName: string) => 
+                    newStudents.find(ns => ns.name === fName)?.id || fName
+                  );
+                }
+                if (pref.forbiddenNeighbors) {
+                  student.forbiddenNeighbors = pref.forbiddenNeighbors.map((fName: string) => 
+                    newStudents.find(ns => ns.name === fName)?.id || fName
+                  );
+                }
+                if (pref.keepDistantFrom) {
+                  student.keepDistantFrom = pref.keepDistantFrom.map((dName: string) => 
+                    newStudents.find(ns => ns.name === dName)?.id || dName
+                  );
+                }
+              }
+            });
+            return { ...prev, students: newStudents };
+          });
+          setToast({ message: "העדפות עודכנו בהצלחה!", type: 'success' });
+          return;
+        }
+
         if (data.configs && data.currentConfigId) {
           setState(data);
         } else {
@@ -883,12 +948,13 @@ export default function App() {
 
       const ai = new GoogleGenAI({ apiKey });
       const context = `Classroom: ${currentConfig.name}, ${currentConfig.rows} rows, ${currentConfig.cols} columns. 
-Students info: ${currentConfig.students.map(s => `${s.name} (ID: ${s.id}, height: ${s.height || 'medium'}, prefers: ${s.preferredRow || 'any'}, tall: ${!!s.tall}, front: ${!!s.frontPrefer}, back: ${!!s.backPrefer}, forbiddenNeighbors: [${(s.forbiddenNeighbors || []).join(',')}] )`).join('; ')}. 
-Groups: ${(currentConfig.groups || []).map(g => `${g.name}: [${g.studentIds.join(',')}], together: ${g.constraints?.together}, separate: ${g.constraints?.separate}, avoidGroups: [${(g.constraints?.avoidGroupIds || []).join(',')}]`).join('; ')}. 
+Students info: ${currentConfig.students.map(s => `${s.name} (ID: ${s.id}, height: ${s.height || 'medium'}, prefers: ${s.preferredRow || 'any'}, notes: "${s.notes || ''}", forbiddenNeighbors: [${(s.forbiddenNeighbors || []).join(',')}], keepDistantFrom: [${(s.keepDistantFrom || []).join(',')}] )`).join('; ')}. 
+Groups: ${(currentConfig.groups || []).map(g => `${g.name}: [${g.studentIds.join(',')}], together: ${g.constraints?.together}, separate: ${g.constraints?.separate}`).join('; ')}. 
 Current Satisfaction: ${satisfaction}%.`;
       
       const systemInstruction = `You are a professional pedagogical assistant helping a teacher arrange a classroom.
-Analyze social dynamics, physical constraints (height/tall students shouldn't block shorter ones), and group rules.
+Analyze social dynamics, physical constraints, and group rules.
+IMPORTANT: Analyze the "notes" field for each student using sentiment analysis to infer hidden social dynamics (e.g., if a note says a student is disruptive with another, treat them as forbidden neighbors even if not explicitly marked).
 PEDAGOGICAL RULES:
 1. Respect "preferredRow" strictly: 
    - "front": Rows 0 and 1.
@@ -898,7 +964,9 @@ PEDAGOGICAL RULES:
    - "tall" students should NOT be in the front rows unless they prefer "front". They belong in the back.
    - "short" students MUST be in rows 0 or 1.
 3. Groups with "together: true" must be seated in adjacent desks (neighbors).
-4. Respect social "forbidden", "forbiddenNeighbors", and "separateFrom" rules strictly. "forbiddenNeighbors" must NOT be seated adjacent (up, down, left, right).
+4. Respect social "forbidden", "forbiddenNeighbors", "keepDistantFrom", and "separateFrom" rules strictly. 
+   - "forbiddenNeighbors" must NOT be seated adjacent (up, down, left, right).
+   - "keepDistantFrom" means they should ideally be separated by at least 2 desks (not touching, not even diagonal).
 5. Provide a constructive pedagogical analysis in Hebrew first.
 Include a JSON block at the end in this format: {"action":"arrange","grid":[studentId1, studentId2, null, ...]}`;
 
@@ -910,6 +978,7 @@ Weights (0-10):
 - Social Preferences: ${aiWeights.preferred}
 - Social Friction (Forbidden): ${aiWeights.forbidden}
 - Spatial Separation: ${aiWeights.separateFrom}
+- Keep Distant Preference: ${aiWeights.keepDistant}
 - Physical visibility (Height): ${aiWeights.height}
 - Position preference (Front/Back): ${aiWeights.position}
 
@@ -993,7 +1062,7 @@ IMPORTANT: Maximize "together" group clustering.`,
     return (
       <motion.div
         layoutId={student ? `student-${student.id}` : `desk-${idx}`}
-        whileHover={!isHidden ? { y: -3, scale: 1.03 } : {}}
+        whileHover={!isHidden ? { y: -5, scale: 1.05 } : {}}
         whileTap={!isHidden ? { scale: 0.95 } : {}}
         onClick={(e) => {
           if (e.shiftKey && id === null) {
@@ -1007,18 +1076,18 @@ IMPORTANT: Maximize "together" group clustering.`,
         draggable={!!student && !isLocked}
         onDragStart={(e) => student && onDragStart(e, student.id)}
         className={cn(
-          "relative w-24 h-18 rounded-2xl border-2 transition-all flex flex-col items-center justify-center p-2 cursor-pointer",
+          "relative w-24 h-20 rounded-3xl border-2 transition-all flex flex-col items-center justify-center p-2 cursor-pointer",
           isHidden ? "opacity-10 border-transparent bg-slate-200/20 pointer-events-none" : 
-          id === null ? "bg-slate-50/30 border-dashed border-slate-200" : "bg-white border-slate-200 desk-shadow overflow-hidden",
+          id === null ? "bg-white/40 border-dashed border-slate-300 backdrop-blur-sm shadow-inner" : "bg-white border-slate-200 desk-shadow overflow-hidden",
           id !== null && !isLocked && "hover:border-brand-400 hover:desk-shadow-hover cursor-grab active:cursor-grabbing",
-          isSelected && "border-brand-600 ring-4 ring-brand-100 z-10 scale-105",
-          isLocked && "border-brand-500 bg-brand-50",
-          isConflict && "border-red-500 bg-red-50 shadow-red-100 ring-4 ring-red-200 z-10",
-          isPreferred && "border-green-500 bg-green-50 shadow-green-100 ring-2 ring-green-100",
+          isSelected && "border-brand-600 ring-4 ring-brand-100 z-10 scale-105 shadow-xl shadow-brand-100",
+          isLocked && "border-slate-800 bg-slate-900 text-white",
+          isConflict && "border-red-500 bg-red-50 shadow-red-100 ring-4 ring-red-100 z-10",
+          isPreferred && "border-emerald-500 bg-emerald-50 shadow-emerald-100 ring-2 ring-emerald-50",
           selectedStudentId !== null && !id && !isHidden && "border-brand-400 bg-brand-50/50 border-dashed animate-pulse ring-4 ring-brand-100"
         )}
       >
-        {isConflict && <AlertCircle className="absolute top-1 right-1 w-3 h-3 text-red-500 animate-bounce" />}
+        {isConflict && <AlertCircle className="absolute top-1.5 right-1.5 w-4 h-4 text-red-500 animate-bounce" />}
         {!isHidden && (
           <>
             <AnimatePresence mode="wait">
@@ -1030,48 +1099,60 @@ IMPORTANT: Maximize "together" group clustering.`,
                   exit={{ opacity: 0, scale: 0.8 }}
                   className="flex flex-col items-center w-full"
                 >
-                  {showDeskNumbers && (
-                    <span className="absolute top-1 right-1.5 text-[8px] font-black text-slate-300">#{visibleIndex}</span>
-                  )}
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    {showDeskNumbers && (
+                      <span className="text-[9px] font-black text-slate-300">#{visibleIndex}</span>
+                    )}
+                    {isLocked && <Lock className="w-3 h-3 text-slate-400" />}
+                  </div>
+                  
                   {studentGroups.length > 0 && (
-                    <div className="absolute top-1 left-1.5 flex gap-0.5">
+                    <div className="absolute top-2 left-2 flex gap-0.5">
                       {studentGroups.map(g => (
                         <div 
                           key={g.id} 
-                          className="w-1.5 h-1.5 rounded-full" 
+                          className="w-2 h-2 rounded-full ring-2 ring-white" 
                           style={{ backgroundColor: g.color || '#6366f1' }} 
                           title={g.name}
                         />
                       ))}
                     </div>
                   )}
-                  <span className="text-[12px] font-black text-slate-800 leading-tight text-center break-words w-full px-1 overflow-hidden truncate">
+                  
+                  <div className="w-8 h-8 rounded-full bg-slate-100 mb-1.5 flex items-center justify-center font-black text-[10px] text-slate-500 shadow-inner border border-slate-200/50">
+                    {student.name[0]}
+                  </div>
+
+                  <span className={cn(
+                    "text-[12px] font-black leading-tight text-center break-words w-full px-1 overflow-hidden truncate",
+                    isLocked ? "text-white" : "text-slate-800"
+                  )}>
                     {student.name}
                   </span>
-                  <div className="flex flex-wrap gap-0.5 mt-1.5 justify-center">
-                    {student.tall && <Badge className="bg-blue-100 text-blue-700">גבוה</Badge>}
-                    {student.frontPrefer && <Badge className="bg-emerald-100 text-emerald-700">קדמה</Badge>}
-                    {student.backPrefer && <Badge className="bg-amber-100 text-amber-700">אחורה</Badge>}
-                    {student.cornerPrefer && <Badge className="bg-purple-100 text-purple-700">פינה</Badge>}
+                  
+                  <div className="flex flex-wrap gap-0.5 mt-2 justify-center">
+                    {student.tall && <Badge className="bg-blue-100 text-blue-700 border border-blue-200">גבוה</Badge>}
+                    {student.frontPrefer && <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200">קדמה</Badge>}
+                    {student.backPrefer && <Badge className="bg-amber-100 text-amber-700 border border-amber-200">אחורה</Badge>}
                   </div>
                 </motion.div>
               ) : (
                 <motion.span 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-[10px] text-slate-300 font-bold"
+                  className="text-[11px] text-slate-300 font-black tracking-tighter"
                 >
                   {idx + 1}
                 </motion.span>
               )}
             </AnimatePresence>
-            {isLocked && <Lock className="absolute bottom-1.5 right-1.5 w-3 h-3 text-brand-600" />}
+            
             {(currentConfig.deskHistory?.[idx] || []).length > 0 && !student && (
                <button 
                  onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
-                 className="absolute top-1 left-1 p-1 hover:bg-slate-200 rounded text-slate-400"
+                 className="absolute bottom-2 left-2 p-1 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
                >
-                 <Undo2 className="w-2.5 h-2.5" />
+                 <ArrowRightLeft className="w-3 h-3" />
                </button>
             )}
           </>
@@ -1081,10 +1162,10 @@ IMPORTANT: Maximize "together" group clustering.`,
         <AnimatePresence>
           {showHistory && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute inset-0 z-[100] bg-white rounded-2xl shadow-2xl p-2 flex flex-col overflow-y-auto border border-slate-200"
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="absolute inset-0 z-[100] bg-white rounded-3xl shadow-2xl p-3 flex flex-col overflow-y-auto border border-slate-200 overflow-hidden"
             >
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[9px] font-black text-slate-400">היסטוריית מושב</span>
@@ -1102,6 +1183,14 @@ IMPORTANT: Maximize "together" group clustering.`,
                     </span>
                   </div>
                 ))}
+                {(currentConfig.deskHistory?.[idx] || []).length > 0 && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedDeskIndex(idx); setShowHistory(false); }}
+                    className="w-full py-1 mt-1 text-[8px] font-black text-brand-600 bg-brand-50 rounded-lg hover:bg-brand-100"
+                  >
+                    צפייה בהיסטוריה מלאה
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
@@ -1113,38 +1202,42 @@ IMPORTANT: Maximize "together" group clustering.`,
   return (
     <div 
       className={cn(
-        "flex flex-col h-screen overflow-hidden bg-slate-50 font-sans rtl",
+        "flex flex-col h-screen overflow-hidden bg-slate-50 font-sans rtl selection:bg-brand-100",
         accessibility.highContrast && "high-contrast",
         accessibility.fontSize === 'small' ? 'font-small' : accessibility.fontSize === 'large' ? 'font-large' : 'font-medium'
       )} 
       dir="rtl"
     >
       {/* Header */}
-      <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-slate-200 z-30 shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="glass-header h-16 px-6 z-50 shrink-0 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-6">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg lg:hidden"
+            className="p-2 hover:bg-slate-100/50 rounded-xl lg:hidden transition-colors"
           >
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
+          
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-200 rotate-3 transform hover:rotate-0 transition-transform">
+              <Users className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-black text-brand-600 tracking-tight">ClassManager <span className="font-light text-slate-400">Pro</span></h1>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">ClassManager</h1>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Pro Edition</span>
+            </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-1 mr-6 overflow-x-auto max-w-[400px] no-scrollbar py-1">
+          <div className="hidden lg:flex items-center gap-2 p-1 bg-slate-100/50 rounded-2xl ml-4">
             {state.configs.map(c => (
               <button 
                 key={c.id}
                 onClick={() => switchConfig(c.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                  "px-4 py-1.5 rounded-xl text-[11px] font-black tracking-tight transition-all whitespace-nowrap",
                   state.currentConfigId === c.id 
-                    ? "bg-brand-100 text-brand-700 ring-2 ring-brand-200" 
-                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                    ? "bg-white text-brand-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
                 )}
               >
                 {c.name}
@@ -1152,7 +1245,7 @@ IMPORTANT: Maximize "together" group clustering.`,
             ))}
             <button 
               onClick={addNewConfig}
-              className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-brand-600 transition-colors"
+              className="p-1.5 hover:bg-white rounded-xl text-slate-400 hover:text-brand-600 transition-all"
               title="שמירה כעותק / הוספת כיתה"
             >
               <Plus className="w-4 h-4" />
@@ -1160,76 +1253,78 @@ IMPORTANT: Maximize "together" group clustering.`,
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center px-3 py-1.5 bg-slate-100 rounded-full text-xs font-bold text-slate-600 mr-4">
-            <div className="w-2 h-2 rounded-full bg-green-500 ml-2 animate-pulse" />
-            סינכרון פעיל
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center px-4 py-2 bg-white/50 border border-white/40 rounded-2xl text-xs font-bold text-slate-600 mr-2 shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 ml-2 animate-pulse" />
+            {isSaving ? "שומר..." : lastSaved ? `נשמר ב-${lastSaved}` : "סינכרון פעיל"}
           </div>
           
-          <button onClick={undo} disabled={historyIndex <= 0} className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30">
-            <Undo2 className="w-5 h-5" />
-          </button>
-          <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30">
-            <Redo2 className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl">
+            <button onClick={undo} disabled={historyIndex <= 0} className="p-2 hover:bg-white rounded-xl disabled:opacity-30 transition-all" title="ביטול">
+              <Undo2 className="w-5 h-5 text-slate-600" />
+            </button>
+            <button onClick={redo} disabled={historyIndex >= history.length - 1} className="p-2 hover:bg-white rounded-xl disabled:opacity-30 transition-all" title="חזור">
+              <Redo2 className="w-5 h-5 text-slate-600" />
+            </button>
+          </div>
           
-          <div className="w-px h-6 bg-slate-200 mx-2" />
+          <div className="w-px h-8 bg-slate-200/50 mx-1" />
 
           <button 
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-2 hover:bg-slate-100/50 rounded-xl text-slate-500 hover:text-slate-900 transition-all"
             title="הגדרות נגישות"
           >
-            <Settings className="w-5 h-5" />
+            <Settings2 className="w-5 h-5" />
           </button>
 
           <button 
             onClick={() => setIsExportModalOpen(true)}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-colors"
+            className="p-2 hover:bg-slate-100/50 rounded-xl text-slate-500 hover:text-brand-600 transition-all"
             title="ייצוא מתקדם"
           >
             <Download className="w-5 h-5" />
           </button>
 
-          <div className="w-px h-6 bg-slate-200 mx-2" />
+          <div className="w-px h-8 bg-slate-200/50 mx-1" />
           
           <button 
             onClick={() => setIsIssuesOpen(true)}
             className={cn(
-              "p-2 rounded-lg relative transition-all",
-              notifications.length > 0 ? "text-amber-600 bg-amber-50" : "text-slate-600 hover:bg-slate-100"
+              "p-2 rounded-xl relative transition-all",
+              notifications.length > 0 ? "text-amber-600 bg-amber-50 shadow-inner" : "text-slate-500 hover:bg-slate-100/50"
             )}
             title="התרעות ומסקנות"
           >
             <Bell className="w-5 h-5" />
             {notifications.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+              <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-bounce" />
             )}
           </button>
 
-          <div className="w-px h-6 bg-slate-200 mx-2" />
+          <div className="w-px h-8 bg-slate-200/50 mx-1" />
           
           <button 
             onClick={() => setViewType(viewType === 'grid' ? 'table' : 'grid')}
-            className={cn("p-2 rounded-lg transition-all", viewType === 'table' ? "bg-brand-100 text-brand-700" : "hover:bg-slate-100 text-slate-600")}
+            className={cn("p-2 rounded-xl transition-all", viewType === 'table' ? "bg-brand-600 text-white shadow-lg" : "hover:bg-slate-100/50 text-slate-600")}
             title={viewType === 'grid' ? 'תצוגת טבלה' : 'תצוגת גריד'}
           >
-            {viewType === 'grid' ? <Rows className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+            {viewType === 'grid' ? <Columns className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
           </button>
 
-          <div className="w-px h-6 bg-slate-200 mx-2" />
+          <div className="w-px h-8 bg-slate-200/50 mx-1" />
           
           <button 
             onClick={callAIArrangement}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-950 text-white rounded-2xl text-sm font-black shadow-xl hover:scale-105 active:scale-95 transition-all group"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-4 h-4 text-brand-400 group-hover:animate-spin" />
             <span className="hidden md:inline">עוזר AI</span>
           </button>
           
           <button 
             onClick={runSmartSort}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-brand-500 text-brand-600 rounded-xl text-sm font-bold hover:bg-brand-50 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-900 rounded-2xl text-sm font-black shadow-sm hover:border-brand-500 hover:text-brand-600 transition-all active:scale-95"
           >
             <Wand2 className="w-4 h-4" />
             <span className="hidden md:inline">סידור חכם</span>
@@ -1255,69 +1350,80 @@ IMPORTANT: Maximize "together" group clustering.`,
                 exit={{ x: 300 }}
                 className="absolute lg:relative z-20 w-[300px] h-full bg-white border-l border-slate-200 overflow-y-auto flex flex-col shadow-2xl lg:shadow-none"
               >
-              <div className="p-6 flex flex-col gap-8">
+              <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full">
                 {/* Classroom Header */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">כיתה נוכחית</h3>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => setIsGroupsPanelOpen(true)} 
-                        className="p-1 hover:bg-slate-100 rounded text-brand-600"
-                        title="ניהול קבוצות"
-                      >
-                        <Settings className="w-3 h-3" />
-                      </button>
-                      <button onClick={addNewConfig} className="p-1 hover:bg-slate-100 rounded text-brand-600"><Plus className="w-3 h-3" /></button>
-                      <button onClick={() => confirmAction('מחיקת כיתה', `בטוח שברצונך למחוק את ${currentConfig.name}?`, () => deleteConfig(currentConfig.id))} className="p-1 hover:bg-red-50 rounded text-red-500"><Trash2 className="w-3 h-3" /></button>
+                <div className="glass-card p-5 rounded-3xl flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">כיתה פעילה</h3>
+                      <div className="flex gap-1.5">
+                        <button 
+                          onClick={() => setIsGroupsPanelOpen(true)} 
+                          className="p-1.5 hover:bg-brand-50 rounded-lg text-brand-600 transition-colors"
+                          title="ניהול קבוצות"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={addNewConfig} className="p-1.5 hover:bg-brand-50 rounded-lg text-brand-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => confirmAction('מחיקת כיתה', `בטוח שברצונך למחוק את ${currentConfig.name}?`, () => deleteConfig(currentConfig.id))} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
                     </div>
-                  </div>
-                  <input 
-                    type="text" 
-                    value={currentConfig.name}
-                    onChange={(e) => renameConfig(currentConfig.id, e.target.value)}
-                    className="text-lg font-black text-slate-800 bg-transparent border-b border-transparent focus:border-brand-500 outline-none w-full"
-                  />
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">שביעות רצון:</span>
-                    <span className={cn(
-                      "text-[10px] font-black",
-                      satisfaction >= 80 ? "text-green-600" : satisfaction >= 50 ? "text-amber-600" : "text-red-600"
-                    )}>{satisfaction}%</span>
-                  </div>
-                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${satisfaction}%` }}
-                      className={cn(
-                        "h-full transition-all duration-1000",
-                        satisfaction >= 80 ? "bg-green-500" : satisfaction >= 50 ? "bg-amber-500" : "bg-red-500"
-                      )}
+                    <input 
+                      type="text" 
+                      value={currentConfig.name}
+                      onChange={(e) => renameConfig(currentConfig.id, e.target.value)}
+                      className="text-xl font-black text-slate-900 bg-transparent border-b-2 border-transparent focus:border-brand-500 outline-none w-full transition-all"
                     />
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-black text-slate-500 uppercase tracking-tight">שביעות רצון פדגוגית</span>
+                      <span className={cn(
+                        "text-xs font-black",
+                        satisfaction >= 80 ? "text-emerald-600" : satisfaction >= 50 ? "text-amber-600" : "text-red-600"
+                      )}>{satisfaction}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${satisfaction}%` }}
+                        className={cn(
+                          "h-full transition-all duration-1500 ease-out",
+                          satisfaction >= 80 ? "bg-emerald-500" : satisfaction >= 50 ? "bg-amber-500" : "bg-red-500"
+                        )}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Grid Config */}
-                <div>
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">מימדים</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-slate-400">טורים</span>
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">מבנה הכיתה</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="glass-card p-4 rounded-2xl flex flex-col gap-2 hover:shadow-lg transition-shadow">
+                      <div className="flex items-center gap-2">
+                        <Columns className="w-3 h-3 text-brand-500" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">טורים</span>
+                      </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-black text-brand-600">{currentConfig.cols}</span>
-                        <div className="flex flex-col gap-1">
-                          <button onClick={() => handleGridResize('cols', 1)} className="p-0.5 hover:text-brand-600"><Plus className="w-3 h-3" /></button>
-                          <button onClick={() => handleGridResize('cols', -1)} className="p-0.5 hover:text-brand-600"><Minus className="w-3 h-3" /></button>
+                        <span className="text-2xl font-black text-slate-900">{currentConfig.cols}</span>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleGridResize('cols', -1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"><Minus className="w-3 h-3" /></button>
+                          <button onClick={() => handleGridResize('cols', 1)} className="w-6 h-6 flex items-center justify-center bg-brand-600 hover:bg-brand-700 rounded-lg text-white transition-colors"><Plus className="w-3 h-3" /></button>
                         </div>
                       </div>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-slate-400">שורות</span>
+                    <div className="glass-card p-4 rounded-2xl flex flex-col gap-2 hover:shadow-lg transition-shadow">
+                      <div className="flex items-center gap-2">
+                        <Rows className="w-3 h-3 text-brand-500" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">שורות</span>
+                      </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-black text-brand-600">{currentConfig.rows}</span>
-                        <div className="flex flex-col gap-1">
-                          <button onClick={() => handleGridResize('rows', 1)} className="p-0.5 hover:text-brand-600"><Plus className="w-3 h-3" /></button>
-                          <button onClick={() => handleGridResize('rows', -1)} className="p-0.5 hover:text-brand-600"><Minus className="w-3 h-3" /></button>
+                        <span className="text-2xl font-black text-slate-900">{currentConfig.rows}</span>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleGridResize('rows', -1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"><Minus className="w-3 h-3" /></button>
+                          <button onClick={() => handleGridResize('rows', 1)} className="w-6 h-6 flex items-center justify-center bg-brand-600 hover:bg-brand-700 rounded-lg text-white transition-colors"><Plus className="w-3 h-3" /></button>
                         </div>
                       </div>
                     </div>
@@ -1380,6 +1486,14 @@ IMPORTANT: Maximize "together" group clustering.`,
                     {filteredAndSortedStudents.map(student => {
                       const isSeated = currentConfig.grid.includes(student.id);
                       const isSelectedBatch = selectedSidebarStudentIds.includes(student.id);
+                      
+                      const isRelated = selectedStudentId !== null && (
+                        (currentConfig.students.find(s => s.id === selectedStudentId)?.preferred || []).includes(student.id) ||
+                        (currentConfig.students.find(s => s.id === selectedStudentId)?.forbidden || []).includes(student.id) ||
+                        (currentConfig.students.find(s => s.id === selectedStudentId)?.forbiddenNeighbors || []).includes(student.id) ||
+                        (currentConfig.groups || []).some(g => g.studentIds.includes(student.id) && g.studentIds.includes(selectedStudentId))
+                      );
+
                       return (
                         <motion.button
                           key={student.id}
@@ -1402,9 +1516,11 @@ IMPORTANT: Maximize "together" group clustering.`,
                             isSelectedBatch ? "ring-2 ring-brand-500 bg-brand-50" : "",
                             selectedStudentId === student.id 
                               ? "bg-brand-600 text-white z-10" 
-                              : isSeated 
-                                ? "bg-slate-100 text-slate-400 border border-slate-200" 
-                                : "bg-white border border-slate-200 text-slate-700 hover:border-brand-300"
+                              : isRelated 
+                                ? "bg-amber-100 text-amber-900 border-2 border-amber-400 z-10"
+                                : isSeated 
+                                  ? "bg-slate-100 text-slate-400 border border-slate-200" 
+                                  : "bg-white border border-slate-200 text-slate-700 hover:border-brand-300"
                           )}
                         >
                           {student.name}
@@ -1543,79 +1659,84 @@ IMPORTANT: Maximize "together" group clustering.`,
         {/* Classroom Display */}
         <main className="flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center">
           {/* Toolbar */}
-          <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 mb-8 z-10">
-            <button 
-              onClick={() => setEditMode('normal')}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", editMode === 'normal' ? "bg-brand-600 text-white" : "text-slate-500 hover:text-brand-600")}
-            >
-              עריכה רגילה
-            </button>
-            <button 
-              onClick={() => setEditMode('structure')}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", editMode === 'structure' ? "bg-brand-600 text-white" : "text-slate-500 hover:text-brand-600")}
-            >
-              הסתרת שולחן
-            </button>
-            <button 
-              onClick={() => setEditMode('gapCol')}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", editMode === 'gapCol' ? "bg-brand-600 text-white" : "text-slate-500 hover:text-brand-600")}
-            >
-              רווח טור
-            </button>
-            <button 
-              onClick={() => setEditMode('gapRow')}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", editMode === 'gapRow' ? "bg-brand-600 text-white" : "text-slate-500 hover:text-brand-600")}
-            >
-              רווח שורה
-            </button>
-            <button 
-              onClick={() => setEditMode('lock')}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", editMode === 'lock' ? "bg-brand-600 text-white border-2 border-brand-500" : "text-slate-500 hover:text-brand-600")}
-            >
-              נעילה
-            </button>
-            <div className="w-px h-4 bg-slate-200 mx-2" />
-            <div className="flex items-center gap-2 px-2">
-               <div className={cn("w-1.5 h-1.5 rounded-full transition-colors", isSaving ? "bg-amber-500 animate-pulse" : "bg-emerald-500")} />
-               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                 {isSaving ? "שומר..." : lastSaved ? `נשמר ב-${lastSaved}` : "ממתין לשמירה"}
-               </span>
+          <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-2 mb-10 z-30 shadow-bento">
+            <div className="flex items-center gap-1 p-1 bg-slate-100/50 rounded-xl">
+              <button 
+                onClick={() => setEditMode('normal')}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'normal' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >
+                עריכה רגילה
+              </button>
+              <button 
+                onClick={() => setEditMode('structure')}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'structure' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >
+                הסתרת שולחן
+              </button>
+              <button 
+                onClick={() => setEditMode('gapCol')}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'gapCol' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >
+                רווח טור
+              </button>
+              <button 
+                onClick={() => setEditMode('gapRow')}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'gapRow' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+              >
+                רווח שורה
+              </button>
+              <button 
+                onClick={() => setEditMode('lock')}
+                className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'lock' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-slate-700")}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Lock className="w-3 h-3" />
+                  נעילה
+                </div>
+              </button>
             </div>
-            <div className="w-px h-4 bg-slate-200 mx-2" />
+
+            <div className="w-px h-6 bg-slate-200/50 mx-2" />
+            
             <button 
               onClick={() => setShowDeskNumbers(!showDeskNumbers)}
-              className={cn("px-4 py-1.5 rounded-xl text-xs font-black transition-all", showDeskNumbers ? "bg-brand-100 text-brand-700" : "text-slate-500 hover:text-brand-600")}
+              className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all", showDeskNumbers ? "bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "text-slate-500 hover:bg-slate-100 flex items-center gap-2")}
             >
+              <Monitor className="w-4 h-4" />
               מספרי שולחן
             </button>
-            <div className="w-px h-4 bg-slate-200 mx-2" />
+
+            <div className="w-px h-6 bg-slate-200/50 mx-2" />
+            
             <button 
               onClick={() => {
                 confirmAction('ניקוי כיתה', 'בטוח שברצונך לנקות את כל השיבוצים?', () => {
                   updateCurrentConfig(prev => ({ ...prev, grid: Array(totalCells).fill(null) }));
                 });
               }}
-              className="text-xs font-black text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-xl"
+              className="text-xs font-black text-red-500 hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
             >
               ניקוי כיתה
             </button>
           </div>
 
-          <div className="relative w-full max-w-5xl flex flex-col items-center">
+          <div className="relative w-full max-w-6xl flex flex-col items-center">
             {viewType === 'grid' ? (
-              <>
-                {/* Teacher Desk */}
-                <div className="w-48 h-10 mx-auto mb-16 bg-gradient-to-b from-slate-200 to-slate-300 rounded-b-3xl flex items-center justify-center shadow-inner">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80">שולחן מורה</span>
+              <div className="w-full flex flex-col items-center">
+                {/* Teacher Desk Overlay */}
+                <div className="relative mb-20 group">
+                  <div className="absolute -inset-4 bg-slate-200/40 rounded-[3rem] blur-2xl opacity-50 transition-opacity group-hover:opacity-100" />
+                  <div className="relative w-64 h-12 bg-white rounded-2xl border-b-8 border-slate-200 flex items-center justify-center shadow-xl">
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-1 bg-slate-100 rounded-full" />
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">שולחן מורה</span>
+                  </div>
                 </div>
 
-                {/* The Grid */}
+                {/* The Grid Container */}
                 <div 
-                  className="grid gap-2 p-6 bg-white/60 rounded-[3rem] border border-white/80 backdrop-blur-md shadow-2xl shadow-slate-200/50"
+                  className="grid gap-6 p-10 bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm"
                   style={{ 
                     gridTemplateColumns: `repeat(${currentConfig.cols}, minmax(0, 1fr))`,
-                    columnGap: '1.25rem',
-                    rowGap: '1.25rem'
                   }}
                 >
                   {Array.from({ length: totalCells }).map((_, i) => {
@@ -1646,23 +1767,58 @@ IMPORTANT: Maximize "together" group clustering.`,
                     );
                   })}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="חיפוש מהיר בטבלה..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pr-10 pl-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                    />
+                  </div>
+                  <select 
+                    value={groupFilter}
+                    onChange={(e) => setGroupFilter(e.target.value)}
+                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                  >
+                    <option value="all">כל התלמידים</option>
+                    <option value="none">ללא קבוצה</option>
+                    {(currentConfig.groups || []).map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <table className="w-full text-right">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">שם התלמיד</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">מקום ישיבה</th>
+                      <th onClick={() => setSortBy('name')} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-brand-600 transition-colors">
+                        שם התלמיד {sortBy === 'name' && <ChevronDown className="inline w-3 h-3" />}
+                      </th>
+                      <th onClick={() => setSortBy('row')} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-brand-600 transition-colors">
+                        מקום ישיבה {(sortBy === 'row' || sortBy === 'col') && <ChevronDown className="inline w-3 h-3" />}
+                      </th>
+                      <th onClick={() => setSortBy('preferred')} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-brand-600 transition-colors">
+                        העדפות חיוביות {sortBy === 'preferred' && <ChevronDown className="inline w-3 h-3" />}
+                      </th>
+                      <th onClick={() => setSortBy('forbidden')} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-brand-600 transition-colors">
+                        העדפות שליליות {sortBy === 'forbidden' && <ChevronDown className="inline w-3 h-3" />}
+                      </th>
+                      <th onClick={() => setSortBy('groups')} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-brand-600 transition-colors">
+                        קבוצות {sortBy === 'groups' && <ChevronDown className="inline w-3 h-3" />}
+                      </th>
                       <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentConfig.students
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(student => {
+                    {filteredAndSortedStudents.map(student => {
                         const seatIdx = currentConfig.grid.indexOf(student.id);
                         const { col, row } = idxToColRow(seatIdx);
+                        const studentGroups = (currentConfig.groups || []).filter(g => g.studentIds.includes(student.id));
                         return (
                           <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
@@ -1670,20 +1826,67 @@ IMPORTANT: Maximize "together" group clustering.`,
                             </td>
                             <td className="px-6 py-4">
                               {seatIdx !== -1 ? (
-                                <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
+                                <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg border border-brand-100">
                                   שורה {row + 1}, טור {col + 1}
                                 </span>
                               ) : (
-                                <span className="text-xs font-bold text-slate-400">לא משובץ</span>
+                                <span className="text-xs font-bold text-slate-400 italic">לא משובץ</span>
                               )}
                             </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {(student.preferred || []).length > 0 ? (
+                                  <>
+                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                                      {(student.preferred || []).length} חברים
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-slate-300">-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {((student.forbidden || []).length + (student.forbiddenNeighbors || []).length + (student.separateFrom || []).length) > 0 ? (
+                                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+                                    {(student.forbidden || []).length + (student.forbiddenNeighbors || []).length + (student.separateFrom || []).length} הפרדות
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-300">-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {studentGroups.length > 0 ? (
+                                  studentGroups.map(g => (
+                                    <span key={g.id} className="text-[10px] font-bold px-1.5 py-0.5 rounded border" style={{ backgroundColor: `${g.color}15`, color: g.color, borderColor: `${g.color}30` }}>
+                                      {g.name}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-slate-300">-</span>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 text-center">
-                              <button 
-                                onClick={() => setEditingStudent(student)}
-                                className="p-2 hover:bg-brand-50 rounded-lg text-brand-600"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
+                              <div className="flex justify-center gap-1">
+                                <button 
+                                  onClick={() => setEditingStudent(student)}
+                                  className="p-2 hover:bg-brand-50 rounded-lg text-brand-600 transition-colors"
+                                  title="ערוך תלמיד"
+                                >
+                                  <Settings className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setSelectedStudentId(student.id)}
+                                  className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600 transition-colors"
+                                  title="סמן בכיתה"
+                                >
+                                  <Users className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1850,6 +2053,7 @@ IMPORTANT: Maximize "together" group clustering.`,
                         const isPreferred = (editingStudent.preferred || []).includes(id as any);
                         const isForbidden = (editingStudent.forbidden || []).includes(id as any) || (editingStudent.forbiddenNeighbors || []).includes(id as any);
                         const isSeparate = (editingStudent.separateFrom || []).includes(id as any);
+                        const isKeepDistant = (editingStudent.keepDistantFrom || []).includes(id as any);
                         
                         return (
                           <button
@@ -1863,13 +2067,15 @@ IMPORTANT: Maximize "together" group clustering.`,
                                 const currentPreferred = prev.preferred || [];
                                 const currentForbidden = prev.forbidden || [];
                                 const currentSeparate = prev.separateFrom || [];
+                                const currentKeepDistant = prev.keepDistantFrom || [];
 
                                 if (isPreferred) return { ...prev, preferred: currentPreferred.filter(pid => pid !== id) };
                                 return { 
                                   ...prev, 
                                   preferred: [...currentPreferred, id as any],
                                   forbidden: currentForbidden.filter(fid => fid !== id),
-                                  separateFrom: currentSeparate.filter(sid => sid !== id)
+                                  separateFrom: currentSeparate.filter(sid => sid !== id),
+                                  keepDistantFrom: currentKeepDistant.filter(kdid => kdid !== id)
                                 };
                               });
                             }}
@@ -1881,6 +2087,7 @@ IMPORTANT: Maximize "together" group clustering.`,
                               isPreferred ? "bg-green-100 text-green-700 border-green-500 ring-2 ring-green-100" :
                               isForbidden ? "bg-red-100 text-red-700 border-red-500 ring-2 ring-red-100" :
                               isSeparate ? "bg-amber-100 text-amber-700 border-amber-500 ring-2 ring-amber-100" :
+                              isKeepDistant ? "bg-orange-100 text-orange-700 border-orange-500 ring-2 ring-orange-100" :
                               "bg-white text-slate-400 border-slate-200 hover:border-brand-300"
                             )}
                             title={student?.name}
@@ -1924,6 +2131,15 @@ IMPORTANT: Maximize "together" group clustering.`,
                         }}
                         placeholder="שם קיצור (אופציונלי)"
                         className="text-xs font-bold text-slate-400 mt-1 bg-transparent border-b border-transparent focus:border-brand-300 outline-none w-full"
+                      />
+                      <textarea 
+                        value={editingStudent.notes || ""}
+                        onChange={e => {
+                          const newNotes = e.target.value;
+                          setEditingStudent(prev => prev ? { ...prev, notes: newNotes } : null);
+                        }}
+                        placeholder="הערות פדגוגיות / דינמיקה חברתית (ה-AI משתמש בזה לשיפור הסידור)"
+                        className="text-[10px] font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-xl p-3 outline-none w-full mt-3 resize-none h-20 focus:border-brand-300"
                       />
                     </div>
                     <button onClick={() => setEditingStudent(null)} className="p-2 hover:bg-slate-100 rounded-full">
@@ -2107,7 +2323,8 @@ IMPORTANT: Maximize "together" group clustering.`,
                                         separateFrom: ids,
                                         preferred: currentPreferred.filter(id => id !== s.id),
                                         forbidden: currentForbidden.filter(id => id !== s.id),
-                                        forbiddenNeighbors: (prev.forbiddenNeighbors || []).filter(id => id !== s.id)
+                                        forbiddenNeighbors: (prev.forbiddenNeighbors || []).filter(id => id !== s.id),
+                                        keepDistantFrom: (prev.keepDistantFrom || []).filter(id => id !== s.id)
                                       };
                                     });
                                   }}
@@ -2126,6 +2343,40 @@ IMPORTANT: Maximize "together" group clustering.`,
                                 </button>
                               );
                             })}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] font-bold text-slate-600 mb-2">🔭 שמירת מרחק (ללא מגע):</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentConfig.students.filter(s => s.id !== editingStudent.id).map(s => (
+                              <button
+                                key={s.id}
+                                onClick={() => {
+                                  setEditingStudent(prev => {
+                                    if (!prev) return null;
+                                    const currentKD = prev.keepDistantFrom || [];
+                                    const keepDistantFrom = currentKD.includes(s.id) 
+                                      ? currentKD.filter(id => id !== s.id)
+                                      : [...currentKD, s.id];
+                                    return { 
+                                      ...prev, 
+                                      keepDistantFrom, 
+                                      preferred: prev.preferred.filter(id => id !== s.id),
+                                      separateFrom: prev.separateFrom.filter(id => id !== s.id),
+                                      forbidden: prev.forbidden.filter(id => id !== s.id),
+                                      forbiddenNeighbors: (prev.forbiddenNeighbors || []).filter(id => id !== s.id)
+                                    };
+                                  });
+                                }}
+                                className={cn(
+                                  "px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all",
+                                  (editingStudent.keepDistantFrom || []).includes(s.id) ? "bg-orange-600 text-white border-orange-600" : "bg-white text-slate-500 border-slate-200"
+                                )}
+                              >
+                                {s.name}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -2849,18 +3100,156 @@ IMPORTANT: Maximize "together" group clustering.`,
               className="fixed bottom-14 left-1/2 -translate-x-1/2 z-[100]"
             >
               <div className={cn(
-                "px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border",
-                toast.type === 'success' ? "bg-green-600 border-green-500 text-white" :
-                toast.type === 'error' ? "bg-red-600 border-red-500 text-white" :
-                "bg-slate-800 border-slate-700 text-white"
+                "px-8 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center gap-4 border-2 backdrop-blur-2xl",
+                toast.type === 'success' ? "bg-emerald-600/90 border-emerald-400 text-white" :
+                toast.type === 'error' ? "bg-red-600/90 border-red-400 text-white" :
+                "bg-slate-900/90 border-slate-700 text-white"
               )}>
-                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                </div>
                 <span className="text-sm font-black tracking-tight">{toast.message}</span>
-                <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70">
+                <button 
+                  onClick={() => setToast(null)} 
+                  className="ml-2 w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Landing Page */}
+        <AnimatePresence>
+          {showLanding && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-8 text-white text-center"
+              style={{
+                background: 'radial-gradient(circle at top right, #4f46e5 0%, #312e81 100%)'
+              }}
+            >
+              <div className="absolute inset-0 overflow-hidden opacity-20">
+                <div className="absolute top-0 -left-20 w-96 h-96 bg-white rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 -right-20 w-96 h-96 bg-brand-400 rounded-full blur-[120px]" />
+              </div>
+              
+              <div className="relative max-w-3xl space-y-16">
+                <div className="space-y-6">
+                  <motion.div 
+                    initial={{ scale: 0.5, rotate: -20 }}
+                    animate={{ scale: 1, rotate: 3 }}
+                    className="inline-block p-6 bg-white/10 rounded-[3rem] backdrop-blur-2xl border border-white/20 mb-4 shadow-2xl"
+                  >
+                    <Sparkles className="w-20 h-20 text-brand-300" />
+                  </motion.div>
+                  <h1 className="text-7xl font-black tracking-tighter leading-none">ClassManager <span className="text-brand-300">Pro</span></h1>
+                  <p className="text-2xl font-medium opacity-80 max-w-xl mx-auto leading-relaxed">
+                    הדור הבא של ניהול סביבת הלימוד. תכנון הושבה פדגוגי וחברתי מבוסס בינה מלאכותית, שעוצב במיוחד למורים.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-right">
+                  <div className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md hover:bg-white/10 transition-colors group">
+                    <Users className="w-10 h-10 mb-6 text-brand-300 group-hover:scale-110 transition-transform" />
+                    <h3 className="text-xl font-black mb-3">ניהול חברתי</h3>
+                    <p className="text-sm opacity-60 leading-relaxed font-medium text-slate-300">אופטימיזציה של דינמיקה קבוצתית והעדפות תלמידים במינימום מאמץ.</p>
+                  </div>
+                  <div className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md hover:bg-white/10 transition-colors group">
+                    <Sparkles className="w-10 h-10 mb-6 text-brand-300 group-hover:scale-110 transition-transform" />
+                    <h3 className="text-xl font-black mb-3">בינה מלאכותית</h3>
+                    <p className="text-sm opacity-60 leading-relaxed font-medium text-slate-300">אלגוריתם חכם לשיבוץ אופטימלי תוך שניות, בהתאמה אישית לכל כיתה.</p>
+                  </div>
+                  <div className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md hover:bg-white/10 transition-colors group">
+                    <LayoutGrid className="w-10 h-10 mb-6 text-brand-300 group-hover:scale-110 transition-transform" />
+                    <h3 className="text-xl font-black mb-3">עיצוב גמיש</h3>
+                    <p className="text-sm opacity-60 leading-relaxed font-medium text-slate-300">שליטה אבסולוטית על מבנה הכיתה, רווחים ותצוגת המרחב הלימודי.</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setShowLanding(false);
+                    localStorage.setItem('cm_visited', 'true');
+                  }}
+                  className="px-16 py-6 bg-white text-slate-900 rounded-[2rem] font-black text-2xl shadow-2xl shadow-brand-900/40 hover:scale-105 active:scale-95 transition-all"
+                >
+                  בואו נתחיל לעבוד
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Desk History Modal */}
+        <AnimatePresence>
+          {selectedDeskIndex !== null && (
+            <div className="fixed inset-0 flex items-center justify-center z-[110] p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedDeskIndex(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-amber-100 rounded-2xl">
+                      <ArrowRightLeft className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800">היסטוריית שולחן {selectedDeskIndex + 1}</h3>
+                  </div>
+                  <button onClick={() => setSelectedDeskIndex(null)} className="p-2 hover:bg-slate-100 rounded-xl">
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2" dir="rtl">
+                  {(currentConfig.deskHistory?.[selectedDeskIndex] || []).slice().reverse().map((entry, idx) => {
+                    const student = currentConfig.students.find(s => s.id === entry.studentId);
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center font-black",
+                            student ? "bg-brand-50 text-brand-600" : "bg-white text-slate-300"
+                          )}>
+                            {student ? student.name[0] : '?'}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-slate-700">{student?.name || 'מושב פונה'}</p>
+                            <p className="text-[10px] text-slate-400">{new Date(entry.timestamp).toLocaleString('he-IL')}</p>
+                          </div>
+                        </div>
+                        {idx === 0 && <Badge className="bg-emerald-100 text-emerald-700">נוכחי</Badge>}
+                      </div>
+                    );
+                  })}
+                  {(!currentConfig.deskHistory?.[selectedDeskIndex] || currentConfig.deskHistory[selectedDeskIndex].length === 0) && (
+                    <div className="text-center py-12 text-slate-400 space-y-2">
+                      <ArrowRightLeft className="w-12 h-12 mx-auto opacity-20" />
+                      <p className="text-sm font-bold">אין היסטוריה לשולחן זה</p>
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setSelectedDeskIndex(null)}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black"
+                >
+                  סגור
+                </button>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

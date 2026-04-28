@@ -6,12 +6,14 @@ export interface Student {
   forbidden: (string | number)[];
   separateFrom: (string | number)[];
   forbiddenNeighbors: (string | number)[];
+  keepDistantFrom: (string | number)[];
   frontPrefer?: boolean;
   backPrefer?: boolean;
   tall?: boolean;
   height?: 'short' | 'medium' | 'tall';
   preferredRow?: 'front' | 'middle' | 'back';
   cornerPrefer?: boolean;
+  notes?: string;
 }
 
 export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock';
