@@ -80,6 +80,49 @@ body {
     radial-gradient(at 100% 0%, hsla(210, 100%, 98%, 1) 0, transparent 50%),
     radial-gradient(at 50% 100%, hsla(220, 100%, 97%, 1) 0, transparent 50%);
   background-attachment: fixed;
+  overscroll-behavior: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    @apply bg-slate-950 text-slate-100;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(225, 30%, 10%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(210, 30%, 8%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 100%, hsla(220, 30%, 12%, 1) 0, transparent 50%);
+  }
+  
+  .glass-card {
+    @apply bg-slate-900/70 border-white/10;
+  }
+  
+  .glass-header {
+    @apply bg-black/60 border-white/10;
+  }
+  
+  :root {
+    --color-brand-100: #1d214a;
+    --color-brand-200: #252a5d;
+    --color-brand-600: #7089f2;
+    --color-brand-700: #99aef7;
+  }
+
+  .bg-white { @apply bg-slate-900; }
+  .text-slate-900 { @apply text-slate-100; }
+  .text-slate-800 { @apply text-slate-200; }
+  .text-slate-600 { @apply text-slate-400; }
+  .text-slate-500 { @apply text-slate-500; }
+  .border-slate-200 { @apply border-slate-800; }
+  .bg-slate-50 { @apply bg-slate-950; }
+  .bg-slate-100 { @apply bg-slate-800; }
+}
+
+button, 
+nav, 
+a, 
+[role="button"] {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @layer components {

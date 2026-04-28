@@ -14,9 +14,17 @@ export interface Student {
   preferredRow?: 'front' | 'middle' | 'back';
   cornerPrefer?: boolean;
   notes?: string;
+  // New fields
+  attendance?: { date: string; status: 'present' | 'absent' | 'late' }[];
+  grades?: { subject: string; score: number; date: string }[];
+  physicalHeight?: number; // cm
+  physicalWidth?: number; // cm
+  isAlwaysFront?: boolean;
+  isAlwaysBack?: boolean;
+  isAlwaysMiddle?: boolean;
 }
 
-export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock';
+export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock' | 'obstruction';
 
 export interface ClassroomConfig {
   id: string;
@@ -29,10 +37,12 @@ export interface ClassroomConfig {
   hiddenDesks: number[];
   columnGaps: number[];
   rowGaps: number[];
+  obstructionZones?: number[]; // indices of desks/cells that are obstructions
   groups?: StudentGroup[];
   showDeskNumbers?: boolean;
   deskHistory?: Record<number, { studentId: string | number | null; timestamp: number }[]>;
   updatedAt: number;
+  themeColor?: string;
 }
 
 export interface StudentGroup {
