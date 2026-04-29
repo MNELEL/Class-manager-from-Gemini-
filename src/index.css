@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @theme {
   --font-sans: "Assistant", "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -71,14 +71,16 @@
 
 :root {
   --radius: 1.25rem;
+  --app-font-size: 16px;
 }
 
 body {
-  @apply bg-slate-50/50 text-slate-900 antialiased selection:bg-brand-100 selection:text-brand-900;
+  font-size: var(--app-font-size);
+  @apply bg-white text-slate-800 antialiased selection:bg-brand-100 selection:text-brand-900;
   background-image: 
-    radial-gradient(at 0% 0%, hsla(225, 100%, 98%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(210, 100%, 98%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 100%, hsla(220, 100%, 97%, 1) 0, transparent 50%);
+    radial-gradient(at 0% 0%, hsla(225, 100%, 99%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(210, 100%, 99%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 100%, hsla(220, 100%, 98%, 1) 0, transparent 50%);
   background-attachment: fixed;
   overscroll-behavior: none;
 }

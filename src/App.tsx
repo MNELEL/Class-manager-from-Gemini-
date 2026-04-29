@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { 
   motion, 
   AnimatePresence, 
@@ -46,7 +47,9 @@ import {
   Ban,
   GraduationCap,
   LineChart,
-  ClipboardList
+  School,
+  ClipboardList,
+  Upload
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -81,12 +84,128 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
   </div>
 );
 
+// --- Helper Components ---
+
+const DeskCell = ({ 
+  idx, 
+  studentId, 
+  student, 
+  isHidden, 
+  editMode, 
+  colPos, 
+  rowPos, 
+  showDeskNumbers,
+  draggedStudentId,
+  onDrop,
+  updateCurrentConfig,
+  currentConfig,
+  onShowHistory
+}: any) => {
+  const [isOver, setIsOver] = useState(false);
+  const draggingS = currentConfig.students.find((s: any) => s.id === draggedStudentId);
+  const isCompatible = draggingS && draggingS.height === 'short' ? Math.floor(idx / currentConfig.cols) < 2 : true;
+  const compatibilityClass = isOver ? (isCompatible ? "bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100" : "bg-rose-50 border-rose-300 ring-4 ring-rose-100") : "";
+
+  if (isHidden && editMode === 'normal') return <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent" />;
+
+  return (
+    <motion.div 
+      layoutId={`desk-${idx}`}
+      style={{ gridColumn: colPos, gridRow: rowPos }}
+      onDragOver={(e) => { e.preventDefault(); !isHidden && setIsOver(true); }}
+      onDragLeave={() => setIsOver(false)}
+      onDrop={() => { 
+        setIsOver(false); 
+        if (!isHidden) onDrop(idx); 
+      }}
+      onClick={() => {
+        if (editMode === 'structure') {
+           updateCurrentConfig((prev: any) => ({
+             ...prev,
+             hiddenDesks: prev.hiddenDesks.includes(idx) ? prev.hiddenDesks.filter((i: number) => i !== idx) : [...prev.hiddenDesks, idx]
+           }));
+        } else if (!isHidden) {
+          onShowHistory(idx);
+        }
+      }}
+      className={cn(
+        "aspect-square rounded-[2rem] border transition-all flex flex-col items-center justify-center cursor-pointer relative group",
+        isHidden ? "border-dashed border-slate-100 bg-slate-50/50 opacity-30 shrink-0" :
+        !student ? "bg-slate-50/30 border-slate-100 hover:bg-slate-50" : "bg-white border-brand-100 shadow-sm ring-2 ring-brand-50",
+        compatibilityClass
+      )}
+    >
+      {/* Desk Surface Visualization */}
+      {!isHidden && (
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+      )}
+      
+      {showDeskNumbers && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-300">#{idx + 1}</span>}
+      
+      {student ? (
+        <div className="flex flex-col items-center gap-1">
+           {/* Chair Backrest Icon */}
+           <div className="w-8 h-6 bg-slate-100 rounded-t-lg -mb-2 z-0 border border-slate-200 shadow-inner flex items-center justify-center">
+             <div className="w-4 h-1 bg-slate-200 rounded-full" />
+           </div>
+           
+           <div className="z-10 flex flex-col items-center bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm relative">
+             <span className="text-[10px] font-black text-slate-700">{student.name}</span>
+             {student.height === 'short' && <Badge className="bg-amber-50 text-amber-600 scale-[0.6] -my-1">קדמי</Badge>}
+             
+             {/* Group Dot Indicators */}
+             {student.groups && student.groups.length > 0 && (
+               <div className="absolute -top-1 -right-1 flex gap-0.5">
+                 {student.groups.map((g: string, i: number) => (
+                   <div key={i} className="w-1.5 h-1.5 rounded-full bg-brand-500 border border-white" title={`קבוצה ${g}`} />
+                 ))}
+               </div>
+             )}
+           </div>
+           
+           {/* Desk Shadow Area */}
+           <div className="w-10 h-1 bg-slate-200/50 rounded-full blur-[1px] mt-1" />
+           
+           <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                updateCurrentConfig((prev: any) => {
+                  const newGrid = [...prev.grid];
+                  newGrid[idx] = null;
+                  return { ...prev, grid: newGrid };
+                });
+              }}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm z-30"
+            >
+              <X className="w-3 h-3" />
+            </button>
+            
+            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-[8px] font-black px-2 py-1 rounded-md z-50">
+              לחץ לצפייה בהיסטוריה
+            </div>
+        </div>
+      ) : !isHidden && (
+        <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-50 transition-opacity">
+           <LayoutGrid className="w-6 h-6 text-slate-400" />
+           <Plus className="w-3 h-3 text-slate-400" />
+        </div>
+      )}
+
+      {isOver && isHidden && (
+         <div className="absolute inset-0 bg-rose-500/10 rounded-2xl flex items-center justify-center">
+            <Ban className="w-6 h-6 text-rose-500 opacity-40" />
+         </div>
+      )}
+    </motion.div>
+  );
+};
+
 // --- Content Handlers & Views ---
 
 const AttendanceView = ({ students }: { students: any[] }) => (
   <div className="p-8 space-y-8 h-full overflow-y-auto">
     <div className="flex items-center justify-between">
-      <h2 className="text-2xl font-black text-slate-800">נוכחות יומית</h2>
+      <h2 className="text-2xl font-black text-slate-700">נוכחות יומית</h2>
       <Badge className="bg-emerald-50 text-emerald-600">יום שלישי, 28 באפריל</Badge>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -113,7 +232,7 @@ const GradesView = () => (
     <div className="p-6 bg-brand-50 rounded-full">
       <GraduationCap className="w-12 h-12 text-brand-600" />
     </div>
-    <h2 className="text-2xl font-black text-slate-800">ניהול ציונים</h2>
+    <h2 className="text-2xl font-black text-slate-700">ניהול ציונים</h2>
     <p className="max-w-md text-slate-500 font-medium">כאן תוכלו לראות ולנהל את הישגי התלמידים. מודול הציונים בבנייה ויעלה בקרוב בגרסה 3.1.</p>
   </div>
 );
@@ -123,7 +242,7 @@ const ProgressView = () => (
     <div className="p-6 bg-indigo-50 rounded-full">
       <LineChart className="w-12 h-12 text-indigo-600" />
     </div>
-    <h2 className="text-2xl font-black text-slate-800">גרף התקדמות</h2>
+    <h2 className="text-2xl font-black text-slate-700">גרף התקדמות</h2>
     <p className="max-w-md text-slate-500 font-medium">מעקב אחר יעדים פדגוגיים ושינויי התנהגות לאורך זמן. מודול זה בבנייה בקרוב.</p>
   </div>
 );
@@ -131,8 +250,8 @@ const ProgressView = () => (
 const DashboardView = ({ stats }: any) => (
   <div className="p-8 space-y-8 h-full overflow-y-auto">
     <div className="flex items-center justify-between">
-      <h2 className="text-2xl font-black text-slate-800">סיכום מערכת</h2>
-      <Badge className="bg-slate-900 text-white">דוא\"ט ניהולי</Badge>
+      <h2 className="text-2xl font-black text-slate-700">סיכום מערכת</h2>
+      <Badge className="bg-brand-100 text-brand-700 border-brand-200">דוא"ט ניהולי</Badge>
     </div>
     
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -145,7 +264,7 @@ const DashboardView = ({ stats }: any) => (
         </div>
         <div>
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">תלמידים רשומים</h3>
-          <p className="text-3xl font-black text-slate-900">{stats.studentCount || 0}</p>
+          <p className="text-3xl font-black text-slate-800">{stats.studentCount || 0}</p>
         </div>
       </div>
       
@@ -158,7 +277,7 @@ const DashboardView = ({ stats }: any) => (
         </div>
         <div>
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שביעות רצון</h3>
-          <p className="text-3xl font-black text-slate-900">84%</p>
+          <p className="text-3xl font-black text-slate-800">84%</p>
         </div>
       </div>
 
@@ -171,7 +290,7 @@ const DashboardView = ({ stats }: any) => (
         </div>
         <div>
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שיבוץ נוכחי</h3>
-          <p className="text-3xl font-black text-slate-900">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
+          <p className="text-3xl font-black text-slate-800">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
         </div>
       </div>
 
@@ -184,7 +303,7 @@ const DashboardView = ({ stats }: any) => (
         </div>
         <div>
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">אילוצים לא פתורים</h3>
-          <p className="text-3xl font-black text-slate-900">3</p>
+          <p className="text-3xl font-black text-slate-800">3</p>
         </div>
       </div>
     </div>
@@ -201,8 +320,9 @@ export default function App() {
     cols: 8,
     grid: Array(48).fill(null) as (string | null)[],
     students: [
-      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], height: 'short' },
-      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], height: 'tall' }
+      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'] },
+      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'] },
+      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'] }
     ],
     hiddenDesks: [] as number[],
     rowGaps: [] as number[],
@@ -210,7 +330,7 @@ export default function App() {
     groups: [] as any[]
   });
 
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress'>('grid');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings'>('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [editMode, setEditMode] = useState<'normal' | 'structure'>('normal');
@@ -221,6 +341,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
   const [accessibility, setAccessibility] = useState({ highContrast: false, fontSize: 'medium' });
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -228,12 +350,322 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState("");
   const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
+
+  const studentsInPool = currentConfig.students.filter(s => {
+    const isPlaced = currentConfig.grid.includes(s.id);
+    const matchesFilter = selectedGroups.length === 0 || (s.groups && s.groups.some((g: string) => selectedGroups.includes(g)));
+    return !isPlaced && matchesFilter;
+  });
+
+  const handleDrop = (deskIdx: number) => {
+    if (!draggedStudentId) return;
+    
+    const student = currentConfig.students.find(s => s.id === draggedStudentId);
+    if (student) {
+      setDeskHistory(prev => ({
+        ...prev,
+        [deskIdx]: [student.name, ...(prev[deskIdx] || [])].slice(0, 5)
+      }));
+    }
+
+    updateCurrentConfig((prev: any) => {
+      const newGrid = [...prev.grid];
+      // If student was already on another desk, clear it
+      const oldIdx = newGrid.indexOf(draggedStudentId);
+      if (oldIdx !== -1) newGrid[oldIdx] = null;
+      
+      // Replace whatever is there
+      newGrid[deskIdx] = draggedStudentId;
+      return { ...prev, grid: newGrid };
+    });
+    setDraggedStudentId(null);
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+      
+      const newStudents = data.slice(1).map((row, idx) => ({
+        id: `imported-${idx}-${Date.now()}`,
+        name: row[0] || 'ללא שם',
+        preferred: row[1] ? row[1].toString().split(',').map((s: string) => s.trim()) : [],
+        forbidden: row[2] ? row[2].toString().split(',').map((s: string) => s.trim()) : [],
+        height: row[3] === 'קצר' || row[3] === 'front' ? 'short' : 'medium'
+      })).filter(s => s.name !== 'ללא שם');
+
+      if (newStudents.length > 0) {
+        updateCurrentConfig((prev: any) => ({
+          ...prev,
+          students: [...prev.students, ...newStudents]
+        }));
+        setNotifications(prev => [...prev, { id: Date.now(), text: `יובאו ${newStudents.length} תלמידים בהצלחה!` }]);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const SettingsView = () => {
+    const fileRef = useRef<HTMLInputElement>(null);
+    
+    return (
+      <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto">
+        <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelImport} />
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-black text-slate-700">הגדרות מערכת</h2>
+          <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.0.5</Badge>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* AI Parameters */}
+          <div className="glass-card p-8 rounded-[3rem] space-y-6">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-6 h-6 text-indigo-500" />
+              <h3 className="text-lg font-black text-slate-700">פרמטרים AI</h3>
+            </div>
+            <div className="space-y-6">
+              {Object.entries(aiWeights).map(([key, val]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
+                    <span>{key === 'preferred' ? 'עדיפות חברים' : key === 'forbidden' ? 'מניעת חיכוך' : 'מרחק פיזי'}</span>
+                    <span className="text-brand-600">{val}/10</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="10" value={val} 
+                    onChange={(e) => setAiWeights(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
+                    className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Accessibility & Theme */}
+          <div className="glass-card p-8 rounded-[3rem] space-y-6">
+            <div className="flex items-center gap-3">
+              <Monitor className="w-6 h-6 text-brand-500" />
+              <h3 className="text-lg font-black text-slate-700">נגישות ומראה</h3>
+            </div>
+            <div className="space-y-4">
+              <button 
+                onClick={() => setAccessibility(prev => ({ ...prev, highContrast: !prev.highContrast }))}
+                className={cn(
+                  "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                  accessibility.highContrast ? "bg-brand-600 text-white shadow-lg shadow-brand-200" : "bg-slate-50 text-slate-600 border border-slate-100"
+                )}
+              >
+                ניגודיות גבוהה
+                {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+              </button>
+              <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+                 {(['small', 'medium', 'large'] as const).map(size => (
+                   <button 
+                     key={size}
+                     onClick={() => setAccessibility(prev => ({ ...prev, fontSize: size }))}
+                     className={cn(
+                       "flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all",
+                       accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm" : "text-slate-400"
+                     )}
+                   >
+                     {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
+                   </button>
+                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Data Management */}
+          <div className="md:col-span-2 glass-card p-8 rounded-[3rem] space-y-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Layers className="w-6 h-6 text-emerald-500" />
+                <h3 className="text-lg font-black text-slate-700">ניהול תלמידים ואילוצים</h3>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-2 px-6 py-3 bg-brand-50 text-brand-700 rounded-2xl text-xs font-black border border-brand-100 transition-colors hover:bg-brand-100"
+                >
+                  <Upload className="w-4 h-4" />
+                  יבוא אקסל
+                </button>
+                <button 
+                  onClick={() => {
+                    const name = prompt("שם התלמיד:");
+                    if (name) {
+                      updateCurrentConfig((prev: any) => ({
+                        ...prev,
+                        students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium' }]
+                      }));
+                    }
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-brand-100 hover:bg-brand-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  הוסף תלמיד
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentConfig.students.map(student => (
+                <div key={student.id} className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
+                  <div className="flex items-center justify-between">
+                    <input 
+                      value={student.name}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        updateCurrentConfig((prev: any) => ({
+                          ...prev,
+                          students: prev.students.map((s: any) => s.id === student.id ? { ...s, name: newName } : s)
+                        }));
+                      }}
+                      className="bg-transparent font-black text-slate-700 focus:ring-0 border-0 p-0 w-32 text-sm"
+                    />
+                    <button 
+                      onClick={() => {
+                        if (confirm(`האם למחוק את ${student.name}?`)) {
+                          updateCurrentConfig((prev: any) => ({ ...prev, students: prev.students.filter((s:any) => s.id !== student.id) }));
+                        }
+                      }}
+                      className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                       <button 
+                         onClick={() => updateCurrentConfig((prev: any) => ({
+                            ...prev,
+                            students: prev.students.map((s:any) => s.id === student.id ? { ...s, height: s.height === 'short' ? 'medium' : 'short' } : s)
+                         }))}
+                         className={cn("px-3 py-1.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap", student.height === 'short' ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-500")}
+                       >
+                         {student.height === 'short' ? 'חייב קדימה' : 'גובה רגיל'}
+                       </button>
+                       <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
+                          <Heart className="w-3 h-3 text-rose-400" />
+                          <span className="text-[10px] font-black text-slate-500">{student.preferred.length} חברים</span>
+                       </div>
+                       <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
+                          <Ban className="w-3 h-3 text-slate-400" />
+                          <span className="text-[10px] font-black text-slate-500">{student.forbidden.length} הפרדות</span>
+                       </div>
+                    </div>
+
+                    <div className="p-3 bg-white/50 rounded-2xl border border-slate-100/50 space-y-2">
+                       <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">עריכת אילוצים (IDs)</h4>
+                       <div className="grid grid-cols-1 gap-2">
+                          <div className="flex items-center gap-2">
+                             <Heart className="w-3 h-3 text-rose-500 shrink-0" />
+                             <input 
+                                placeholder="מזהי חברים (מופרדים בפסיק)"
+                                value={student.preferred.join(', ')}
+                                onChange={(e) => {
+                                  const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                                  updateCurrentConfig((prev: any) => ({
+                                    ...prev,
+                                    students: prev.students.map((s: any) => s.id === student.id ? { ...s, preferred: val } : s)
+                                  }));
+                                }}
+                                className="w-full bg-transparent border-0 p-0 text-[10px] font-medium focus:ring-0 placeholder:text-slate-300"
+                             />
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <Ban className="w-3 h-3 text-slate-500 shrink-0" />
+                             <input 
+                                placeholder="מזהי הפרדות (מופרדים בפסיק)"
+                                value={student.forbidden.join(', ')}
+                                onChange={(e) => {
+                                  const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                                  updateCurrentConfig((prev: any) => ({
+                                    ...prev,
+                                    students: prev.students.map((s: any) => s.id === student.id ? { ...s, forbidden: val } : s)
+                                  }));
+                                }}
+                                className="w-full bg-transparent border-0 p-0 text-[10px] font-medium focus:ring-0 placeholder:text-slate-300"
+                             />
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const checkViolations = useCallback(() => {
+    const grid = currentConfig.grid;
+    const students = currentConfig.students;
+    const newNotifications: any[] = [];
+    const cols = currentConfig.cols;
+
+    grid.forEach((sid, idx) => {
+      if (!sid) return;
+      const student = students.find(s => s.id === sid);
+      if (!student) return;
+
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+
+      // Check adjacent
+      const neighbors = [
+        [r, c-1], [r, c+1], [r-1, c], [r+1, c]
+      ];
+
+      neighbors.forEach(([nr, nc]) => {
+        if (nr < 0 || nr >= currentConfig.rows || nc < 0 || nc >= currentConfig.cols) return;
+        const nIdx = nr * cols + nc;
+        const nSid = grid[nIdx];
+        if (!nSid) return;
+        const neighbor = students.find(s => s.id === nSid);
+        if (!neighbor) return;
+
+        const isForbidden = 
+          (student.forbidden && student.forbidden.includes(nSid)) || 
+          (student.separateFrom && student.separateFrom.includes(nSid)) ||
+          (student.keepDistantFrom && student.keepDistantFrom.includes(nSid));
+
+        if (isForbidden) {
+          newNotifications.push({ 
+            id: `v-${sid}-${nSid}`, 
+            text: `אזהרה: ${student.name} ו-${neighbor.name} קרובים מדי!`,
+            type: 'error'
+          });
+        }
+      });
+    });
+
+    if (newNotifications.length > 0) {
+      setNotifications(prev => {
+        const existingTexts = prev.map(n => n.text);
+        const filtered = newNotifications.filter(n => !existingTexts.includes(n.text));
+        return [...prev, ...filtered].slice(-3);
+      });
+    }
+  }, [currentConfig]);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    const timer = setTimeout(checkViolations, 1000);
+    return () => clearTimeout(timer);
+  }, [currentConfig.grid, checkViolations]);
 
   const totalCells = currentConfig.rows * currentConfig.cols;
 
@@ -265,6 +697,7 @@ export default function App() {
       case 'attendance': return <AttendanceView students={currentConfig.students} />;
       case 'grades': return <GradesView />;
       case 'progress': return <ProgressView />;
+      case 'settings': return <SettingsView />;
       default: return null;
     }
   };
@@ -276,17 +709,17 @@ export default function App() {
     <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-50">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-100 transform rotate-3">
-            <LayoutGrid className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-200">
+            <School className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 leading-none">ClassManager</h1>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Smart Classroom Orchestrator</p>
+            <h1 className="text-xl font-black text-brand-700 leading-none tracking-tight">ClassManager</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Smart Learning Spaces</p>
           </div>
         </div>
 
         <nav className="hidden lg:flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
-           {(['grid', 'dashboard', 'attendance', 'grades', 'progress'] as const).map(nav => (
+           {(['grid', 'dashboard', 'attendance', 'grades', 'progress', 'settings'] as const).map(nav => (
              <button
                key={nav}
                onClick={() => setViewType(nav)}
@@ -300,6 +733,7 @@ export default function App() {
                {nav === 'attendance' && 'נוכחות'}
                {nav === 'grades' && 'ציונים'}
                {nav === 'progress' && 'התקדמות'}
+               {nav === 'settings' && 'הגדרות'}
              </button>
            ))}
         </nav>
@@ -307,10 +741,14 @@ export default function App() {
 
       <div className="flex items-center gap-4">
         <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors relative"
+          onClick={() => setViewType('settings')}
+          className={cn(
+            "p-3 rounded-2xl transition-all relative overflow-hidden",
+            viewType === 'settings' ? "bg-brand-50 text-brand-600" : "bg-slate-50 hover:bg-slate-100 text-slate-500"
+          )}
         >
-          <Settings className="w-5 h-5 text-slate-500" />
+          <Settings className="w-5 h-5" />
+          {viewType === 'settings' && <motion.div layoutId="nav-active" className="absolute inset-0 bg-brand-200/20" />}
         </button>
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-black text-slate-500 border border-slate-200 cursor-pointer hover:scale-105 transition-transform">
           AD
@@ -328,7 +766,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 lg:hidden"
+            className="fixed inset-0 bg-brand-900/5 backdrop-blur-sm z-30 lg:hidden"
           />
           <motion.aside
             initial={isMobile ? { y: '100%' } : { x: 300 }}
@@ -356,8 +794,40 @@ export default function App() {
                   <input
                     value={currentConfig.name}
                     onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-                    className="text-lg font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 w-full"
+            className="text-lg font-black text-slate-700 bg-transparent border-0 p-0 focus:ring-0 w-full"
                   />
+                </div>
+              </div>
+
+              {/* Student Pool */}
+              <div className="flex flex-col gap-3 min-h-[200px]">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
+                  <button className="p-1 hover:bg-slate-100 rounded-lg"><Plus className="w-4 h-4 text-slate-400" /></button>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {studentsInPool.map(student => (
+                    <motion.div
+                      key={student.id}
+                      draggable
+                      onDragStart={() => setDraggedStudentId(student.id)}
+                      onDragEnd={() => setDraggedStudentId(null)}
+                      className="p-3 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-200 hover:bg-white transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-400">
+                          {student.name[0]}
+                        </div>
+                        <span className="text-xs font-black text-slate-700">{student.name}</span>
+                      </div>
+                      <MoreVertical className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.div>
+                  ))}
+                  {studentsInPool.length === 0 && (
+                    <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">כל התלמידים משובצים</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -377,7 +847,7 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => setIsAIPanelOpen(true)}
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-200 flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl shadow-brand-200 flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Wand2 className="w-5 h-5 text-indigo-400" />
                   שיבוץ חכם AI
@@ -443,9 +913,12 @@ export default function App() {
   return (
     <div 
       className={cn(
-        "flex flex-col h-screen overflow-hidden bg-slate-50 font-sans rtl selection:bg-brand-100 uppercase-style",
-        accessibility.highContrast && "high-contrast"
+        "flex flex-col h-screen overflow-hidden bg-white font-sans rtl selection:bg-brand-100",
+        accessibility.highContrast && "high-contrast grayscale"
       )} 
+      style={{ 
+        '--app-font-size': accessibility.fontSize === 'small' ? '14px' : accessibility.fontSize === 'large' ? '20px' : '16px' 
+      } as React.CSSProperties}
       dir="rtl"
     >
       <Header />
@@ -457,25 +930,71 @@ export default function App() {
           <AnimatePresence mode="wait">
              <motion.div
                key={viewType}
-               initial={{ opacity: 0, scale: 0.98 }}
-               animate={{ opacity: 1, scale: 1 }}
-               exit={{ opacity: 0, scale: 1.02 }}
-               transition={{ duration: 0.2 }}
+               initial={{ opacity: 0, x: 15 }}
+               animate={{ opacity: 1, x: 0 }}
+               exit={{ opacity: 0, x: -15 }}
+               transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                className="flex-1 flex flex-col overflow-hidden"
              >
                {viewType === 'grid' ? (
                  <div className="flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner">
                    {/* Grid Toolbar */}
-                   <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-2 mb-10 z-30 shadow-bento shrink-0">
+                   <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-3 mb-10 z-30 shadow-bento shrink-0">
                      <div className="flex items-center gap-1 p-1 bg-slate-100/50 rounded-xl">
                        <button onClick={() => setEditMode('normal')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'normal' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>עריכה</button>
                        <button onClick={() => setEditMode('structure')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'structure' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>מבנה</button>
                      </div>
-                     <div className="w-px h-6 bg-slate-200/50 mx-2" />
-                     <button onClick={() => setShowDeskNumbers(!showDeskNumbers)} className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", showDeskNumbers ? "bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "text-slate-500")}>
-                        <Eye className="w-4 h-4" />
-                        מספרים
-                     </button>
+                     
+                     <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
+                     {/* Group Filter */}
+                     <div className="flex items-center gap-2">
+                       <Filter className="w-4 h-4 text-slate-400" />
+                       <div className="flex gap-1 overflow-x-auto max-w-[200px] scrollbar-hide py-1">
+                          {['א', 'ב', 'ג'].map(g => (
+                            <button
+                               key={g}
+                               onClick={() => setSelectedGroups(prev => prev.includes(g) ? prev.filter(pg => pg !== g) : [...prev, g])}
+                               className={cn(
+                                 "px-3 py-1 rounded-lg text-[10px] font-black transition-all whitespace-nowrap",
+                                 selectedGroups.includes(g) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-400 border border-slate-100"
+                               )}
+                            >
+                              קבוצה {g}
+                            </button>
+                          ))}
+                       </div>
+                     </div>
+
+                     <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
+                     {editMode === 'structure' ? (
+                       <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                           <span className="text-[10px] font-black text-slate-400 uppercase px-2">שורות</span>
+                           <button onClick={() => handleGridResize('rows', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
+                           <span className="w-6 text-center font-black text-xs">{currentConfig.rows}</span>
+                           <button onClick={() => handleGridResize('rows', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
+                         </div>
+                         <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                           <span className="text-[10px] font-black text-slate-400 uppercase px-2">טורים</span>
+                           <button onClick={() => handleGridResize('cols', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
+                           <span className="w-6 text-center font-black text-xs">{currentConfig.cols}</span>
+                           <button onClick={() => handleGridResize('cols', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
+                         </div>
+                         <button 
+                            onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, hiddenDesks: [] }))}
+                            className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-colors"
+                         >
+                           איפוס שולחנות
+                         </button>
+                       </div>
+                     ) : (
+                       <button onClick={() => setShowDeskNumbers(!showDeskNumbers)} className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", showDeskNumbers ? "bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "text-slate-500")}>
+                          <Eye className="w-4 h-4" />
+                          מספרים
+                       </button>
+                     )}
                    </div>
 
                    {/* Grid Content */}
@@ -485,47 +1004,118 @@ export default function App() {
                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">שולחן מורה</span>
                       </div>
 
-                  <div className="grid gap-3 p-10 bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm" style={{ 
-                    gridTemplateColumns: `repeat(${currentConfig.cols}, 70px)`,
-                    gridTemplateRows: `repeat(${currentConfig.rows}, 48px)`,
-                    perspective: '1000px'
-                  }}>
-                    {currentConfig.grid.map((studentId, idx) => {
-                      const student = currentConfig.students.find(s => s.id === studentId);
-                      const isHidden = currentConfig.hiddenDesks.includes(idx);
-
-                      if (isHidden && editMode === 'normal') return <div key={idx} className="aspect-square bg-transparent" />;
-
-                      return (
-                        <motion.div 
-                          key={idx}
-                          layoutId={`desk-${idx}`}
-                          onClick={() => {
-                            if (editMode === 'structure') {
-                               updateCurrentConfig((prev: any) => ({
-                                 ...prev,
-                                 hiddenDesks: prev.hiddenDesks.includes(idx) ? prev.hiddenDesks.filter((i: number) => i !== idx) : [...prev.hiddenDesks, idx]
-                               }));
-                            }
-                          }}
-                          className={cn(
-                            "aspect-square rounded-2xl border-2 transition-all flex items-center justify-center cursor-pointer relative",
-                            isHidden ? "border-dashed border-slate-200 bg-slate-50 opacity-40 shrink-0" :
-                            !student ? "bg-white border-slate-100/50 hover:bg-slate-50 shadow-sm" : "bg-white border-brand-200 shadow-md ring-4 ring-brand-50"
-                          )}
-                        >
-                          {showDeskNumbers && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-300">#{idx + 1}</span>}
-                          {student ? (
-                            <div className="flex flex-col items-center">
-                               <span className="text-[10px] font-black text-slate-700">{student.name}</span>
-                               {student.height === 'short' && <Badge className="bg-amber-50 text-amber-600 scale-75">קדמי</Badge>}
+                  <div 
+                    className="grid p-10 bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm relative" 
+                    style={{ 
+                      display: 'grid',
+                      gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
+                        `${currentConfig.columnGaps.includes(i) ? '70px 32px' : '70px'}`
+                      ).join(' '),
+                      gridTemplateRows: Array.from({ length: currentConfig.rows }).map((_, i) => 
+                        `${currentConfig.rowGaps.includes(i) ? '48px 32px' : '48px'}`
+                      ).join(' '),
+                      perspective: '1000px',
+                    }}
+                  >
+                    {/* Gap Handles (Structure Mode Only) */}
+                    {editMode === 'structure' && (
+                      <>
+                        {/* Column Gap Handles */}
+                        {Array.from({ length: currentConfig.cols - 1 }).map((_, i) => {
+                          const colPos = (i + 1) + currentConfig.columnGaps.filter(g => g <= i).length;
+                          const hasGap = currentConfig.columnGaps.includes(i);
+                          return (
+                            <div 
+                              key={`col-gap-${i}`}
+                              onClick={() => updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                columnGaps: prev.columnGaps.includes(i) ? prev.columnGaps.filter((g: number) => g !== i) : [...prev.columnGaps, i]
+                              }))}
+                              style={{ 
+                                gridColumn: hasGap ? colPos + 1 : colPos, 
+                                gridRow: `1 / span ${currentConfig.rows + currentConfig.rowGaps.length}`,
+                                width: hasGap ? '32px' : '12px',
+                                marginRight: hasGap ? '-16px' : '-6px',
+                                marginLeft: hasGap ? '-16px' : '-6px',
+                                justifySelf: 'center'
+                              }}
+                              className={cn(
+                                "h-full cursor-pointer hover:bg-brand-400/20 transition-all rounded-full z-20 flex items-center justify-center group",
+                                hasGap ? "bg-brand-500/10" : "bg-transparent"
+                              )}
+                              title="רווח טור"
+                            >
+                               <div className={cn("w-1 h-8 rounded-full transition-all group-hover:scale-y-150", hasGap ? "bg-brand-400" : "bg-slate-200 opacity-0 group-hover:opacity-100")} />
                             </div>
-                          ) : !isHidden && (
-                            <Plus className="w-4 h-4 text-slate-200" />
-                          )}
-                        </motion.div>
-                      );
-                    })}
+                          );
+                        })}
+
+                        {/* Row Gap Handles */}
+                        {Array.from({ length: currentConfig.rows - 1 }).map((_, i) => {
+                          const rowPos = (i + 1) + currentConfig.rowGaps.filter(g => g <= i).length;
+                          const hasGap = currentConfig.rowGaps.includes(i);
+                          return (
+                            <div 
+                              key={`row-gap-${i}`}
+                              onClick={() => updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                rowGaps: prev.rowGaps.includes(i) ? prev.rowGaps.filter((g: number) => g !== i) : [...prev.rowGaps, i]
+                              }))}
+                              style={{ 
+                                gridRow: hasGap ? rowPos + 1 : rowPos, 
+                                gridColumn: `1 / span ${currentConfig.cols + currentConfig.columnGaps.length}`,
+                                height: hasGap ? '32px' : '12px',
+                                marginTop: hasGap ? '-16px' : '-6px',
+                                marginBottom: hasGap ? '-16px' : '-6px',
+                                alignSelf: 'center'
+                              }}
+                              className={cn(
+                                "w-full cursor-pointer hover:bg-brand-400/20 transition-all rounded-full z-20 flex items-center justify-center group",
+                                hasGap ? "bg-brand-500/10" : "bg-transparent"
+                              )}
+                              title="רווח שורה"
+                            >
+                               <div className={cn("h-1 w-8 rounded-full transition-all group-hover:scale-x-150", hasGap ? "bg-brand-400" : "bg-slate-200 opacity-0 group-hover:opacity-100")} />
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {Array.from({ length: currentConfig.rows }).map((_, r) => (
+                      Array.from({ length: currentConfig.cols }).map((_, c) => {
+                        const idx = r * currentConfig.cols + c;
+                        const studentId = currentConfig.grid[idx];
+                        const student = currentConfig.students.find(s => s.id === studentId);
+                        const isHidden = currentConfig.hiddenDesks.includes(idx);
+                        
+                        // Calculate grid position accounting for gaps
+                        const colPos = c + 1 + currentConfig.columnGaps.filter(g => g < c).length;
+                        const rowPos = r + 1 + currentConfig.rowGaps.filter(g => g < r).length;
+
+                        return (
+                          <DeskCell
+                            key={idx}
+                            idx={idx}
+                            studentId={studentId}
+                            student={student}
+                            isHidden={isHidden}
+                            editMode={editMode}
+                            colPos={colPos}
+                            rowPos={rowPos}
+                            showDeskNumbers={showDeskNumbers}
+                            draggedStudentId={draggedStudentId}
+                            onDrop={handleDrop}
+                            updateCurrentConfig={updateCurrentConfig}
+                            currentConfig={currentConfig}
+                            onShowHistory={(i: number) => {
+                              setActiveDeskIdx(i);
+                              setIsHistoryModalOpen(true);
+                            }}
+                          />
+                        );
+                      })
+                    ))}
                   </div>
                    </div>
                  </div>
@@ -537,8 +1127,39 @@ export default function App() {
 
       {/* Panels & Modals at Root level */}
       <AnimatePresence>
+        {isHistoryModalOpen && activeDeskIdx !== null && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-brand-900/10 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[3rem] shadow-2xl p-8 max-w-md w-full flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <History className="w-8 h-8 text-brand-600" />
+                      <h2 className="text-2xl font-black text-slate-800">היסטוריית שולחן #{activeDeskIdx + 1}</h2>
+                   </div>
+                   <button onClick={() => setIsHistoryModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
+                </div>
+                
+                <div className="space-y-4">
+                  {deskHistory[activeDeskIdx] && deskHistory[activeDeskIdx].length > 0 ? (
+                    deskHistory[activeDeskIdx].map((name, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <span className="font-black text-slate-700">{name}</span>
+                        <span className="text-[10px] font-black text-slate-400">לפני {i + 1} שינויים</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                      <p className="text-sm font-bold text-slate-300">אין היסטוריה לשולחן זה</p>
+                    </div>
+                  )}
+                </div>
+
+                <button onClick={() => setIsHistoryModalOpen(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">סגור</button>
+            </motion.div>
+          </div>
+        )}
+
         {isAIPanelOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-brand-900/10 backdrop-blur-md">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[3rem] shadow-2xl p-8 max-w-2xl w-full flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-3">
@@ -583,6 +1204,32 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating Notifications */}
+      <div className="fixed bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence>
+          {notifications.map((n) => (
+            <motion.div
+              key={n.id}
+              initial={{ opacity: 0, x: -50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 10, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className={cn(
+                "p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto border-l-4 min-w-[280px]",
+                n.type === 'error' ? "bg-rose-50 border-rose-500 text-rose-800 shadow-rose-200" : "bg-white border-brand-500 text-slate-700 shadow-slate-200"
+              )}
+            >
+              {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-brand-500" />}
+              <div className="flex-1">
+                <p className="text-xs font-black">{n.text}</p>
+              </div>
+              <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 rounded-lg transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
         <div>ClassManager Pro v3.0 // Ready</div>
