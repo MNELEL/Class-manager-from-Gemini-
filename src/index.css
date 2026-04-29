@@ -78,9 +78,9 @@ body {
   font-size: var(--app-font-size);
   @apply bg-white text-slate-800 antialiased selection:bg-brand-100 selection:text-brand-900;
   background-image: 
-    radial-gradient(at 0% 0%, hsla(225, 100%, 99%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(210, 100%, 99%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 100%, hsla(220, 100%, 98%, 1) 0, transparent 50%);
+    radial-gradient(at 0% 0%, hsla(225, 100%, 99.5%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(210, 100%, 99.5%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 100%, hsla(220, 100%, 99%, 1) 0, transparent 50%);
   background-attachment: fixed;
   overscroll-behavior: none;
 }

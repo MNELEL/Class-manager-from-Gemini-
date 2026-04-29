@@ -47,6 +47,7 @@ import {
   Ban,
   GraduationCap,
   LineChart,
+  UserPlus,
   School,
   ClipboardList,
   Upload
@@ -485,35 +486,59 @@ export default function App() {
             </div>
           </div>
 
-          {/* Data Management */}
-          <div className="md:col-span-2 glass-card p-8 rounded-[3rem] space-y-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Layers className="w-6 h-6 text-emerald-500" />
-                <h3 className="text-lg font-black text-slate-700">ניהול תלמידים ואילוצים</h3>
+          <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-emerald-50 rounded-[1.5rem] shadow-sm">
+                  <Users className="w-8 h-8 text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-700">ניהול נתוני כיתה</h3>
+                  <p className="text-sm font-bold text-slate-400 mt-1">נהלו שמות, אילוצי הפרדה והעדפות חברתיות במרוכז</p>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-2 px-6 py-3 bg-brand-50 text-brand-700 rounded-2xl text-xs font-black border border-brand-100 transition-colors hover:bg-brand-100"
-                >
-                  <Upload className="w-4 h-4" />
-                  יבוא אקסל
-                </button>
+              
+              <div className="flex flex-wrap gap-4">
+                <div className="flex p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+                  <button 
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-slate-700 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-slate-50 transition-all"
+                  >
+                    <Upload className="w-4 h-4 text-brand-600" />
+                    יבוא רשימה (Names)
+                  </button>
+                  <button 
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 px-6 py-3 text-slate-400 hover:text-slate-600 rounded-xl text-xs font-black transition-all"
+                  >
+                    <Ban className="w-4 h-4" />
+                    אילוצים
+                  </button>
+                  <button 
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 px-6 py-3 text-slate-400 hover:text-slate-600 rounded-xl text-xs font-black transition-all"
+                  >
+                    <Heart className="w-4 h-4" />
+                    העדפות
+                  </button>
+                </div>
+
+                <div className="w-px h-10 bg-slate-200 mx-1 hidden md:block" />
+
                 <button 
                   onClick={() => {
-                    const name = prompt("שם התלמיד:");
+                    const name = prompt("שם התלמיד החדש:");
                     if (name) {
                       updateCurrentConfig((prev: any) => ({
                         ...prev,
-                        students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium' }]
+                        students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium', groups: [] }]
                       }));
                     }
                   }}
-                  className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-brand-100 hover:bg-brand-700 transition-colors"
+                  className="flex items-center gap-2 px-8 py-3 bg-brand-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                 >
-                  <Plus className="w-4 h-4" />
-                  הוסף תלמיד
+                  <UserPlus className="w-4 h-4" />
+                  הוספת תלמיד
                 </button>
               </div>
             </div>
