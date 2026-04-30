@@ -53,7 +53,8 @@ import {
   Upload,
   RotateCcw,
   CloudLightning,
-  Grid3X3
+  Grid3X3,
+  Smile
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -64,9 +65,9 @@ function cn(...inputs: ClassValue[]) {
 
 // --- Helper Components (Hoisted) ---
 
-function Badge({ children, className, style }: { children: React.ReactNode, className?: string, style?: React.CSSProperties }) {
+function Badge({ children, className, style, ...props }: { children: React.ReactNode, className?: string, style?: React.CSSProperties, [key: string]: any }) {
   return (
-    <span style={style} className={cn("px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight", className)}>
+    <span style={style} className={cn("px-3 py-1 rounded-full text-xs font-black uppercase tracking-tight", className)} {...props}>
       {children}
     </span>
   );
@@ -104,6 +105,7 @@ const DeskCell = ({
   updateCurrentConfig,
   currentConfig,
   onShowHistory,
+  onShowProfile,
   setNotifications
 }: any) => {
   const [isOver, setIsOver] = useState(false);
@@ -148,28 +150,28 @@ const DeskCell = ({
       {showDeskNumbers && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
       
       {student ? (
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1 w-full">
            {/* Chair Backrest Icon */}
-           <div className="w-8 h-6 bg-slate-100 rounded-t-lg -mb-2 z-0 border border-slate-200 shadow-inner flex items-center justify-center">
-             <div className="w-4 h-1 bg-slate-200 rounded-full" />
+           <div className="w-10 h-7 bg-slate-200 rounded-t-lg -mb-2 z-0 border border-slate-300 shadow-inner flex items-center justify-center">
+             <div className="w-5 h-1 bg-slate-300 rounded-full" />
            </div>
            
-           <div className="z-10 flex flex-col items-center bg-white px-4 py-1.5 rounded-full border-2 border-brand-100 shadow-md relative">
-             <span className="text-base font-bold text-slate-900">{student.name}</span>
-             {student.height === 'short' && <Badge className="bg-amber-100 text-amber-800 font-black scale-[0.85] -my-1">קדמי</Badge>}
+           <div className="z-10 flex flex-col items-center bg-white px-5 py-2.5 rounded-2xl border-2 border-slate-400 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] relative w-[90%]">
+             <span className="text-lg font-black text-slate-900 leading-tight">{student.name}</span>
+             {student.height === 'short' && <Badge className="bg-amber-100 text-amber-900 font-black scale-[0.9] mt-1 border border-amber-200">קדמי</Badge>}
              
              {/* Group Dot Indicators */}
              {student.groups && student.groups.length > 0 && (
-               <div className="absolute -top-1 -right-1 flex gap-0.5">
+               <div className="absolute -top-2 -right-2 flex gap-1">
                  {student.groups.map((g: string, i: number) => (
-                   <div key={i} className="w-1.5 h-1.5 rounded-full bg-brand-500 border border-white" title={`קבוצה ${g}`} />
+                   <div key={i} className="w-2.5 h-2.5 rounded-full bg-brand-600 border-2 border-white shadow-sm" title={`קבוצה ${g}`} />
                  ))}
                </div>
              )}
            </div>
            
            {/* Desk Shadow Area */}
-           <div className="w-10 h-1 bg-slate-200/50 rounded-full blur-[1px] mt-1" />
+           <div className="w-12 h-1.5 bg-slate-300/40 rounded-full blur-[2px] mt-2" />
            
             <button 
               onClick={(e) => {
@@ -182,9 +184,20 @@ const DeskCell = ({
                 setNotifications((prev: any) => [{ id: Date.now(), text: `השיבוץ בוטל: ${student.name} הוחזר למאגר`, type: 'info' }, ...prev]);
               }}
               title="ביטול שיבוץ"
-              className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-brand-100 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-lg z-30 scale-90 hover:scale-100 active:scale-95"
+              className="absolute -top-3 -right-3 w-10 h-10 bg-white border-2 border-slate-300 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-600 hover:text-white hover:border-rose-700 transition-all shadow-xl z-30 scale-90 hover:scale-110 active:scale-95"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-5 h-5" />
+            </button>
+            
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowProfile();
+              }}
+              title="צפייה בפרופיל"
+              className="absolute -bottom-3 -left-3 w-10 h-10 bg-white border-2 border-slate-300 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-brand-600 hover:text-white hover:border-brand-700 transition-all shadow-xl z-30 scale-90 hover:scale-110 active:scale-95"
+            >
+              <Eye className="w-5 h-5" />
             </button>
             
             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-xl z-50">
@@ -284,71 +297,366 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => (
   </div>
 );
 
+const StudentDetailView = ({ student, onBack, updateCurrentConfig }: { student: any, onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
+  const [activeTab, setActiveTab] = useState<'info' | 'academic' | 'behavior' | 'attendance' | 'ai'>('info');
+
+  const updateStudent = (field: string, value: any) => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => s.id === student.id ? { ...s, [field]: value } : s)
+    }));
+  };
+
+  const updateAreaPref = (field: string, value: any) => {
+    const currentPref = student.areaPref || {};
+    updateStudent('areaPref', { ...currentPref, [field]: value });
+  };
+
+  return (
+    <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar bg-slate-50">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <div className="flex-1 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-[2rem] bg-brand-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
+              {student.name[0]}
+            </div>
+            <div>
+              <input 
+                value={student.name}
+                onChange={(e) => updateStudent('name', e.target.value)}
+                className="text-3xl font-black text-slate-900 tracking-tight bg-transparent border-0 p-0 focus:ring-0"
+              />
+              <div className="flex gap-2 mt-1">
+                <Badge className="bg-brand-50 text-brand-600 border border-brand-200">ID: {student.id}</Badge>
+                <select 
+                  value={student.height}
+                  onChange={(e) => updateStudent('height', e.target.value)}
+                  className="bg-slate-100 text-slate-600 border border-slate-200 rounded-full px-3 py-0.5 text-xs font-black focus:ring-0"
+                >
+                  <option value="short">קדמי</option>
+                  <option value="medium">בינוני</option>
+                  <option value="tall">גבוה</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-[1.5rem] font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+              <Download className="w-5 h-5" />
+              ייצוא דוח
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 p-1.5 bg-white border-2 border-slate-100 rounded-[2rem] w-fit shadow-sm">
+        {(['info', 'ai', 'academic', 'behavior', 'attendance'] as const).map(tab => (
+          <button 
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-8 py-3 rounded-[1.5rem] text-sm font-black transition-all",
+              activeTab === tab ? "bg-brand-600 text-white shadow-lg" : "text-slate-500 hover:bg-slate-50"
+            )}
+          >
+            {tab === 'info' ? 'מידע כללי' : tab === 'ai' ? 'הגדרות AI' : tab === 'academic' ? 'הישגים' : tab === 'behavior' ? 'התנהגות' : 'נוכחות'}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {activeTab === 'info' && (
+          <>
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Heart className="w-6 h-6 text-rose-500" />
+                  העדפות חברתיות (חברים)
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-500 font-medium italic">הזן מזהי תלמידים ש {student.name} רוצה לשבת לידם (מופרדים בפסיק):</p>
+                  <input 
+                    value={student.preferred?.join(', ') || ''}
+                    onChange={(e) => updateStudent('preferred', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                    placeholder="לדוגמה: 1, 5, 12"
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-brand-500 outline-none transition-all"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {student.preferred?.map((id: string) => (
+                      <Badge key={id} className="bg-rose-50 text-rose-600 border border-rose-100">{id}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Ban className="w-6 h-6 text-slate-500" />
+                  הפרדות מנדטוריות
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-500 font-medium italic">הזן מזהי תלמידים ש {student.name} לא צריך לשבת לידם:</p>
+                  <input 
+                    value={student.forbidden?.join(', ') || ''}
+                    onChange={(e) => updateStudent('forbidden', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                    placeholder="לדוגמה: 2, 8"
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-slate-400 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
+                 <h3 className="text-lg font-black text-slate-900 mb-4">קבוצות פדגוגיות</h3>
+                 <div className="flex flex-wrap gap-2">
+                    {['א', 'ב', 'ג', 'ד'].map(g => (
+                      <button 
+                         key={g}
+                         onClick={() => {
+                           const groups = student.groups || [];
+                           updateStudent('groups', groups.includes(g) ? groups.filter((pg: string) => pg !== g) : [...groups, g]);
+                         }}
+                         className={cn(
+                           "px-4 py-2 rounded-xl text-sm font-black transition-all",
+                           student.groups?.includes(g) ? "bg-brand-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-100"
+                         )}
+                      >
+                        קבוצה {g}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'ai' && (
+          <div className="lg:col-span-3 space-y-8">
+            <div className="bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm space-y-10">
+              <div className="flex items-center gap-4">
+                 <Sparkles className="w-8 h-8 text-indigo-600" />
+                 <div>
+                    <h3 className="text-2xl font-black text-slate-900">אילוצי מיקום חכמים</h3>
+                    <p className="text-slate-500 font-medium">הגדרות אלו משפיעות ישירות על האופטימיזציה של ה-AI</p>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-6">
+                   <div className="space-y-3">
+                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest">משקולת חשיבות (0-300)</label>
+                      <input 
+                        type="range" min="0" max="300" step="10"
+                        value={student.areaPref?.weight || 50}
+                        onChange={(e) => updateAreaPref('weight', parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
+                      />
+                      <div className="flex justify-between text-xs font-bold text-slate-400">
+                        <span>נמוכה</span>
+                        <span className="text-brand-600 font-black">{student.areaPref?.weight || 50}</span>
+                        <span>קריטית</span>
+                      </div>
+                   </div>
+
+                   <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all border border-slate-100">
+                      <input 
+                         type="checkbox"
+                         checked={!!student.areaPref?.isolated}
+                         onChange={(e) => updateAreaPref('isolated', e.target.checked)}
+                         className="w-5 h-5 rounded-lg text-brand-600 border-slate-300 focus:ring-brand-500"
+                      />
+                      <div className="flex-1">
+                        <span className="block font-black text-slate-800">בידוד (Isolated)</span>
+                        <span className="text-xs font-bold text-slate-500">ה-AI ינסה להושיב את התלמיד ללא שכנים קרובים</span>
+                      </div>
+                   </label>
+
+                   <div className="space-y-3">
+                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest">מיקום מועדף (Row/Col)</label>
+                      <div className="flex gap-4">
+                        <select 
+                          value={student.areaPref?.row ?? ""}
+                          onChange={(e) => updateAreaPref('row', e.target.value === "" ? undefined : parseInt(e.target.value))}
+                          className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-bold text-slate-700 outline-none"
+                        >
+                          <option value="">בחר שורה...</option>
+                          {Array.from({ length: 10 }).map((_, i) => <option key={i} value={i}>שורה {i + 1}</option>)}
+                        </select>
+                        <select 
+                          value={student.areaPref?.col ?? ""}
+                          onChange={(e) => updateAreaPref('col', e.target.value === "" ? undefined : parseInt(e.target.value))}
+                          className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-bold text-slate-700 outline-none"
+                        >
+                          <option value="">בחר טור...</option>
+                          {Array.from({ length: 12 }).map((_, i) => <option key={i} value={i}>טור {i + 1}</option>)}
+                        </select>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="space-y-3">
+                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest text-indigo-600">אילוץ מיוחד</label>
+                      <select 
+                         value={student.areaPref?.special || ""}
+                         onChange={(e) => updateAreaPref('special', e.target.value)}
+                         className="w-full bg-indigo-50 border-2 border-indigo-100 rounded-xl p-4 font-black text-indigo-700 outline-none"
+                      >
+                         <option value="">ללא אילוץ מיוחד</option>
+                         <option value="window_or_microwave">ליד חלון או קצה כיתה (טור 1 או אחרון)</option>
+                      </select>
+                   </div>
+
+                   <p className="p-4 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold rounded-2xl">
+                     שים לב: ה-AI משקלל את כל האילוצים יחד. אילוצים סותרים עשויים להוביל לציון אופטימיזציה נמוך יותר.
+                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'academic' && (
+          <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+            <div className="p-8 bg-brand-50 rounded-full">
+              <GraduationCap className="w-16 h-16 text-brand-600" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 italic">"המסע אל הידע הוא אינסופי"</h3>
+              <p className="mt-4 text-slate-500 max-w-md mx-auto font-medium">כאן תוצג היסטוריית הציונים, המבחנים והעבודות. מודול האנליטיקה הלימודית יהיה זמין החל מגרסה 3.3.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'behavior' && (
+          <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+            <div className="p-8 bg-amber-50 rounded-full">
+              <Smile className="w-16 h-16 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900">מעקב התנהגות רגשי</h3>
+              <p className="mt-4 text-slate-500 max-w-md mx-auto font-medium">תיעוד נקודות חיוביות, דיווחים וציוני דרך חברתיים. המערכת תספק תובנות AI על דפוסי התנהגות.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'attendance' && (
+           <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
+             <div className="flex items-center justify-between mb-8">
+               <h3 className="text-xl font-black text-slate-900">יומן נוכחות מפורט</h3>
+               <div className="flex gap-4">
+                 <div className="flex items-center gap-2">
+                   <div className="w-3 h-3 bg-emerald-500 rounded-full" />
+                   <span className="text-xs font-bold text-slate-500">נוכח</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <div className="w-3 h-3 bg-rose-500 rounded-full" />
+                   <span className="text-xs font-bold text-slate-500">נעדר</span>
+                 </div>
+               </div>
+             </div>
+             <div className="grid grid-cols-7 gap-4">
+               {Array.from({ length: 35 }).map((_, i) => {
+                 const isWeekend = i % 7 >= 5;
+                 const isAbsent = i === 14 || i === 22;
+                 return (
+                   <div 
+                     key={i} 
+                     className={cn(
+                       "aspect-square rounded-2xl flex items-center justify-center text-xs font-black transition-all",
+                       isWeekend ? "bg-slate-50 text-slate-300" :
+                       isAbsent ? "bg-rose-50 text-rose-500 border-2 border-rose-100" : 
+                       "bg-emerald-50 text-emerald-600 border-2 border-emerald-100"
+                     )}
+                   >
+                     {i + 1}
+                   </div>
+                 );
+               })}
+             </div>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const DashboardView = ({ stats, onBack }: any) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
-    <div className="flex items-center gap-4">
+  <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50">
+    <div className="flex items-center gap-6">
       <button 
         onClick={onBack}
-        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+        className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-7 h-7" />
       </button>
       <div className="flex items-center justify-between flex-1">
-        <h2 className="text-2xl font-black text-slate-700">סיכום מערכת</h2>
-        <Badge className="bg-brand-100 text-brand-700 border-brand-200">דוא"ט ניהולי</Badge>
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">סיכום מערכת</h2>
+        <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">דוא"ט ניהולי</Badge>
       </div>
     </div>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div className="glass-card p-6 rounded-[2.5rem] space-y-4 border-b-4 border-brand-500">
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-brand-50 rounded-2xl">
-            <Users className="w-6 h-6 text-brand-600" />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+        <div className="relative flex items-center justify-between">
+          <div className="p-4 bg-brand-100 rounded-2xl border border-brand-200 shadow-inner">
+            <Users className="w-8 h-8 text-brand-700" />
           </div>
-          <Badge className="bg-brand-50 text-brand-600">פעיל</Badge>
+          <Badge className="bg-brand-50 text-brand-600 border border-brand-200">פעיל</Badge>
         </div>
-        <div>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">תלמידים רשומים</h3>
-          <p className="text-3xl font-black text-slate-800">{stats.studentCount || 0}</p>
+        <div className="relative">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">תלמידים רשומים</h3>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.studentCount || 0}</p>
         </div>
       </div>
       
-      <div className="glass-card p-6 rounded-[2.5rem] space-y-4 border-b-4 border-amber-500">
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-amber-50 rounded-2xl">
-            <Sparkles className="w-6 h-6 text-amber-600" />
+      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+        <div className="relative flex items-center justify-between">
+          <div className="p-4 bg-amber-100 rounded-2xl border border-amber-200 shadow-inner">
+            <Sparkles className="w-8 h-8 text-amber-700" />
           </div>
-          <Badge className="bg-amber-50 text-amber-600">+12%</Badge>
+          <Badge className="bg-amber-50 text-amber-600 border border-amber-200">+12%</Badge>
         </div>
-        <div>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">שביעות רצון</h3>
-          <p className="text-3xl font-black text-slate-800">84%</p>
+        <div className="relative">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">שביעות רצון</h3>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">84%</p>
         </div>
       </div>
 
-      <div className="glass-card p-6 rounded-[2.5rem] space-y-4 border-b-4 border-indigo-500">
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-indigo-50 rounded-2xl">
-            <LayoutGrid className="w-6 h-6 text-indigo-600" />
+      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+        <div className="relative flex items-center justify-between">
+          <div className="p-4 bg-indigo-100 rounded-2xl border border-indigo-200 shadow-inner">
+            <LayoutGrid className="w-8 h-8 text-indigo-700" />
           </div>
-          <Badge className="bg-indigo-50 text-indigo-600">מעודכן</Badge>
+          <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-200">מעודכן</Badge>
         </div>
-        <div>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">שיבוץ נוכחי</h3>
-          <p className="text-3xl font-black text-slate-800">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
+        <div className="relative">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">שיבוץ נוכחי</h3>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
         </div>
       </div>
 
-      <div className="glass-card p-6 rounded-[2.5rem] space-y-4 border-b-4 border-rose-500">
-        <div className="flex items-center justify-between">
-          <div className="p-3 bg-rose-50 rounded-2xl">
-            <AlertCircle className="w-6 h-6 text-rose-600" />
+      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
+        <div className="relative flex items-center justify-between">
+          <div className="p-4 bg-rose-100 rounded-2xl border border-rose-200 shadow-inner">
+            <AlertCircle className="w-8 h-8 text-rose-700" />
           </div>
-          <Badge className="bg-rose-50 text-rose-600">נמוך</Badge>
+          <Badge className="bg-rose-50 text-rose-600 border border-rose-200">נמוך</Badge>
         </div>
-        <div>
-          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">אילוצים לא פתורים</h3>
-          <p className="text-3xl font-black text-slate-800">3</p>
+        <div className="relative">
+          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">אילוצים לא פתורים</h3>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">2</p>
         </div>
       </div>
     </div>
@@ -471,6 +779,144 @@ const SettingsView = ({
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
   
+  const loadExampleData = () => {
+    if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה מהסימולציה. האם להמשיך?")) {
+      const demoStudents = [
+        "נתי אורדמן", "אוריאל אנסבכר", "חיים בן פורת", "דניאל גוטרמן",
+        "חיים גולדמן", "ניסים דיין", "מוישי הריסון", "אברימי זיאת",
+        "ציקי יורקוביץ", "מיכאל יעקובי", "אלחנן כהן", "כתריאל לוי",
+        "מלאכי לינצר", "אליהו מויאל", "מאיר מיימון", "נדב מלול",
+        "איתמר משולם", "אביתר עמר", "מנחם פודור", "גידי פולסקי",
+        "יהונתן פז", "ישי כוחלני", "יוסף קמחי", "בן ציון קצב",
+        "נדב רובין", "יהונתן רוזן", "אברהם ריין", "אריאל שטאובר",
+        "איתי שלזינגר", "דניאל ששון", "אוריה תם", "יצחק וולק"
+      ].map((name, i) => ({
+        id: (i + 1).toString(),
+        name,
+        preferred: [] as string[],
+        forbidden: [] as string[],
+        height: 'medium' as any,
+        groups: [] as string[],
+        areaPref: {} as any
+      }));
+
+      const wants: Record<string, string[]> = {
+        "נתי אורדמן": ["חיים גולדמן", "אוריאל אנסבכר", "ציקי יורקוביץ", "ישי כוחלני"],
+        "אוריאל אנסבכר": ["ישי כוחלני", "מלאכי לינצר", "אריאל שטאובר"],
+        "חיים בן פורת": ["נדב רובין", "מוישי הריסון", "מלאכי לינצר", "נתי אורדמן", "אליהו מויאל", "גידי פולסקי"],
+        "דניאל גוטרמן": ["אברהם ריין", "נדב רובין", "מיכאל יעקובי", "כתריאל לוי"],
+        "חיים גולדמן": ["נתי אורדמן", "מלאכי לינצר", "אליהו מויאל", "נדב רובין"],
+        "מוישי הריסון": ["אליהו מויאל", "נתי אורדמן", "גידי פולסקי", "נדב רובין"],
+        "ציקי יורקוביץ": ["נתי אורדמן", "אוריאל אנסבכר", "חיים גולדמן", "מיכאל יעקובי"],
+        "מיכאל יעקובי": ["נדב רובין", "חיים גולדמן", "בן ציון קצב", "דניאל גוטרמן"],
+        "אלחנן כהן": ["מיכאל יעקובי", "יהונתן רוזן", "יהונתן פז", "אביתר עמר"],
+        "כתריאל לוי": ["יצחק וולק", "ישי כוחלני", "חיים גולדמן"],
+        "מלאכי לינצר": ["חיים גולדמן", "נתי אורדמן", "נדב רובין"],
+        "אליהו מויאל": ["חיים גולדמן", "ישי כוחלני", "ציקי יורקוביץ", "מלאכי לינצר", "נדב רובין", "מוישי הריסון", "איתמר משולם", "יצחק וולק", "מנחם פודור"],
+        "נדב מלול": ["נדב רובין", "אביתר עמר"],
+        "איתמר משולם": ["ישי כוחלני", "אליהו מויאל", "נתי אורדמן", "חיים גולדמן"],
+        "יהונתן פז": ["אלחנן כהן", "נדב רובין", "ישי כוחלני", "מיכאל יעקובי"],
+        "ישי כוחלני": ["איתמר משולם", "נתי אורדמן", "חיים גולדמן"],
+        "יוסף קמחי": ["נתי אורדמן", "אוריאל אנסבכר", "נדב רובין", "מלאכי לינצר"],
+        "בן ציון קצב": ["חיים גולדמן", "מיכאל יעקובי", "נתי אורדמן", "אליהו מויאל"],
+        "נדב רובין": ["מיכאל יעקובי", "חיים גולדמן", "מלאכי לינצר", "נתי אורדמן"],
+        "יהונתן רוזן": ["אביתר עמר", "אלחנן כהן", "מיכאל יעקובי", "דניאל גוטרמן"],
+        "אברהם ריין": ["דניאל גוטרמן", "מלאכי לינצר", "מיכאל יעקובי"],
+        "אריאל שטאובר": ["אוריאל אנסבכר", "אברימי זיאת", "ישי כוחלני", "אוריה תם"],
+        "איתי שלזינגר": ["חיים גולדמן", "אליהו מויאל", "יצחק וולק", "גידי פולסקי", "מלאכי לינצר", "מוישי הריסון"],
+        "דניאל ששון": ["אוריאל אנסבכר", "אליהו מויאל", "מיכאל יעקובי"],
+        "אוריה תם": ["מלאכי לינצר", "יצחק וולק", "אליהו מויאל", "מוישי הריסון", "נדב רובין"],
+        "יצחק וולק": ["אליהו מויאל", "חיים גולדמן", "מוישי הריסון", "אוריאל אנסבכר"],
+      };
+
+      const avoid: Record<string, string[]> = {
+        "נתי אורדמן": ["איתי שלזינגר", "נדב מלול", "איתמר משולם", "יהונתן רוזן"],
+        "אוריאל אנסבכר": ["יהונתן רוזן", "נדב מלול", "ניסים דיין", "אברהם ריין"],
+        "חיים בן פורת": ["אלחנן כהן", "יהונתן רוזן", "נדב מלול", "אביתר עמר", "מאיר מיימון"],
+        "דניאל גוטרמן": ["איתי שלזינגר", "יהונתן רוזן", "יהונתן פז", "יוסף קמחי", "אביתר עמר", "נדב מלול", "אריאל שטאובר", "אלחנן כהן"],
+        "חיים גולדמן": ["אלחנן כהן", "נדב מלול", "יהונתן פז", "יהונתן רוזן", "חיים בן פורת", "אביתר עמר", "אברהם ריין", "איתמר משולם"],
+        "מוישי הריסון": ["יהונתן רוזן", "אלחנן כהן", "מאיר מיימון", "נדב מלול"],
+        "אברימי זיאת": ["יהונתן רוזן"],
+        "ציקי יורקוביץ": ["יהונתן פז", "איתי שלזינגר", "נדב מלול", "אלחנן כהן", "אביתר עמר"],
+        "מיכאל יעקובי": ["מאיר מיימון", "יוסף קמחי", "יהונתן רוזן", "נדב מלול"],
+        "אלחנן כהן": ["חיים בן פורת", "מנחם פודור", "מוישי הריסון", "יוסף קמחי", "דניאל ששון"],
+        "כתריאל לוי": ["מאיר מיימון", "נדב מלול", "אלחנן כהן"],
+        "מלאכי לינצר": ["איתי שלזינגר", "יהונתן רוזן", "נדב מלול", "מאיר מיימון", "אלחנן כהן"],
+        "אליהו מויאל": ["אלחנן כהן", "נדב מלול", "יהונתן רוזן", "אברהם ריין", "אביתר עמר"],
+        "נדב מלול": ["יהונתן רוזן", "מלאכי לינצר"],
+        "איתמר משולם": ["איתי שלזינגר", "יהונתן פז", "יהונתן רוזן", "אברהם ריין", "אלחנן כהן", "נדב מלול"],
+        "מנחם פודור": ["אלחנן כהן", "אביתר עמר", "נדב מלול", "יהונתן רוזן", "יוסף קמחי"],
+        "יהונתן פז": ["יוסף קמחי", "דניאל ששון", "אריאל שטאובר", "איתי שלזינגר", "מוישי הריסון"],
+        "ישי כוחלני": ["נדב מלול", "אלחנן כהן"],
+        "יוסף קמחי": ["אברימי זיאת", "מנחם פודור", "איתי שלזינגר", "אלחנן כהן", "דניאל ששון"],
+        "בן ציון קצב": ["אלחנן כהן", "יהונתן רוזן", "אביתר עמר", "נדב מלול"],
+        "נדב רובין": ["אלחנן כהן", "נדב מלול", "יהונתן רוזן", "איתי שלזינגר"],
+        "יהונתן רוזן": ["מוישי הריסון", "איתי שלזינגר", "יוסף קמחי", "דניאל ששון"],
+        "אברהם ריין": ["נתי אורדמן", "יהונתן פז", "גידי פולסקי", "מאיר מיימון"],
+        "אריאל שטאובר": ["יהונתן רוזן", "אלחנן כהן", "יהונתן פז", "מאיר מיימון", "אברהם ריין"],
+        "איתי שלזינגר": ["יוסף קמחי", "מאיר מיימון", "אלחנן כהן", "נדב מלול", "יהונתן רוזן", "אוריה תם", "אביתר עמר", "יהונתן פז", "ציקי יורקוביץ", "בן ציון קצב", "אוריאל אנסבכר", "איתמר משולם"],
+        "דניאל ששון": ["יהונתן רוזן", "אלחנן כהן", "נדב מלול", "איתי שלזינגר"],
+        "אוריה תם": ["יהונתן רוזן", "איתי שלזינגר", "מנחם פודור", "יוסף קמחי"],
+      };
+
+      const area_prefs: Record<string, any> = {
+        "איתמר משולם": { "row": 0, "weight": 100 },
+        "נתי אורדמן": { "row": 0, "col_range": [1, 2], "weight": 80 },
+        "מלאכי לינצר": { "row": 1, "col": 4, "weight": 200 },
+        "יהונתן רוזן": { "row": 1, "col": 7, "weight": 200 },
+        "דניאל ששון": { "row": 0, "weight": 90 },
+        "יוסף קמחי": { "row": 0, "weight": 80 },
+        "נדב מלול": { "row": 0, "weight": 70 },
+        "בן ציון קצב": { "col": 0, "weight": 50 },
+        "חיים בן פורת": { "col": 9, "weight": 50 },
+        "אריאל שטאובר": { "special": "window_or_microwave", "weight": 60 },
+        "אברימי זיאת": { "row": 3, "col_range": [4, 5], "isolated": true, "weight": 300 },
+        "אליהו מויאל": { "fixed_seat": [1, 5] },
+        "ציקי יורקוביץ": { "row": 0, "weight": 60 },
+        "ישי כוחלני": { "row": 0, "weight": 85 },
+        "מוישי הריסון": { "row": 0, "weight": 50 },
+        "נדב רובין": { "row": 0, "col_range": [2, 3], "weight": 70 },
+        "אוריאל אנסבכר": { "row": 0, "col": 0, "weight": 40 },
+        "אברהם ריין": { "row_range": [1, 2], "col_range": [4, 6], "weight": 40 },
+      };
+
+      const finalStudents = demoStudents.map(s => {
+        const studentWants = wants[s.name] || [];
+        const studentAvoid = avoid[s.name] || [];
+        
+        // Map names to IDs
+        const preferredIds = studentWants.map(name => demoStudents.find(ds => ds.name === name)?.id).filter(Boolean) as string[];
+        const forbiddenIds = studentAvoid.map(name => demoStudents.find(ds => ds.name === name)?.id).filter(Boolean) as string[];
+        
+        return {
+          ...s,
+          preferred: preferredIds,
+          forbidden: forbiddenIds,
+          areaPref: area_prefs[s.name] || {}
+        };
+      });
+
+      // Layout specific to demo
+      const hidden = [];
+      for (let c = 4; c < 10; c++) hidden.push(c); // Row 0 has only col 0-3
+
+      updateCurrentConfig({
+        id: Date.now().toString(),
+        name: "סימולציית דוגמה (Python)",
+        rows: 4,
+        cols: 10,
+        grid: Array(40).fill(null),
+        students: finalStudents,
+        hiddenDesks: hidden,
+        rowGaps: [],
+        columnGaps: [4],
+        groups: []
+      });
+
+      setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני הסימולציה נטענו בהצלחה!", type: 'success' }, ...prev]);
+    }
+  };
+
   return (
     <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
       <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .json" onChange={handleFileImport} />
@@ -484,7 +930,15 @@ const SettingsView = ({
           </button>
           <h2 className="text-3xl font-black text-slate-800">הגדרות מערכת</h2>
         </div>
-        <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.1.5</Badge>
+        <div className="flex gap-4">
+          <button 
+            onClick={loadExampleData}
+            className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100"
+          >
+            טען נתוני דוגמה AI
+          </button>
+          <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.2.1</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -623,7 +1077,7 @@ export default function App() {
     groups: [] as any[]
   });
 
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings'>('grid');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail'>('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [editMode, setEditMode] = useState<'normal' | 'structure'>('normal');
@@ -645,6 +1099,161 @@ export default function App() {
   const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+
+  const runAIShuffle = () => {
+    setIsLoadingAI(true);
+    
+    // Convert current config to valid seats list like the Python script
+    const rows = currentConfig.rows;
+    const cols = currentConfig.cols;
+    const validSeats: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        if (!currentConfig.hiddenDesks.includes(idx)) {
+          validSeats.push(idx);
+        }
+      }
+    }
+
+    const students = [...currentConfig.students];
+    const weights = aiWeights;
+
+    // Helper: Getting neighbors
+    const getNeighbors = (idx: number) => {
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+      const neighbors: number[] = [];
+      [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          const nIdx = nr * cols + nc;
+          if (validSeats.includes(nIdx)) neighbors.push(nIdx);
+        }
+      });
+      return neighbors;
+    };
+
+    // Scoring function
+    const scoreAssignment = (assignment: (string | null)[]) => {
+      let score = 0;
+      
+      assignment.forEach((sid, idx) => {
+        if (!sid) return;
+        const student = students.find(s => s.id === sid);
+        if (!student) return;
+
+        const neighbors = getNeighbors(idx);
+        const r = Math.floor(idx / cols);
+        const c = idx % cols;
+
+        // 1. Social Score
+        neighbors.forEach(nIdx => {
+          const neighborId = assignment[nIdx];
+          if (!neighborId) return;
+
+          if (student.preferred?.includes(neighborId)) score += 12;
+          if (student.forbidden?.includes(neighborId)) score -= 40;
+        });
+
+        // 2. Spatial / Area Prefs
+        const pref = (student as any).areaPref;
+        if (pref) {
+          if (pref.row !== undefined && r === pref.row) score += (pref.weight || 20);
+          if (pref.col !== undefined && c === pref.col) score += (pref.weight || 20);
+          if (pref.row_range && r >= pref.row_range[0] && r <= pref.row_range[1]) score += (pref.weight || 10);
+          if (pref.col_range && c >= pref.col_range[0] && c <= pref.col_range[1]) score += (pref.weight || 10);
+          
+          if (pref.special === "window_or_microwave" && (c === 0 || c === cols - 1)) score += 60;
+          
+          if (pref.isolated) {
+            const hasNeighbor = neighbors.some(nIdx => assignment[nIdx] !== null);
+            if (!hasNeighbor) score += (pref.weight || 300);
+            else score -= (pref.weight || 300);
+          }
+        }
+
+        // Height constraint (Front row for 'short')
+        if (student.height === 'short') {
+          if (r < 2) score += 50;
+          else score -= 100;
+        }
+      });
+      return score;
+    };
+
+    // Simulated Annealing
+    setTimeout(() => {
+      let currentAssignment: (string | null)[] = Array(rows * cols).fill(null);
+      
+      // Initial Random Assignment (respecting fixed seats)
+      const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+      const pool = [...validSeats].sort(() => Math.random() - 0.5);
+
+      // Handle fixed seats first
+      shuffledStudents.forEach((s, i) => {
+        const pref = (s as any).areaPref;
+        if (pref && pref.fixed_seat) {
+          const [fr, fc] = pref.fixed_seat;
+          const fIdx = fr * cols + fc;
+          if (validSeats.includes(fIdx)) {
+            currentAssignment[fIdx] = s.id;
+            const poolIdx = pool.indexOf(fIdx);
+            if (poolIdx !== -1) pool.splice(poolIdx, 1);
+          }
+        }
+      });
+
+      // Fill rest
+      shuffledStudents.forEach(s => {
+        if (currentAssignment.includes(s.id)) return;
+        if (pool.length > 0) {
+          const target = pool.pop()!;
+          currentAssignment[target] = s.id;
+        }
+      });
+
+      let currentScore = scoreAssignment(currentAssignment);
+      let best = [...currentAssignment];
+      let bestScore = currentScore;
+      
+      let temp = 1000;
+      const iterations = 5000; // Reduced for browser performance but still effective
+      
+      for (let i = 0; i < iterations; i++) {
+        // Swap two random seats
+        const idx1 = validSeats[Math.floor(Math.random() * validSeats.length)];
+        const idx2 = validSeats[Math.floor(Math.random() * validSeats.length)];
+        
+        // Don't swap if one is fixed seat? (For simplicity we just skip students with fixed_seat in random swap)
+        const s1 = students.find(s => s.id === currentAssignment[idx1]);
+        const s2 = students.find(s => s.id === currentAssignment[idx2]);
+        if (s1?.areaPref?.fixed_seat || s2?.areaPref?.fixed_seat) continue;
+
+        const next = [...currentAssignment];
+        [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
+        
+        const nextScore = scoreAssignment(next);
+        const delta = nextScore - currentScore;
+        
+        if (delta > 0 || Math.random() < Math.exp(delta / temp)) {
+          currentAssignment = next;
+          currentScore = nextScore;
+          if (currentScore > bestScore) {
+            best = [...currentAssignment];
+            bestScore = currentScore;
+          }
+        }
+        temp *= 0.999;
+      }
+
+      updateCurrentConfig((prev: any) => ({ ...prev, grid: best }));
+      setIsLoadingAI(false);
+      setIsAIPanelOpen(false);
+      setNotifications(prev => [{ id: Date.now(), text: `ה-AI סיים סימולציה! ניקוד אופטימיזציה: ${Math.round(bestScore)}`, type: 'success' }, ...prev]);
+    }, 500);
+  };
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
@@ -797,7 +1406,8 @@ export default function App() {
 
       // Check adjacent
       const neighbors = [
-        [r, c-1], [r, c+1], [r-1, c], [r+1, c]
+        [r, c-1], [r, c+1], [r-1, c], [r+1, c],
+        [r-1, c-1], [r-1, c+1], [r+1, c-1], [r+1, c+1] // Add diagonal checks
       ];
 
       neighbors.forEach(([nr, nc]) => {
@@ -892,6 +1502,10 @@ export default function App() {
           setNotifications={setNotifications}
         />
       );
+      case 'studentDetail': {
+        const student = currentConfig.students.find(s => s.id === selectedStudentId);
+        return student ? <StudentDetailView student={student} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} /> : null;
+      }
       default: return null;
     }
   };
@@ -988,42 +1602,53 @@ export default function App() {
             )}
             <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
               {/* Classroom Header */}
-              <div className="glass-card p-5 rounded-3xl flex flex-col gap-4">
+              <div className="bg-white border-2 border-slate-200 p-6 rounded-3xl flex flex-col gap-4 shadow-sm">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">כיתה פעילה</h3>
-                    <Badge className="bg-brand-50 text-brand-600">v3.0</Badge>
+                    <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">כיתה פעילה</h3>
+                    <Badge className="bg-brand-100 text-brand-700 border border-brand-200">v3.2.0</Badge>
                   </div>
                   <input
                     value={currentConfig.name}
                     onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-            className="text-lg font-black text-slate-700 bg-transparent border-0 p-0 focus:ring-0 w-full"
+                    className="text-xl font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 w-full"
                   />
                 </div>
               </div>
 
               {/* Student Pool */}
-              <div className="flex flex-col gap-3 min-h-[200px]">
+              <div className="flex flex-col gap-4 min-h-[200px]">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
-                  <button className="p-1 hover:bg-slate-100 rounded-lg"><Plus className="w-4 h-4 text-slate-400" /></button>
+                  <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
+                  <button className="p-2 hover:bg-slate-100 rounded-xl bg-slate-50 border border-slate-200 transition-colors"><Plus className="w-5 h-5 text-slate-600" /></button>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-3">
                   {studentsInPool.map((student, idx) => (
                     <motion.div
                       key={`${student.id}-${idx}`}
                       draggable
                       onDragStart={() => setDraggedStudentId(student.id)}
                       onDragEnd={() => setDraggedStudentId(null)}
-                      className="p-3 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-200 hover:bg-white transition-all group"
+                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-500 hover:shadow-lg transition-all group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-400">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center font-black text-slate-600 text-base">
                           {student.name[0]}
                         </div>
-                        <span className="text-xs font-black text-slate-700">{student.name}</span>
+                        <span className="text-base font-black text-slate-900">{student.name}</span>
                       </div>
-                      <MoreVertical className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center gap-2">
+                        <button 
+                           onClick={() => {
+                             setSelectedStudentId(student.id);
+                             setViewType('studentDetail');
+                           }}
+                           className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-brand-600 transition-colors"
+                        >
+                           <Eye className="w-5 h-5" />
+                        </button>
+                        <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                      </div>
                     </motion.div>
                   ))}
                   {studentsInPool.length === 0 && (
@@ -1222,11 +1847,11 @@ export default function App() {
                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">שולחן מורה</span>
                       </div>
 
-                  <div 
-                    className={cn(
-                      "grid p-10 transition-all duration-500 relative",
-                      editMode === 'structure' ? "bg-white ring-8 ring-amber-400 ring-offset-4 ring-offset-slate-50 rounded-[4rem] shadow-2xl" : "bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm"
-                    )}
+                    <div 
+                      className={cn(
+                        "grid p-20 transition-all duration-500 relative",
+                        editMode === 'structure' ? "bg-white ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 rounded-[5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)]" : "bg-white rounded-[5rem] border-4 border-slate-200 shadow-2xl"
+                      )}
                     style={{ 
                       display: 'grid',
                       gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
@@ -1333,6 +1958,12 @@ export default function App() {
                               setActiveDeskIdx(i);
                               setIsHistoryModalOpen(true);
                             }}
+                            onShowProfile={() => {
+                              if (student) {
+                                setSelectedStudentId(student.id);
+                                setViewType('studentDetail');
+                              }
+                            }}
                             setNotifications={setNotifications}
                           />
                         );
@@ -1410,13 +2041,7 @@ export default function App() {
                 </div>
 
                 <button 
-                   onClick={() => {
-                     setIsLoadingAI(true);
-                     setTimeout(() => {
-                       setIsLoadingAI(false);
-                       setAiResponse("התקבל סידור אופטימלי חדש המבוסס על שביעות רצון של 92%.");
-                     }, 2000);
-                   }}
+                   onClick={runAIShuffle}
                    className="w-full py-5 bg-brand-600 text-white rounded-[2rem] font-black shadow-xl shadow-brand-100 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
                   {isLoadingAI ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Wand2 className="w-5 h-5" />}
