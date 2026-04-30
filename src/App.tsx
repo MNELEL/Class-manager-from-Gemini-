@@ -80,7 +80,7 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
       )}
     />
     <div className="absolute inset-0 flex items-center justify-center mix-blend-difference">
-      <span className="text-[10px] font-black text-white">{score}% מרוצים</span>
+      <span className="text-sm font-black text-white">{score}% מרוצים</span>
     </div>
   </div>
 );
@@ -141,7 +141,7 @@ const DeskCell = ({
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
       )}
       
-      {showDeskNumbers && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-300">#{idx + 1}</span>}
+      {showDeskNumbers && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
       
       {student ? (
         <div className="flex flex-col items-center gap-1">
@@ -150,9 +150,9 @@ const DeskCell = ({
              <div className="w-4 h-1 bg-slate-200 rounded-full" />
            </div>
            
-           <div className="z-10 flex flex-col items-center bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm relative">
-             <span className="text-[10px] font-black text-slate-700">{student.name}</span>
-             {student.height === 'short' && <Badge className="bg-amber-50 text-amber-600 scale-[0.6] -my-1">קדמי</Badge>}
+           <div className="z-10 flex flex-col items-center bg-white px-4 py-1.5 rounded-full border-2 border-brand-100 shadow-md relative">
+             <span className="text-base font-bold text-slate-900">{student.name}</span>
+             {student.height === 'short' && <Badge className="bg-amber-100 text-amber-800 font-black scale-[0.85] -my-1">קדמי</Badge>}
              
              {/* Group Dot Indicators */}
              {student.groups && student.groups.length > 0 && (
@@ -181,7 +181,7 @@ const DeskCell = ({
               <X className="w-3 h-3" />
             </button>
             
-            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-[8px] font-black px-2 py-1 rounded-md z-50">
+            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-xl z-50">
               לחץ לצפייה בהיסטוריה
             </div>
         </div>
@@ -216,11 +216,11 @@ const AttendanceView = ({ students }: { students: any[] }) => (
             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400">
               {s.name[0]}
             </div>
-            <span className="font-black text-slate-700">{s.name}</span>
+            <span className="text-xl font-bold text-slate-800">{s.name}</span>
           </div>
           <div className="flex items-center gap-2">
-             <button className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase">נוכח</button>
-             <button className="px-3 py-1 bg-slate-100 text-slate-400 rounded-lg text-[10px] font-black uppercase">נעדר</button>
+             <button className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-black uppercase">נוכח</button>
+             <button className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-black uppercase">נעדר</button>
           </div>
         </div>
       ))}
@@ -264,7 +264,7 @@ const DashboardView = ({ stats }: any) => (
           <Badge className="bg-brand-50 text-brand-600">פעיל</Badge>
         </div>
         <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">תלמידים רשומים</h3>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">תלמידים רשומים</h3>
           <p className="text-3xl font-black text-slate-800">{stats.studentCount || 0}</p>
         </div>
       </div>
@@ -277,7 +277,7 @@ const DashboardView = ({ stats }: any) => (
           <Badge className="bg-amber-50 text-amber-600">+12%</Badge>
         </div>
         <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שביעות רצון</h3>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">שביעות רצון</h3>
           <p className="text-3xl font-black text-slate-800">84%</p>
         </div>
       </div>
@@ -290,7 +290,7 @@ const DashboardView = ({ stats }: any) => (
           <Badge className="bg-indigo-50 text-indigo-600">מעודכן</Badge>
         </div>
         <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שיבוץ נוכחי</h3>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">שיבוץ נוכחי</h3>
           <p className="text-3xl font-black text-slate-800">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
         </div>
       </div>
@@ -303,7 +303,7 @@ const DashboardView = ({ stats }: any) => (
           <Badge className="bg-rose-50 text-rose-600">נמוך</Badge>
         </div>
         <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">אילוצים לא פתורים</h3>
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">אילוצים לא פתורים</h3>
           <p className="text-3xl font-black text-slate-800">3</p>
         </div>
       </div>
@@ -386,46 +386,97 @@ export default function App() {
     setDraggedStudentId(null);
   };
 
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-      
-      const newStudents = data.slice(1).map((row, idx) => ({
-        id: `imported-${idx}-${Date.now()}`,
-        name: row[0] || 'ללא שם',
-        preferred: row[1] ? row[1].toString().split(',').map((s: string) => s.trim()) : [],
-        forbidden: row[2] ? row[2].toString().split(',').map((s: string) => s.trim()) : [],
-        height: row[3] === 'קצר' || row[3] === 'front' ? 'short' : 'medium'
-      })).filter(s => s.name !== 'ללא שם');
+      const content = evt.target?.result;
+      if (!content) return;
 
-      if (newStudents.length > 0) {
-        updateCurrentConfig((prev: any) => ({
-          ...prev,
-          students: [...prev.students, ...newStudents]
-        }));
-        setNotifications(prev => [...prev, { id: Date.now(), text: `יובאו ${newStudents.length} תלמידים בהצלחה!` }]);
+      try {
+        if (file.name.endsWith('.json')) {
+          const json = JSON.parse(content.toString());
+          
+          if (Array.isArray(json)) {
+            // Format 3: Array of students with constraints
+            const mapped = json.map(s => ({
+              id: (s.student_id || s.id || Math.random()).toString(),
+              name: s.name,
+              preferred: (s.preferred || []).map((id: any) => id?.toString()).filter(Boolean),
+              forbidden: (s.not_preferred || s.forbidden || []).map((id: any) => id?.toString()).filter(Boolean),
+              height: s.height || 'medium',
+              groups: s.groups || []
+            }));
+            updateCurrentConfig((prev: any) => ({ ...prev, students: [...prev.students, ...mapped] }));
+          } else if (json.grid && json.students) {
+            // Format 2: Full configuration
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              ...json,
+              students: json.students.map((s: any) => ({
+                ...s,
+                id: s.id.toString(),
+                preferred: (s.preferred || []).map((p: any) => p?.toString()).filter(Boolean),
+                forbidden: (s.forbidden || []).map((f: any) => f?.toString()).filter(Boolean),
+              })),
+              grid: json.grid.map((g: any) => g?.toString() || null)
+            }));
+          } else if (json.students) {
+            // Format 1: Teacher + students list
+            const mapped = json.students.map((s: any) => ({
+              id: s.id.toString(),
+              name: s.name,
+              preferred: [],
+              forbidden: [],
+              height: 'medium',
+              groups: []
+            }));
+            updateCurrentConfig((prev: any) => ({ ...prev, students: [...prev.students, ...mapped] }));
+          }
+        } else {
+          // Excel logic
+          const bstr = content;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+          
+          const newStudents = data.slice(1).map((row, idx) => ({
+            id: `imported-${idx}-${Date.now()}`,
+            name: row[0] || 'ללא שם',
+            preferred: row[1] ? row[1].toString().split(',').map((s: string) => s.trim()) : [],
+            forbidden: row[2] ? row[2].toString().split(',').map((s: string) => s.trim()) : [],
+            height: row[3] === 'קצר' || row[3] === 'front' ? 'short' : 'medium',
+            groups: []
+          })).filter(s => s.name !== 'ללא שם');
+
+          if (newStudents.length > 0) {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              students: [...prev.students, ...newStudents]
+            }));
+          }
+        }
+        setNotifications(prev => [...prev, { id: Date.now(), text: `הנתונים יובאו בהצלחה!` }]);
+      } catch (err) {
+        setNotifications(prev => [...prev, { id: Date.now(), text: "שגיאה בטעינת הקובץ.", type: 'error' }]);
       }
     };
-    reader.readAsBinaryString(file);
+    if (file.name.endsWith('.json')) reader.readAsText(file);
+    else reader.readAsBinaryString(file);
   };
 
   const SettingsView = () => {
     const fileRef = useRef<HTMLInputElement>(null);
     
     return (
-      <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto">
-        <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelImport} />
+      <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
+        <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .json" onChange={handleFileImport} />
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-black text-slate-700">הגדרות מערכת</h2>
-          <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.0.5</Badge>
+          <h2 className="text-3xl font-black text-slate-800">הגדרות מערכת</h2>
+          <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.1.0</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -433,7 +484,7 @@ export default function App() {
           <div className="glass-card p-8 rounded-[3rem] space-y-6">
             <div className="flex items-center gap-3">
               <Sparkles className="w-6 h-6 text-indigo-500" />
-              <h3 className="text-lg font-black text-slate-700">פרמטרים AI</h3>
+              <h3 className="text-lg font-black text-slate-800">פרמטרים AI</h3>
             </div>
             <div className="space-y-6">
               {Object.entries(aiWeights).map(([key, val]) => (
@@ -456,18 +507,18 @@ export default function App() {
           <div className="glass-card p-8 rounded-[3rem] space-y-6">
             <div className="flex items-center gap-3">
               <Monitor className="w-6 h-6 text-brand-500" />
-              <h3 className="text-lg font-black text-slate-700">נגישות ומראה</h3>
+              <h3 className="text-lg font-black text-slate-800">נגישות ומראה</h3>
             </div>
             <div className="space-y-4">
               <button 
                 onClick={() => setAccessibility(prev => ({ ...prev, highContrast: !prev.highContrast }))}
                 className={cn(
                   "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                  accessibility.highContrast ? "bg-brand-600 text-white shadow-lg shadow-brand-200" : "bg-slate-50 text-slate-600 border border-slate-100"
+                  accessibility.highContrast ? "bg-slate-900 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
                 )}
               >
                 ניגודיות גבוהה
-                {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+                {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5 text-brand-400" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
               </button>
               <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
                  {(['small', 'medium', 'large'] as const).map(size => (
@@ -475,8 +526,8 @@ export default function App() {
                      key={size}
                      onClick={() => setAccessibility(prev => ({ ...prev, fontSize: size }))}
                      className={cn(
-                       "flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all",
-                       accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm" : "text-slate-400"
+                       "flex-1 py-4 rounded-xl text-sm font-black transition-all",
+                       accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm border border-slate-100" : "text-slate-500"
                      )}
                    >
                      {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
@@ -493,37 +544,21 @@ export default function App() {
                   <Users className="w-8 h-8 text-emerald-500" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-700">ניהול נתוני כיתה</h3>
-                  <p className="text-sm font-bold text-slate-400 mt-1">נהלו שמות, אילוצי הפרדה והעדפות חברתיות במרוכז</p>
+                  <h3 className="text-2xl font-black text-slate-800">ניהול נתוני כיתה</h3>
+                  <p className="text-base font-bold text-slate-500 mt-1">נהלו שמות, אילוצי הפרדה והעדפות חברתיות במרוכז</p>
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-4">
-                <div className="flex p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
-                  <button 
-                    onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2 px-6 py-3 bg-white text-slate-700 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-slate-50 transition-all"
-                  >
-                    <Upload className="w-4 h-4 text-brand-600" />
-                    יבוא רשימה (Names)
-                  </button>
-                  <button 
-                    onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2 px-6 py-3 text-slate-400 hover:text-slate-600 rounded-xl text-xs font-black transition-all"
-                  >
-                    <Ban className="w-4 h-4" />
-                    אילוצים
-                  </button>
-                  <button 
-                    onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2 px-6 py-3 text-slate-400 hover:text-slate-600 rounded-xl text-xs font-black transition-all"
-                  >
-                    <Heart className="w-4 h-4" />
-                    העדפות
-                  </button>
-                </div>
+              <div className="flex flex-wrap gap-4 items-center">
+                <button 
+                  onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-3 px-8 py-4 bg-white text-slate-800 rounded-3xl text-base font-black shadow-lg border-2 border-brand-100 hover:bg-brand-50 hover:border-brand-300 transition-all active:scale-95"
+                >
+                  <Upload className="w-6 h-6 text-brand-600" />
+                  יבוא רשימה ונתונים
+                </button>
 
-                <div className="w-px h-10 bg-slate-200 mx-1 hidden md:block" />
+                <div className="w-px h-10 bg-slate-200 mx-2 hidden md:block" />
 
                 <button 
                   onClick={() => {
@@ -535,9 +570,9 @@ export default function App() {
                       }));
                     }
                   }}
-                  className="flex items-center gap-2 px-8 py-3 bg-brand-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                  className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-3xl text-base font-bold shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
                 >
-                  <UserPlus className="w-4 h-4" />
+                  <UserPlus className="w-6 h-6" />
                   הוספת תלמיד
                 </button>
               </div>
@@ -581,13 +616,13 @@ export default function App() {
                        >
                          {student.height === 'short' ? 'חייב קדימה' : 'גובה רגיל'}
                        </button>
-                       <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
+                       <div className="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
                           <Heart className="w-3 h-3 text-rose-400" />
-                          <span className="text-[10px] font-black text-slate-500">{student.preferred.length} חברים</span>
+                          <span className="text-xs font-black text-slate-500">{student.preferred.length} חברים</span>
                        </div>
                        <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
                           <Ban className="w-3 h-3 text-slate-400" />
-                          <span className="text-[10px] font-black text-slate-500">{student.forbidden.length} הפרדות</span>
+                          <span className="text-xs font-black text-slate-500">{student.forbidden.length} הפרדות</span>
                        </div>
                     </div>
 
@@ -606,11 +641,11 @@ export default function App() {
                                     students: prev.students.map((s: any) => s.id === student.id ? { ...s, preferred: val } : s)
                                   }));
                                 }}
-                                className="w-full bg-transparent border-0 p-0 text-[10px] font-medium focus:ring-0 placeholder:text-slate-300"
+                                className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
                              />
                           </div>
                           <div className="flex items-center gap-2">
-                             <Ban className="w-3 h-3 text-slate-500 shrink-0" />
+                             <Ban className="w-4 h-4 text-slate-500 shrink-0" />
                              <input 
                                 placeholder="מזהי הפרדות (מופרדים בפסיק)"
                                 value={student.forbidden.join(', ')}
@@ -621,7 +656,7 @@ export default function App() {
                                     students: prev.students.map((s: any) => s.id === student.id ? { ...s, forbidden: val } : s)
                                   }));
                                 }}
-                                className="w-full bg-transparent border-0 p-0 text-[10px] font-medium focus:ring-0 placeholder:text-slate-300"
+                                className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
                              />
                           </div>
                        </div>
@@ -738,8 +773,8 @@ export default function App() {
             <School className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-brand-700 leading-none tracking-tight">ClassManager</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Smart Learning Spaces</p>
+            <h1 className="text-2xl font-black text-brand-700 leading-none tracking-tight">ClassManager</h1>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Smart Learning Spaces</p>
           </div>
         </div>
 
@@ -813,7 +848,7 @@ export default function App() {
               <div className="glass-card p-5 rounded-3xl flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">כיתה פעילה</h3>
+                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">כיתה פעילה</h3>
                     <Badge className="bg-brand-50 text-brand-600">v3.0</Badge>
                   </div>
                   <input
@@ -827,7 +862,7 @@ export default function App() {
               {/* Student Pool */}
               <div className="flex flex-col gap-3 min-h-[200px]">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
                   <button className="p-1 hover:bg-slate-100 rounded-lg"><Plus className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
@@ -859,8 +894,8 @@ export default function App() {
               {/* View Satisfaction Indicator */}
               <div className="glass-card p-5 rounded-3xl border border-slate-100 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ממוצע שביעות רצון</h3>
-                  <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">ממוצע שביעות רצון</h3>
+                  <div className="flex items-center gap-1 text-xs font-black text-emerald-500">
                     <Sparkles className="w-3 h-3" />
                      +15%
                   </div>
@@ -892,7 +927,7 @@ export default function App() {
                     <AlertCircle className="w-4 h-4 text-rose-500" />
                     בעיות
                     {notifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white font-black animate-pulse">
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center border-2 border-white font-black animate-pulse">
                         {notifications.length}
                       </span>
                     )}
@@ -902,27 +937,27 @@ export default function App() {
 
               {/* Stats / Metadata */}
               <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">תלמידים</span>
-                  <span className="font-black text-slate-700">{currentConfig.students.length}</span>
+                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                  <span className="text-xs font-black text-slate-400 uppercase">תלמידים</span>
+                  <span className="text-lg font-black text-slate-800">{currentConfig.students.length}</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">מידות</span>
-                  <span className="font-black text-slate-700">{currentConfig.cols}x{currentConfig.rows}</span>
+                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                  <span className="text-xs font-black text-slate-400 uppercase">מידות</span>
+                  <span className="text-lg font-black text-slate-800">{currentConfig.cols}x{currentConfig.rows}</span>
                 </div>
               </div>
 
               {/* Quick Exports */}
               <div className="mt-auto space-y-4">
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">ייצוא מהיר</h3>
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest px-2">ייצוא מהיר</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={exportToExcel} className="flex items-center justify-center gap-2 px-2 py-3 bg-brand-50 text-brand-700 rounded-2xl text-[10px] font-bold hover:bg-brand-100 border border-brand-100">
-                      <Download className="w-4 h-4" />
+                    <button onClick={exportToExcel} className="flex items-center justify-center gap-3 px-2 py-4 bg-brand-50 text-brand-700 rounded-2xl text-xs font-bold hover:bg-brand-100 border border-brand-100">
+                      <Download className="w-5 h-5" />
                       Excel
                     </button>
-                    <button onClick={exportToPDF} className="flex items-center justify-center gap-2 px-2 py-3 bg-rose-50 text-rose-700 rounded-2xl text-[10px] font-bold hover:bg-rose-100 border border-rose-100">
-                      <FileDown className="w-4 h-4" />
+                    <button onClick={exportToPDF} className="flex items-center justify-center gap-3 px-2 py-4 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold hover:bg-rose-100 border border-rose-100">
+                      <FileDown className="w-5 h-5" />
                       PDF
                     </button>
                   </div>
@@ -938,11 +973,11 @@ export default function App() {
   return (
     <div 
       className={cn(
-        "flex flex-col h-screen overflow-hidden bg-white font-sans rtl selection:bg-brand-100",
+        "flex flex-col h-screen overflow-hidden bg-transparent font-sans rtl selection:bg-brand-100",
         accessibility.highContrast && "high-contrast grayscale"
       )} 
       style={{ 
-        '--app-font-size': accessibility.fontSize === 'small' ? '14px' : accessibility.fontSize === 'large' ? '20px' : '16px' 
+        '--app-font-size': accessibility.fontSize === 'small' ? '16px' : accessibility.fontSize === 'large' ? '26px' : '19px' 
       } as React.CSSProperties}
       dir="rtl"
     >
@@ -981,8 +1016,8 @@ export default function App() {
                                key={g}
                                onClick={() => setSelectedGroups(prev => prev.includes(g) ? prev.filter(pg => pg !== g) : [...prev, g])}
                                className={cn(
-                                 "px-3 py-1 rounded-lg text-[10px] font-black transition-all whitespace-nowrap",
-                                 selectedGroups.includes(g) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-400 border border-slate-100"
+                                 "px-4 py-2 rounded-lg text-xs font-black transition-all whitespace-nowrap",
+                                 selectedGroups.includes(g) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-500 border border-slate-100"
                                )}
                             >
                               קבוצה {g}
@@ -996,13 +1031,13 @@ export default function App() {
                      {editMode === 'structure' ? (
                        <div className="flex items-center gap-3">
                          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                           <span className="text-[10px] font-black text-slate-400 uppercase px-2">שורות</span>
+                           <span className="text-xs font-black text-slate-500 uppercase px-2">שורות</span>
                            <button onClick={() => handleGridResize('rows', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
                            <span className="w-6 text-center font-black text-xs">{currentConfig.rows}</span>
                            <button onClick={() => handleGridResize('rows', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
                          </div>
                          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                           <span className="text-[10px] font-black text-slate-400 uppercase px-2">טורים</span>
+                           <span className="text-xs font-black text-slate-500 uppercase px-2">טורים</span>
                            <button onClick={() => handleGridResize('cols', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
                            <span className="w-6 text-center font-black text-xs">{currentConfig.cols}</span>
                            <button onClick={() => handleGridResize('cols', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
@@ -1168,7 +1203,7 @@ export default function App() {
                     deskHistory[activeDeskIdx].map((name, i) => (
                       <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <span className="font-black text-slate-700">{name}</span>
-                        <span className="text-[10px] font-black text-slate-400">לפני {i + 1} שינויים</span>
+                        <span className="text-xs font-black text-slate-500">לפני {i + 1} שינויים</span>
                       </div>
                     ))
                   ) : (
@@ -1200,7 +1235,7 @@ export default function App() {
                    <div className="space-y-3">
                       {Object.entries(aiWeights).map(([key, val]) => (
                         <div key={key} className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                          <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
                              <span>{key === 'preferred' ? 'חברים' : key === 'forbidden' ? 'הפרדות' : 'ריחוק'}</span>
                              <span>{val}/10</span>
                           </div>
@@ -1256,7 +1291,7 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
+      <footer className="h-12 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest shrink-0">
         <div>ClassManager Pro v3.0 // Ready</div>
         <div className="flex gap-4">
           <span>{currentConfig.students.length} תלמידים</span>
