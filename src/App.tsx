@@ -54,7 +54,13 @@ import {
   RotateCcw,
   CloudLightning,
   Grid3X3,
-  Smile
+  Smile,
+  Box,
+  Brain,
+  HelpCircle,
+  Lightbulb,
+  ArrowRight,
+  MousePointer2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1080,9 +1086,91 @@ export default function App() {
   const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail'>('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
+    if (!hasSeenOnboarding) {
+      setOnboardingStep(0);
+    }
+  }, []);
+
+  const completeOnboarding = () => {
+    localStorage.setItem('hasSeenOnboarding_v3', 'true');
+    setOnboardingStep(null);
+  };
+
+  const onboardingContent = [
+    { title: "ברוכים הבאים!", text: "בואו נכיר את ClassManager Pro. המקום בו פדגוגיה פוגשת AI.", icon: <Sparkles className="w-10 h-10 text-brand-600" /> },
+    { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer2 className="w-10 h-10 text-indigo-600" /> },
+    { title: "אופטימיזציית AI", text: "לחצו על כפתור ה-AI כדי לתת למערכת למצוא את הסידור המושלם לפי אילוצים.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
+    { title: "תצוגת 3D", text: "חדש! מעכשיו תוכלו לראות את הכיתה בפרספקטיבה תלת-ממדית.", icon: <Box className="w-10 h-10 text-amber-600" /> }
+  ];
+
   const [editMode, setEditMode] = useState<'normal' | 'structure'>('normal');
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [is3DView, setIs3DView] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+
+  const aiInsights = useMemo(() => {
+    if (!currentConfig.grid) return [];
+    const insights = [];
+    const studentCount = currentConfig.grid.filter((s: any) => s !== null).length;
+    const placedCount = currentConfig.grid.filter((s: any) => s !== null).length;
+    
+    if (studentCount > 0) {
+      insights.push({ 
+        type: 'pedagogical', 
+        text: `הושבת ${studentCount} תלמידים. מומלץ לוודא שהתלמידים המאתגרים יושבים קרוב לשולחן המורה.` 
+      });
+    }
+
+    const shortCount = currentConfig.students.filter(s => s.height === 'short').length;
+    const shortInFront = currentConfig.grid.filter((sid: any, idx: number) => {
+      if (!sid) return false;
+      const s = currentConfig.students.find(st => st.id === sid);
+      return s?.height === 'short' && Math.floor(idx / currentConfig.cols) < 2;
+    }).length;
+
+    if (shortCount > 0) {
+      const percentage = Math.round((shortInFront / shortCount) * 100);
+      insights.push({ 
+        type: 'spatial', 
+        text: `${percentage}% מהתלמידים הנמוכים יושבים בשורות הראשונות. ${percentage < 80 ? 'כדאי לשפר את המיקום שלהם.' : 'מצוין!'}` 
+      });
+    }
+
+    // Social Conflict Check
+    let conflicts = 0;
+    currentConfig.grid.forEach((sid: any, idx: number) => {
+      if (!sid) return;
+      const student = currentConfig.students.find(s => s.id === sid);
+      if (!student || !student.forbidden) return;
+
+      const r = Math.floor(idx / currentConfig.cols);
+      const c = idx % currentConfig.cols;
+      
+      [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
+          const neighborId = currentConfig.grid[nr * currentConfig.cols + nc];
+          if (neighborId && student.forbidden.includes(neighborId)) {
+            conflicts++;
+          }
+        }
+      });
+    });
+
+    if (conflicts > 0) {
+      insights.push({ 
+        type: 'social', 
+        text: `נמצאו ${Math.floor(conflicts / 2)} הפרדות שלא נשמרו. ה-AI יכול לעזור לסדר זאת.` 
+      });
+    }
+
+    return insights;
+  }, [currentConfig]);
+
   const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
   const [isIssuesPanelOpen, setIsIssuesPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1545,6 +1633,28 @@ export default function App() {
              </button>
            ))}
         </nav>
+
+        {viewType === 'grid' && (
+          <div className="flex items-center gap-3 mr-4">
+            <button 
+              onClick={() => setIs3DView(!is3DView)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all",
+                is3DView ? "bg-brand-600 text-white shadow-lg" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              )}
+            >
+              <Box className="w-4 h-4" />
+              תצוגת 3D
+            </button>
+            
+            {aiInsights.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl">
+                <Brain className="w-4 h-4 text-indigo-600" />
+                <p className="text-[10px] font-black text-indigo-800">{aiInsights[0].text}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -1557,6 +1667,13 @@ export default function App() {
             ביטול פעולה
           </button>
         )}
+        <button 
+          onClick={() => setOnboardingStep(0)}
+          className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl transition-all"
+          title="מדריך למשתמש"
+        >
+          <HelpCircle className="w-5 h-5" />
+        </button>
         <button 
           onClick={() => setViewType('settings')}
           className={cn(
@@ -1739,8 +1856,54 @@ export default function App() {
   );
 
   return (
-    <div 
-      className={cn(
+    <>
+      <AnimatePresence>
+        {onboardingStep !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[3rem] p-12 max-w-sm w-full shadow-2xl text-center space-y-8 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 opacity-50" />
+              <div className="relative">
+                <div className="w-16 h-16 bg-brand-100 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6">
+                  {onboardingContent[onboardingStep].icon}
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">{onboardingContent[onboardingStep].title}</h2>
+                <p className="text-base text-slate-600 font-medium leading-relaxed">{onboardingContent[onboardingStep].text}</p>
+              </div>
+              
+              <div className="flex gap-4 relative">
+                {onboardingStep < onboardingContent.length - 1 ? (
+                  <button 
+                    onClick={() => setOnboardingStep(onboardingStep + 1)}
+                    className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-brand-700 transition-all shadow-xl active:scale-95"
+                  >
+                    הבא
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={completeOnboarding}
+                    className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-xl active:scale-95"
+                  >
+                    בואו נתחיל!
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div 
+        className={cn(
         "flex flex-col h-screen overflow-hidden bg-transparent font-sans rtl selection:bg-brand-100",
         accessibility.highContrast && "high-contrast grayscale"
       )} 
@@ -1765,7 +1928,17 @@ export default function App() {
                className="flex-1 flex flex-col overflow-hidden"
              >
                {viewType === 'grid' ? (
-                 <div className="flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner">
+                 <div 
+                   className={cn(
+                     "flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top",
+                     is3DView && "bg-slate-200/50"
+                   )}
+                   style={is3DView ? { 
+                     perspective: '1200px',
+                     transform: 'rotateX(25deg) scale(0.95)',
+                     transformStyle: 'preserve-3d'
+                   } : {}}
+                 >
                    {/* Grid Toolbar */}
                    <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-3 mb-10 z-30 shadow-bento shrink-0 relative">
                      {/* Floating Structure Notice */}
@@ -2087,5 +2260,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
