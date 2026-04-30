@@ -50,7 +50,10 @@ import {
   UserPlus,
   School,
   ClipboardList,
-  Upload
+  Upload,
+  RotateCcw,
+  CloudLightning,
+  Grid3X3
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -100,7 +103,8 @@ const DeskCell = ({
   onDrop,
   updateCurrentConfig,
   currentConfig,
-  onShowHistory
+  onShowHistory,
+  setNotifications
 }: any) => {
   const [isOver, setIsOver] = useState(false);
   const draggingS = currentConfig.students.find((s: any) => s.id === draggedStudentId);
@@ -167,7 +171,7 @@ const DeskCell = ({
            {/* Desk Shadow Area */}
            <div className="w-10 h-1 bg-slate-200/50 rounded-full blur-[1px] mt-1" />
            
-           <button 
+            <button 
               onClick={(e) => {
                 e.stopPropagation();
                 updateCurrentConfig((prev: any) => {
@@ -175,10 +179,12 @@ const DeskCell = ({
                   newGrid[idx] = null;
                   return { ...prev, grid: newGrid };
                 });
+                setNotifications((prev: any) => [{ id: Date.now(), text: `השיבוץ בוטל: ${student.name} הוחזר למאגר`, type: 'info' }, ...prev]);
               }}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm z-30"
+              title="ביטול שיבוץ"
+              className="absolute -top-2 -right-2 w-8 h-8 bg-white border-2 border-brand-100 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-lg z-30 scale-90 hover:scale-100 active:scale-95"
             >
-              <X className="w-3 h-3" />
+              <RotateCcw className="w-4 h-4" />
             </button>
             
             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-xl z-50">
@@ -203,11 +209,21 @@ const DeskCell = ({
 
 // --- Content Handlers & Views ---
 
-const AttendanceView = ({ students }: { students: any[] }) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto">
-    <div className="flex items-center justify-between">
-      <h2 className="text-2xl font-black text-slate-700">נוכחות יומית</h2>
-      <Badge className="bg-emerald-50 text-emerald-600">יום שלישי, 28 באפריל</Badge>
+// --- Views ---
+
+const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => void }) => (
+  <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
+    <div className="flex items-center gap-4">
+      <button 
+        onClick={onBack}
+        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <div className="flex items-center justify-between flex-1">
+        <h2 className="text-2xl font-black text-slate-700">נוכחות יומית</h2>
+        <Badge className="bg-emerald-50 text-emerald-600">יום שלישי, 28 באפריל</Badge>
+      </div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {students.map((s, idx) => (
@@ -228,31 +244,59 @@ const AttendanceView = ({ students }: { students: any[] }) => (
   </div>
 );
 
-const GradesView = () => (
-  <div className="p-8 h-full flex flex-col items-center justify-center text-center space-y-4">
-    <div className="p-6 bg-brand-50 rounded-full">
-      <GraduationCap className="w-12 h-12 text-brand-600" />
+const GradesView = ({ onBack }: { onBack: () => void }) => (
+  <div className="p-8 space-y-8 h-full overflow-y-auto flex flex-col">
+    <div className="flex items-center gap-4">
+      <button 
+        onClick={onBack}
+        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <h2 className="text-2xl font-black text-slate-700">ניהול ציונים</h2>
     </div>
-    <h2 className="text-2xl font-black text-slate-700">ניהול ציונים</h2>
-    <p className="max-w-md text-slate-500 font-medium">כאן תוכלו לראות ולנהל את הישגי התלמידים. מודול הציונים בבנייה ויעלה בקרוב בגרסה 3.1.</p>
+    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+      <div className="p-6 bg-brand-50 rounded-full">
+        <GraduationCap className="w-12 h-12 text-brand-600" />
+      </div>
+      <p className="max-w-md text-slate-500 font-medium">כאן תוכלו לראות ולנהל את הישגי התלמידים. מודול הציונים בבנייה ויעלה בקרוב בגרסה 3.1.</p>
+    </div>
   </div>
 );
 
-const ProgressView = () => (
-  <div className="p-8 h-full flex flex-col items-center justify-center text-center space-y-4">
-    <div className="p-6 bg-indigo-50 rounded-full">
-      <LineChart className="w-12 h-12 text-indigo-600" />
+const ProgressView = ({ onBack }: { onBack: () => void }) => (
+  <div className="p-8 space-y-8 h-full overflow-y-auto flex flex-col">
+    <div className="flex items-center gap-4">
+      <button 
+        onClick={onBack}
+        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <h2 className="text-2xl font-black text-slate-700">גרף התקדמות</h2>
     </div>
-    <h2 className="text-2xl font-black text-slate-700">גרף התקדמות</h2>
-    <p className="max-w-md text-slate-500 font-medium">מעקב אחר יעדים פדגוגיים ושינויי התנהגות לאורך זמן. מודול זה בבנייה בקרוב.</p>
+    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+      <div className="p-6 bg-indigo-50 rounded-full">
+        <LineChart className="w-12 h-12 text-indigo-600" />
+      </div>
+      <p className="max-w-md text-slate-500 font-medium">מעקב אחר יעדים פדגוגיים ושינויי התנהגות לאורך זמן. מודול זה בבנייה בקרוב.</p>
+    </div>
   </div>
 );
 
-const DashboardView = ({ stats }: any) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto">
-    <div className="flex items-center justify-between">
-      <h2 className="text-2xl font-black text-slate-700">סיכום מערכת</h2>
-      <Badge className="bg-brand-100 text-brand-700 border-brand-200">דוא"ט ניהולי</Badge>
+const DashboardView = ({ stats, onBack }: any) => (
+  <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
+    <div className="flex items-center gap-4">
+      <button 
+        onClick={onBack}
+        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <div className="flex items-center justify-between flex-1">
+        <h2 className="text-2xl font-black text-slate-700">סיכום מערכת</h2>
+        <Badge className="bg-brand-100 text-brand-700 border-brand-200">דוא"ט ניהולי</Badge>
+      </div>
     </div>
     
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -311,6 +355,254 @@ const DashboardView = ({ stats }: any) => (
   </div>
 );
 
+const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) => {
+  const [localName, setLocalName] = useState(student.name);
+
+  useEffect(() => {
+    setLocalName(student.name);
+  }, [student.name]);
+
+  const commitName = () => {
+    if (localName === student.name) return;
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => s.id === student.id ? { ...s, name: localName } : s)
+    }));
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
+      <div className="flex items-center justify-between">
+        <input 
+          value={localName}
+          onChange={(e) => setLocalName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => e.key === 'Enter' && commitName()}
+          className="bg-transparent font-black text-slate-700 focus:ring-0 border-0 p-0 w-32 text-sm"
+        />
+        <button 
+          onClick={() => {
+            if (confirm(`האם למחוק את ${student.name}?`)) {
+              updateCurrentConfig((prev: any) => ({ 
+                ...prev, 
+                students: prev.students.filter((s:any) => s.id !== student.id),
+                grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+              }));
+              setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
+            }
+          }}
+          className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg group-hover:opacity-100 transition-all"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+           <button 
+             onClick={() => updateCurrentConfig((prev: any) => ({
+                ...prev,
+                students: prev.students.map((s:any) => s.id === student.id ? { ...s, height: s.height === 'short' ? 'medium' : 'short' } : s)
+             }))}
+             className={cn("px-3 py-1.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap", student.height === 'short' ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-500")}
+           >
+             {student.height === 'short' ? 'חייב קדימה' : 'גובה רגיל'}
+           </button>
+           <div className="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
+              <Heart className="w-3 h-3 text-rose-400" />
+              <span className="text-xs font-black text-slate-500">{student.preferred.length} חברים</span>
+           </div>
+           <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
+              <Ban className="w-3 h-3 text-slate-400" />
+              <span className="text-xs font-black text-slate-500">{student.forbidden.length} הפרדות</span>
+           </div>
+        </div>
+
+        <div className="p-3 bg-white/50 rounded-2xl border border-slate-100/50 space-y-2">
+           <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">עריכת אילוצים (IDs)</h4>
+           <div className="grid grid-cols-1 gap-2">
+              <div className="flex items-center gap-2">
+                 <Heart className="w-3 h-3 text-rose-500 shrink-0" />
+                 <input 
+                    placeholder="מזהי חברים (מופרדים בפסיק)"
+                    value={student.preferred.join(', ')}
+                    onChange={(e) => {
+                      const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                      updateCurrentConfig((prev: any) => ({
+                        ...prev,
+                        students: prev.students.map((s: any) => s.id === student.id ? { ...s, preferred: val } : s)
+                      }));
+                    }}
+                    className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
+                 />
+              </div>
+              <div className="flex items-center gap-2">
+                 <Ban className="w-4 h-4 text-slate-500 shrink-0" />
+                 <input 
+                    placeholder="מזהי הפרדות (מופרדים בפסיק)"
+                    value={student.forbidden.join(', ')}
+                    onChange={(e) => {
+                      const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                      updateCurrentConfig((prev: any) => ({
+                        ...prev,
+                        students: prev.students.map((s: any) => s.id === student.id ? { ...s, forbidden: val } : s)
+                      }));
+                    }}
+                    className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
+                 />
+              </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SettingsView = ({ 
+  onBack, 
+  handleFileImport, 
+  aiWeights, 
+  setAiWeights, 
+  accessibility, 
+  setAccessibility, 
+  currentConfig, 
+  updateCurrentConfig, 
+  setNotifications 
+}: any) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  
+  return (
+    <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
+      <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .json" onChange={handleFileImport} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack}
+            className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <h2 className="text-3xl font-black text-slate-800">הגדרות מערכת</h2>
+        </div>
+        <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.1.5</Badge>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* AI Parameters */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-indigo-500" />
+            <h3 className="text-lg font-black text-slate-800">פרמטרים AI</h3>
+          </div>
+          <div className="space-y-6">
+            {Object.entries(aiWeights).map(([key, val]: [string, any]) => (
+              <div key={key} className="space-y-2">
+                <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
+                  <span>{key === 'preferred' ? 'עדיפות חברים' : key === 'forbidden' ? 'מניעת חיכוך' : 'מרחק פיזי'}</span>
+                  <span className="text-brand-600">{val}/10</span>
+                </div>
+                <input 
+                  type="range" min="0" max="10" value={val} 
+                  onChange={(e) => setAiWeights((prev: any) => ({ ...prev, [key]: parseInt(e.target.value) }))}
+                  className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Accessibility & Theme */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Monitor className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800">נגישות ומראה</h3>
+          </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => setAccessibility((prev: any) => ({ ...prev, highContrast: !prev.highContrast }))}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                accessibility.highContrast ? "bg-slate-900 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+              )}
+            >
+              ניגודיות גבוהה
+              {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5 text-brand-400" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+            </button>
+            <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+               {(['small', 'medium', 'large'] as const).map(size => (
+                 <button 
+                   key={size}
+                   onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
+                   className={cn(
+                     "flex-1 py-4 rounded-xl text-sm font-black transition-all",
+                     accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm border border-slate-100" : "text-slate-500"
+                   )}
+                 >
+                   {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
+                 </button>
+               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-slate-100">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-emerald-50 rounded-[1.5rem] shadow-sm">
+                <Users className="w-8 h-8 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-slate-800">ניהול נתוני כיתה</h3>
+                <p className="text-base font-bold text-slate-500 mt-1">נהלו שמות, אילוצי הפרדה והעדפות חברתיות במרוכז</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-4 items-center">
+              <button 
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-3 px-8 py-4 bg-white text-slate-800 rounded-3xl text-base font-black shadow-lg border-2 border-brand-100 hover:bg-brand-50 hover:border-brand-300 transition-all active:scale-95"
+              >
+                <Upload className="w-6 h-6 text-brand-600" />
+                יבוא רשימה ונתונים
+              </button>
+
+              <div className="w-px h-10 bg-slate-200 mx-2 hidden md:block" />
+
+              <button 
+                onClick={() => {
+                  const name = prompt("שם התלמיד החדש:");
+                  if (name) {
+                    updateCurrentConfig((prev: any) => ({
+                      ...prev,
+                      students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium', groups: [] }]
+                    }));
+                  }
+                }}
+                className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-3xl text-base font-bold shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
+              >
+                <UserPlus className="w-6 h-6" />
+                הוספת תלמיד
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentConfig.students.map((student: any, idx: number) => (
+              <StudentCard 
+                key={`${student.id}-${idx}`}
+                student={student}
+                updateCurrentConfig={updateCurrentConfig}
+                setNotifications={setNotifications}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // --- Main App Component ---
 
 export default function App() {
@@ -347,6 +639,7 @@ export default function App() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [undoHistory, setUndoHistory] = useState<any[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
@@ -355,6 +648,27 @@ export default function App() {
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('class-manager-config');
+    const savedHistory = localStorage.getItem('desk-history');
+    if (savedConfig) {
+      try {
+        const config = JSON.parse(savedConfig);
+        setCurrentConfig(config);
+      } catch (e) { console.error("Error loading config", e); }
+    }
+    if (savedHistory) {
+      try {
+        setDeskHistory(JSON.parse(savedHistory));
+      } catch (e) { console.error("Error loading history", e); }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('class-manager-config', JSON.stringify(currentConfig));
+    localStorage.setItem('desk-history', JSON.stringify(deskHistory));
+  }, [currentConfig, deskHistory]);
 
   const studentsInPool = currentConfig.students.filter(s => {
     const isPlaced = currentConfig.grid.includes(s.id);
@@ -458,216 +772,13 @@ export default function App() {
             }));
           }
         }
-        setNotifications(prev => [...prev, { id: Date.now(), text: `הנתונים יובאו בהצלחה!` }]);
+        setNotifications(prev => [{ id: Date.now(), text: `הנתונים יובאו בהצלחה!`, type: 'success' }, ...prev]);
       } catch (err) {
-        setNotifications(prev => [...prev, { id: Date.now(), text: "שגיאה בטעינת הקובץ.", type: 'error' }]);
+        setNotifications(prev => [{ id: Date.now(), text: "שגיאה בטעינת הקובץ.", type: 'error' }, ...prev]);
       }
     };
     if (file.name.endsWith('.json')) reader.readAsText(file);
     else reader.readAsBinaryString(file);
-  };
-
-  const SettingsView = () => {
-    const fileRef = useRef<HTMLInputElement>(null);
-    
-    return (
-      <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
-        <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .json" onChange={handleFileImport} />
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-black text-slate-800">הגדרות מערכת</h2>
-          <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.1.0</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* AI Parameters */}
-          <div className="glass-card p-8 rounded-[3rem] space-y-6">
-            <div className="flex items-center gap-3">
-              <Sparkles className="w-6 h-6 text-indigo-500" />
-              <h3 className="text-lg font-black text-slate-800">פרמטרים AI</h3>
-            </div>
-            <div className="space-y-6">
-              {Object.entries(aiWeights).map(([key, val]) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
-                    <span>{key === 'preferred' ? 'עדיפות חברים' : key === 'forbidden' ? 'מניעת חיכוך' : 'מרחק פיזי'}</span>
-                    <span className="text-brand-600">{val}/10</span>
-                  </div>
-                  <input 
-                    type="range" min="0" max="10" value={val} 
-                    onChange={(e) => setAiWeights(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
-                    className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Accessibility & Theme */}
-          <div className="glass-card p-8 rounded-[3rem] space-y-6">
-            <div className="flex items-center gap-3">
-              <Monitor className="w-6 h-6 text-brand-500" />
-              <h3 className="text-lg font-black text-slate-800">נגישות ומראה</h3>
-            </div>
-            <div className="space-y-4">
-              <button 
-                onClick={() => setAccessibility(prev => ({ ...prev, highContrast: !prev.highContrast }))}
-                className={cn(
-                  "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                  accessibility.highContrast ? "bg-slate-900 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
-                )}
-              >
-                ניגודיות גבוהה
-                {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5 text-brand-400" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
-              </button>
-              <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
-                 {(['small', 'medium', 'large'] as const).map(size => (
-                   <button 
-                     key={size}
-                     onClick={() => setAccessibility(prev => ({ ...prev, fontSize: size }))}
-                     className={cn(
-                       "flex-1 py-4 rounded-xl text-sm font-black transition-all",
-                       accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm border border-slate-100" : "text-slate-500"
-                     )}
-                   >
-                     {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
-                   </button>
-                 ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-emerald-50 rounded-[1.5rem] shadow-sm">
-                  <Users className="w-8 h-8 text-emerald-500" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-800">ניהול נתוני כיתה</h3>
-                  <p className="text-base font-bold text-slate-500 mt-1">נהלו שמות, אילוצי הפרדה והעדפות חברתיות במרוכז</p>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 items-center">
-                <button 
-                  onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-3 px-8 py-4 bg-white text-slate-800 rounded-3xl text-base font-black shadow-lg border-2 border-brand-100 hover:bg-brand-50 hover:border-brand-300 transition-all active:scale-95"
-                >
-                  <Upload className="w-6 h-6 text-brand-600" />
-                  יבוא רשימה ונתונים
-                </button>
-
-                <div className="w-px h-10 bg-slate-200 mx-2 hidden md:block" />
-
-                <button 
-                  onClick={() => {
-                    const name = prompt("שם התלמיד החדש:");
-                    if (name) {
-                      updateCurrentConfig((prev: any) => ({
-                        ...prev,
-                        students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium', groups: [] }]
-                      }));
-                    }
-                  }}
-                  className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-3xl text-base font-bold shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
-                >
-                  <UserPlus className="w-6 h-6" />
-                  הוספת תלמיד
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentConfig.students.map((student, idx) => (
-                <div key={`${student.id}-${idx}`} className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
-                  <div className="flex items-center justify-between">
-                    <input 
-                      value={student.name}
-                      onChange={(e) => {
-                        const newName = e.target.value;
-                        updateCurrentConfig((prev: any) => ({
-                          ...prev,
-                          students: prev.students.map((s: any) => s.id === student.id ? { ...s, name: newName } : s)
-                        }));
-                      }}
-                      className="bg-transparent font-black text-slate-700 focus:ring-0 border-0 p-0 w-32 text-sm"
-                    />
-                    <button 
-                      onClick={() => {
-                        if (confirm(`האם למחוק את ${student.name}?`)) {
-                          updateCurrentConfig((prev: any) => ({ ...prev, students: prev.students.filter((s:any) => s.id !== student.id) }));
-                        }
-                      }}
-                      className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                       <button 
-                         onClick={() => updateCurrentConfig((prev: any) => ({
-                            ...prev,
-                            students: prev.students.map((s:any) => s.id === student.id ? { ...s, height: s.height === 'short' ? 'medium' : 'short' } : s)
-                         }))}
-                         className={cn("px-3 py-1.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap", student.height === 'short' ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-500")}
-                       >
-                         {student.height === 'short' ? 'חייב קדימה' : 'גובה רגיל'}
-                       </button>
-                       <div className="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
-                          <Heart className="w-3 h-3 text-rose-400" />
-                          <span className="text-xs font-black text-slate-500">{student.preferred.length} חברים</span>
-                       </div>
-                       <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
-                          <Ban className="w-3 h-3 text-slate-400" />
-                          <span className="text-xs font-black text-slate-500">{student.forbidden.length} הפרדות</span>
-                       </div>
-                    </div>
-
-                    <div className="p-3 bg-white/50 rounded-2xl border border-slate-100/50 space-y-2">
-                       <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">עריכת אילוצים (IDs)</h4>
-                       <div className="grid grid-cols-1 gap-2">
-                          <div className="flex items-center gap-2">
-                             <Heart className="w-3 h-3 text-rose-500 shrink-0" />
-                             <input 
-                                placeholder="מזהי חברים (מופרדים בפסיק)"
-                                value={student.preferred.join(', ')}
-                                onChange={(e) => {
-                                  const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                                  updateCurrentConfig((prev: any) => ({
-                                    ...prev,
-                                    students: prev.students.map((s: any) => s.id === student.id ? { ...s, preferred: val } : s)
-                                  }));
-                                }}
-                                className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
-                             />
-                          </div>
-                          <div className="flex items-center gap-2">
-                             <Ban className="w-4 h-4 text-slate-500 shrink-0" />
-                             <input 
-                                placeholder="מזהי הפרדות (מופרדים בפסיק)"
-                                value={student.forbidden.join(', ')}
-                                onChange={(e) => {
-                                  const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                                  updateCurrentConfig((prev: any) => ({
-                                    ...prev,
-                                    students: prev.students.map((s: any) => s.id === student.id ? { ...s, forbidden: val } : s)
-                                  }));
-                                }}
-                                className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
-                             />
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   const checkViolations = useCallback(() => {
@@ -731,10 +842,20 @@ export default function App() {
   const updateCurrentConfig = useCallback((update: any) => {
     setCurrentConfig(prev => {
       const next = typeof update === 'function' ? update(prev) : update;
-      // Add to history briefly (simplified)
+      if (JSON.stringify(next) !== JSON.stringify(prev)) {
+        setUndoHistory(h => [prev, ...h].slice(0, 10));
+      }
       return next;
     });
   }, []);
+
+  const undo = () => {
+    if (undoHistory.length === 0) return;
+    const [prev, ...rest] = undoHistory;
+    setCurrentConfig(prev);
+    setUndoHistory(rest);
+    setNotifications(prevNotif => [{ id: Date.now(), text: "הפעולה בוטלה בהצלחה", type: 'info' }, ...prevNotif]);
+  };
 
   const handleGridResize = (type: 'rows' | 'cols', delta: number) => {
     updateCurrentConfig((prev: any) => {
@@ -751,12 +872,26 @@ export default function App() {
   };
 
   const renderMainContent = () => {
+    const onBack = () => setViewType('dashboard');
+    const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={{ studentCount: currentConfig.students.length, placedCount: currentConfig.grid.filter(id => id).length }} />;
-      case 'attendance': return <AttendanceView students={currentConfig.students} />;
-      case 'grades': return <GradesView />;
-      case 'progress': return <ProgressView />;
-      case 'settings': return <SettingsView />;
+      case 'dashboard': return <DashboardView stats={{ studentCount: currentConfig.students.length, placedCount: currentConfig.grid.filter(id => id).length }} onBack={onBackToGrid} />;
+      case 'attendance': return <AttendanceView students={currentConfig.students} onBack={onBack} />;
+      case 'grades': return <GradesView onBack={onBack} />;
+      case 'progress': return <ProgressView onBack={onBack} />;
+      case 'settings': return (
+        <SettingsView 
+          onBack={onBackToGrid}
+          handleFileImport={handleFileImport}
+          aiWeights={aiWeights}
+          setAiWeights={setAiWeights}
+          accessibility={accessibility}
+          setAccessibility={setAccessibility}
+          currentConfig={currentConfig}
+          updateCurrentConfig={updateCurrentConfig}
+          setNotifications={setNotifications}
+        />
+      );
       default: return null;
     }
   };
@@ -799,6 +934,15 @@ export default function App() {
       </div>
 
       <div className="flex items-center gap-4">
+        {undoHistory.length > 0 && (
+          <button 
+            onClick={undo}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-50 text-brand-700 rounded-2xl font-black text-xs hover:bg-brand-100 transition-all border border-brand-100 shadow-sm"
+          >
+            <ArrowRightLeft className="w-4 h-4 rotate-180" />
+            ביטול פעולה
+          </button>
+        )}
         <button 
           onClick={() => setViewType('settings')}
           className={cn(
@@ -998,7 +1142,22 @@ export default function App() {
                {viewType === 'grid' ? (
                  <div className="flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner">
                    {/* Grid Toolbar */}
-                   <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-3 mb-10 z-30 shadow-bento shrink-0">
+                   <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-3 mb-10 z-30 shadow-bento shrink-0 relative">
+                     {/* Floating Structure Notice */}
+                     <AnimatePresence>
+                       {editMode === 'structure' && (
+                         <motion.div 
+                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                           animate={{ opacity: 1, y: 0, scale: 1 }}
+                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                           className="absolute -top-12 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg flex items-center gap-2 border-2 border-white whitespace-nowrap"
+                         >
+                           <CloudLightning className="w-3 h-3 text-amber-100" />
+                           מצב עריכת מבנה פעיל - ניתן להזיז רווחים ולהוסיף שולחנות
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+
                      <div className="flex items-center gap-1 p-1 bg-slate-100/50 rounded-xl">
                        <button onClick={() => setEditMode('normal')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'normal' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>עריכה</button>
                        <button onClick={() => setEditMode('structure')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'structure' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>מבנה</button>
@@ -1064,7 +1223,10 @@ export default function App() {
                       </div>
 
                   <div 
-                    className="grid p-10 bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm relative" 
+                    className={cn(
+                      "grid p-10 transition-all duration-500 relative",
+                      editMode === 'structure' ? "bg-white ring-8 ring-amber-400 ring-offset-4 ring-offset-slate-50 rounded-[4rem] shadow-2xl" : "bg-white/40 rounded-[4rem] border border-white shadow-bento backdrop-blur-sm"
+                    )}
                     style={{ 
                       display: 'grid',
                       gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
@@ -1171,6 +1333,7 @@ export default function App() {
                               setActiveDeskIdx(i);
                               setIsHistoryModalOpen(true);
                             }}
+                            setNotifications={setNotifications}
                           />
                         );
                       })
