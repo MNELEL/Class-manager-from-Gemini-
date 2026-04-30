@@ -210,8 +210,8 @@ const AttendanceView = ({ students }: { students: any[] }) => (
       <Badge className="bg-emerald-50 text-emerald-600">יום שלישי, 28 באפריל</Badge>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {students.map(s => (
-        <div key={s.id} className="glass-card p-5 rounded-3xl flex items-center justify-between hover:shadow-lg transition-shadow">
+      {students.map((s, idx) => (
+        <div key={`${s.id}-${idx}`} className="glass-card p-5 rounded-3xl flex items-center justify-between hover:shadow-lg transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400">
               {s.name[0]}
@@ -401,8 +401,8 @@ export default function App() {
           
           if (Array.isArray(json)) {
             // Format 3: Array of students with constraints
-            const mapped = json.map(s => ({
-              id: (s.student_id || s.id || Math.random()).toString(),
+            const mapped = json.map((s, idx) => ({
+              id: (s.student_id || s.id || `json-${idx}-${Date.now()}`).toString(),
               name: s.name,
               preferred: (s.preferred || []).map((id: any) => id?.toString()).filter(Boolean),
               forbidden: (s.not_preferred || s.forbidden || []).map((id: any) => id?.toString()).filter(Boolean),
@@ -411,9 +411,8 @@ export default function App() {
             }));
             updateCurrentConfig((prev: any) => ({ ...prev, students: [...prev.students, ...mapped] }));
           } else if (json.grid && json.students) {
-            // Format 2: Full configuration
-            updateCurrentConfig((prev: any) => ({
-              ...prev,
+            // Format 2: Full configuration - Replace entirely to avoid conflicts
+            updateCurrentConfig({
               ...json,
               students: json.students.map((s: any) => ({
                 ...s,
@@ -422,11 +421,11 @@ export default function App() {
                 forbidden: (s.forbidden || []).map((f: any) => f?.toString()).filter(Boolean),
               })),
               grid: json.grid.map((g: any) => g?.toString() || null)
-            }));
+            });
           } else if (json.students) {
             // Format 1: Teacher + students list
-            const mapped = json.students.map((s: any) => ({
-              id: s.id.toString(),
+            const mapped = json.students.map((s: any, idx: number) => ({
+              id: (s.id || `s-${idx}-${Date.now()}`).toString(),
               name: s.name,
               preferred: [],
               forbidden: [],
@@ -579,8 +578,8 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentConfig.students.map(student => (
-                <div key={student.id} className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
+              {currentConfig.students.map((student, idx) => (
+                <div key={`${student.id}-${idx}`} className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
                   <div className="flex items-center justify-between">
                     <input 
                       value={student.name}
@@ -866,9 +865,9 @@ export default function App() {
                   <button className="p-1 hover:bg-slate-100 rounded-lg"><Plus className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {studentsInPool.map(student => (
+                  {studentsInPool.map((student, idx) => (
                     <motion.div
-                      key={student.id}
+                      key={`${student.id}-${idx}`}
                       draggable
                       onDragStart={() => setDraggedStudentId(student.id)}
                       onDragEnd={() => setDraggedStudentId(null)}
@@ -1201,7 +1200,7 @@ export default function App() {
                 <div className="space-y-4">
                   {deskHistory[activeDeskIdx] && deskHistory[activeDeskIdx].length > 0 ? (
                     deskHistory[activeDeskIdx].map((name, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div key={`${name}-${i}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <span className="font-black text-slate-700">{name}</span>
                         <span className="text-xs font-black text-slate-500">לפני {i + 1} שינויים</span>
                       </div>
