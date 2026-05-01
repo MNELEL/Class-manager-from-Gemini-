@@ -7,6 +7,8 @@ import {
   useMotionValue,
   useTransform
 } from 'motion/react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { 
   Users, 
   LayoutGrid, 
@@ -41,8 +43,12 @@ import {
   Eye,
   Settings2,
   Calendar,
+  Clock,
   Filter,
+  Ruler,
+  ShieldAlert,
   MoreVertical,
+  Menu,
   Heart,
   Ban,
   GraduationCap,
@@ -52,6 +58,7 @@ import {
   ClipboardList,
   Upload,
   RotateCcw,
+  Share2,
   CloudLightning,
   Grid3X3,
   Smile,
@@ -60,7 +67,8 @@ import {
   HelpCircle,
   Lightbulb,
   ArrowRight,
-  MousePointer2
+  MousePointer,
+  FileText
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -97,6 +105,47 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 
 // --- Helper Components ---
 
+const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig }: any) => {
+  return (
+    <motion.div
+      layoutId="teacher-desk"
+      whileHover={{ scale: 1.02 }}
+      style={{
+        gridColumn: `${colPos} / span ${width}`,
+        gridRow: `${rowPos} / span ${height}`,
+      }}
+      draggable={editMode === 'structure'}
+      onDragStart={(e) => {
+        if (editMode === 'structure') {
+          e.dataTransfer.setData('type', 'teacher-desk');
+          e.dataTransfer.setData('index', index.toString());
+        }
+      }}
+      className={cn(
+        "bg-brand-700 text-white rounded-3xl border-b-[12px] border-brand-900 shadow-2xl flex flex-col items-center justify-center gap-2 z-40 transition-all",
+        editMode === 'structure' ? "ring-4 ring-amber-400 cursor-move" : "cursor-default"
+      )}
+    >
+      <div className="w-12 h-1 bg-white/20 rounded-full" />
+      <div className="flex items-center gap-3">
+        <School className="w-8 h-8 text-brand-200" />
+        <span className="text-xl font-black uppercase tracking-widest">שולחן מורה</span>
+      </div>
+      {editMode === 'structure' && (
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: -1 } }));
+          }}
+          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-rose-600 rounded-full flex items-center justify-center shadow-lg border border-slate-100 hover:bg-rose-600 hover:text-white transition-all scale-75 hover:scale-100"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
+    </motion.div>
+  );
+};
+
 const DeskCell = ({ 
   idx, 
   studentId, 
@@ -107,9 +156,12 @@ const DeskCell = ({
   rowPos, 
   showDeskNumbers,
   draggedStudentId,
+  selectedStudentId,
   onDrop,
   updateCurrentConfig,
   currentConfig,
+  is3DView,
+  activeDeskIdx,
   onShowHistory,
   onShowProfile,
   setNotifications
@@ -119,37 +171,152 @@ const DeskCell = ({
   const isCompatible = draggingS && draggingS.height === 'short' ? Math.floor(idx / currentConfig.cols) < 2 : true;
   const compatibilityClass = isOver ? (isCompatible ? "bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100" : "bg-rose-50 border-rose-300 ring-4 ring-rose-100") : "";
 
-  if (isHidden && editMode === 'normal') return <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent" />;
+  const isSelected = studentId && selectedStudentId === studentId;
+  const isObstruction = currentConfig.obstructions?.includes(idx);
+
+  if ((isHidden || isObstruction) && editMode === 'normal') return <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent flex items-center justify-center">
+    {isObstruction && <ShieldAlert className="w-5 h-5 text-slate-200" />}
+  </div>;
+
+  const handleDeskDragStart = (e: React.DragEvent) => {
+    if (editMode === 'structure' && !isHidden) {
+      e.dataTransfer.setData('type', 'desk');
+      e.dataTransfer.setData('fromIndex', idx.toString());
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  const handleDeskDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsOver(false);
+    const type = e.dataTransfer.getData('type');
+    
+    if (type === 'desk' && editMode === 'structure') {
+      const fromIdx = parseInt(e.dataTransfer.getData('fromIndex'));
+      if (fromIdx === idx) return;
+
+      updateCurrentConfig((prev: any) => {
+        const newGrid = [...prev.grid];
+        
+        // Swap hidden state if target is hidden
+        const isTargetHidden = prev.hiddenDesks.includes(idx);
+        if (isTargetHidden) {
+          const updatedHidden = prev.hiddenDesks.filter((i: number) => i !== idx).concat([fromIdx]);
+          newGrid[idx] = prev.grid[fromIdx];
+          newGrid[fromIdx] = null;
+          return { ...prev, hiddenDesks: updatedHidden, grid: newGrid };
+        } else {
+          const tempStudent = newGrid[idx];
+          newGrid[idx] = newGrid[fromIdx];
+          newGrid[fromIdx] = tempStudent;
+          return { ...prev, grid: newGrid };
+        }
+      });
+    } else if (type === 'teacher-desk' && editMode === 'structure') {
+      updateCurrentConfig((prev: any) => ({
+        ...prev,
+        hiddenDesks: prev.hiddenDesks.includes(idx) ? prev.hiddenDesks : [...prev.hiddenDesks, idx],
+        teacherDesk: { ...prev.teacherDesk, index: idx }
+      }));
+    } else if (!type || type === 'student') {
+      if (!isHidden) onDrop(idx);
+    }
+  };
 
   return (
     <motion.div 
       layoutId={`desk-${idx}`}
-      style={{ gridColumn: colPos, gridRow: rowPos }}
-      onDragOver={(e) => { e.preventDefault(); !isHidden && setIsOver(true); }}
+      data-student-id={studentId || undefined}
+      draggable={editMode === 'structure' && !isHidden}
+      onDragStart={handleDeskDragStart}
+      onDragOver={(e) => { e.preventDefault(); setIsOver(true); }}
       onDragLeave={() => setIsOver(false)}
-      onDrop={() => { 
-        setIsOver(false); 
-        if (!isHidden) onDrop(idx); 
+      onDrop={handleDeskDrop}
+      onContextMenu={(e) => {
+        if (editMode === 'structure') {
+          e.preventDefault();
+          if (!isHidden) {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              hiddenDesks: [...prev.hiddenDesks, idx],
+              grid: prev.grid.map((val: any, i: number) => i === idx ? null : val)
+            }));
+          }
+        }
+      }}
+      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: 2, rotateY: -2 } : { scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      animate={isSelected ? { scale: 1.1, y: -10, z: 50 } : { scale: 1, y: 0, z: 0 }}
+      style={{ 
+        gridColumn: colPos, 
+        gridRow: rowPos,
+        ...(is3DView && !isHidden ? {
+          transform: `translateZ(${idx === activeDeskIdx ? '80px' : '40px'}) rotateX(0deg)`,
+          boxShadow: idx === activeDeskIdx || isSelected
+            ? '0 40px 80px rgba(0,0,0,0.3)' 
+            : '0 20px 40px rgba(0,0,0,0.15)',
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease'
+        } : {})
       }}
       onClick={() => {
         if (editMode === 'structure') {
-           updateCurrentConfig((prev: any) => ({
-             ...prev,
-             hiddenDesks: prev.hiddenDesks.includes(idx) ? prev.hiddenDesks.filter((i: number) => i !== idx) : [...prev.hiddenDesks, idx]
-           }));
-        } else if (!isHidden) {
+           if (isObstruction) {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              obstructions: prev.obstructions.filter((i: number) => i !== idx),
+              hiddenDesks: prev.hiddenDesks.filter((i: number) => i !== idx)
+            }));
+           } else if (isHidden) {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              obstructions: [...(prev.obstructions || []), idx]
+            }));
+           } else {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              hiddenDesks: [...prev.hiddenDesks, idx],
+              grid: prev.grid.map((val: any, i: number) => i === idx ? null : val)
+            }));
+           }
+        } else if (!isHidden && !isObstruction) {
           onShowHistory(idx);
         }
       }}
       className={cn(
-        "aspect-square rounded-[2rem] border transition-all flex flex-col items-center justify-center cursor-pointer relative group",
-        isHidden ? "border-dashed border-slate-100 bg-slate-50/50 opacity-30 shrink-0" :
-        !student ? "bg-slate-50/30 border-slate-100 hover:bg-slate-50" : "bg-white border-brand-100 shadow-sm ring-2 ring-brand-50",
-        compatibilityClass
+        "aspect-square rounded-[2rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
+        isObstruction ? "bg-slate-100 border-2 border-slate-300 opacity-80" :
+        isHidden ? "border-2 border-dashed border-slate-200 bg-slate-50/30 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
+        !student ? "bg-slate-50/30 border border-slate-100 hover:bg-slate-50" : "bg-white border border-brand-100 shadow-sm ring-2 ring-brand-50",
+        compatibilityClass,
+        isSelected && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
+        editMode === 'structure' && !isHidden && !isObstruction && "cursor-move hover:ring-2 hover:ring-amber-300"
       )}
     >
+      {editMode === 'structure' && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex flex-col items-center gap-1"
+        >
+          {isObstruction ? (
+            <>
+              <ShieldAlert className="w-6 h-6 text-slate-400 mb-1" />
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">הפרעה/עמוד</span>
+            </>
+          ) : isHidden ? (
+            <>
+              <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-brand-600 group-hover:scale-110 transition-all">
+                <Plus className="w-5 h-5" />
+              </div>
+              <span className="text-[8px] font-black text-slate-400 group-hover:text-brand-600 uppercase tracking-tighter">הוסף</span>
+            </>
+          ) : null}
+        </motion.div>
+      )}
+
       {/* Desk Surface Visualization */}
-      {!isHidden && (
+      {!isHidden && !isObstruction && (
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
       )}
       
@@ -169,9 +336,13 @@ const DeskCell = ({
              {/* Group Dot Indicators */}
              {student.groups && student.groups.length > 0 && (
                <div className="absolute -top-2 -right-2 flex gap-1">
-                 {student.groups.map((g: string, i: number) => (
-                   <div key={i} className="w-2.5 h-2.5 rounded-full bg-brand-600 border-2 border-white shadow-sm" title={`קבוצה ${g}`} />
-                 ))}
+                 {student.groups.map((g: string, i: number) => {
+                   const gIdx = ['א', 'ב', 'ג'].indexOf(g);
+                   const colors = ['bg-brand-500', 'bg-amber-500', 'bg-emerald-500'];
+                   return (
+                    <div key={i} className={cn("w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm", colors[gIdx % colors.length] || 'bg-slate-400')} title={`קבוצה ${g}`} />
+                   );
+                 })}
                </div>
              )}
            </div>
@@ -303,8 +474,12 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => (
   </div>
 );
 
-const StudentDetailView = ({ student, onBack, updateCurrentConfig }: { student: any, onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
+const StudentDetailView = ({ student, onBack, updateCurrentConfig, students, onSelectStudent }: { student: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'academic' | 'behavior' | 'attendance' | 'ai'>('info');
+
+  const currentIndex = students.findIndex(s => s.id === student.id);
+  const prevStudent = students[currentIndex - 1];
+  const nextStudent = students[currentIndex + 1];
 
   const updateStudent = (field: string, value: any) => {
     updateCurrentConfig((prev: any) => ({
@@ -321,12 +496,32 @@ const StudentDetailView = ({ student, onBack, updateCurrentConfig }: { student: 
   return (
     <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar bg-slate-50">
       <div className="flex items-center gap-6">
-        <button 
-          onClick={onBack}
-          className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
-        >
-          <ChevronLeft className="w-7 h-7" />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={onBack}
+            className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+          <div className="flex gap-1">
+            <button 
+              disabled={!prevStudent}
+              onClick={() => onSelectStudent(prevStudent.id)}
+              className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95 disabled:opacity-30"
+              title="תלמיד הקודם"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+            <button 
+              disabled={!nextStudent}
+              onClick={() => onSelectStudent(nextStudent.id)}
+              className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95 disabled:opacity-30"
+              title="תלמיד הבא"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-[2rem] bg-brand-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
@@ -413,6 +608,24 @@ const StudentDetailView = ({ student, onBack, updateCurrentConfig }: { student: 
                     onChange={(e) => updateStudent('forbidden', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="לדוגמה: 2, 8"
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-slate-400 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <FileText className="w-6 h-6 text-slate-500" />
+                  הערות פדגוגיות
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-500 font-medium italic">תיעוד חופשי על התלמיד, נקודות לשימור ושיפור:</p>
+                  <textarea 
+                    value={student.notes || ''}
+                    rows={4}
+                    onChange={(e) => updateStudent('notes', e.target.value)}
+                    placeholder="הזן הערה..."
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-brand-500 outline-none transition-all resize-none"
                   />
                 </div>
               </div>
@@ -630,14 +843,14 @@ const DashboardView = ({ stats, onBack }: any) => (
           <div className="p-4 bg-amber-100 rounded-2xl border border-amber-200 shadow-inner">
             <Sparkles className="w-8 h-8 text-amber-700" />
           </div>
-          <Badge className="bg-amber-50 text-amber-600 border border-amber-200">+12%</Badge>
+          <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-200">98% נוכחות</Badge>
         </div>
         <div className="relative">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">שביעות רצון</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">84%</p>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.satisfaction || 0}%</p>
         </div>
       </div>
-
+      
       <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
         <div className="relative flex items-center justify-between">
@@ -658,18 +871,20 @@ const DashboardView = ({ stats, onBack }: any) => (
           <div className="p-4 bg-rose-100 rounded-2xl border border-rose-200 shadow-inner">
             <AlertCircle className="w-8 h-8 text-rose-700" />
           </div>
-          <Badge className="bg-rose-50 text-rose-600 border border-rose-200">נמוך</Badge>
+          <Badge className={cn("px-2 py-1 rounded-lg text-[10px] font-bold uppercase", stats.conflicts > 0 ? "bg-rose-50 text-rose-600 border border-rose-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100")}>
+            {stats.conflicts > 0 ? "נדרש טיפול" : "תקין"}
+          </Badge>
         </div>
         <div className="relative">
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">אילוצים לא פתורים</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">2</p>
+          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.conflicts || 0}</p>
         </div>
       </div>
     </div>
   </div>
 );
 
-const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) => {
+const StudentCard = ({ student, updateCurrentConfig, setNotifications, isSelected, onClick }: any) => {
   const [localName, setLocalName] = useState(student.name);
 
   useEffect(() => {
@@ -684,18 +899,33 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) =>
     }));
   };
 
+  const updateStudent = (field: string, value: any) => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => s.id === student.id ? { ...s, [field]: value } : s)
+    }));
+  };
+
   return (
-    <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group">
+    <div 
+      onClick={onClick}
+      className={cn(
+        "p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group cursor-pointer",
+        isSelected && "ring-4 ring-brand-200 border-brand-300 bg-brand-50/30"
+      )}
+    >
       <div className="flex items-center justify-between">
         <input 
           value={localName}
           onChange={(e) => setLocalName(e.target.value)}
           onBlur={commitName}
           onKeyDown={(e) => e.key === 'Enter' && commitName()}
+          onClick={(e) => e.stopPropagation()}
           className="bg-transparent font-black text-slate-700 focus:ring-0 border-0 p-0 w-32 text-sm"
         />
         <button 
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (confirm(`האם למחוק את ${student.name}?`)) {
               updateCurrentConfig((prev: any) => ({ 
                 ...prev, 
@@ -712,24 +942,59 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) =>
       </div>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-           <button 
-             onClick={() => updateCurrentConfig((prev: any) => ({
-                ...prev,
-                students: prev.students.map((s:any) => s.id === student.id ? { ...s, height: s.height === 'short' ? 'medium' : 'short' } : s)
-             }))}
-             className={cn("px-3 py-1.5 rounded-xl text-[9px] font-black uppercase whitespace-nowrap", student.height === 'short' ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-500")}
-           >
-             {student.height === 'short' ? 'חייב קדימה' : 'גובה רגיל'}
-           </button>
-           <div className="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
-              <Heart className="w-3 h-3 text-rose-400" />
-              <span className="text-xs font-black text-slate-500">{student.preferred.length} חברים</span>
+        {/* Height Selection (Radio-like) */}
+        <div className="flex flex-col gap-2">
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">גובה תלמיד</label>
+           <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-100 shadow-sm">
+             {(['short', 'medium', 'tall'] as const).map(h => (
+               <button
+                 key={h}
+                 onClick={(e) => { e.stopPropagation(); updateStudent('height', h); }}
+                 className={cn(
+                   "flex-1 py-1 rounded-lg text-[9px] font-black transition-all",
+                   student.height === h ? "bg-brand-600 text-white" : "text-slate-400 hover:bg-slate-50"
+                 )}
+               >
+                 {h === 'short' ? 'קדמי' : h === 'medium' ? 'בינוני' : 'גבוה'}
+               </button>
+             ))}
            </div>
-           <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm">
-              <Ban className="w-3 h-3 text-slate-400" />
-              <span className="text-xs font-black text-slate-500">{student.forbidden.length} הפרדות</span>
+        </div>
+
+        {/* Group Management */}
+        <div className="flex flex-col gap-2">
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">קבוצות</label>
+           <div className="flex flex-wrap gap-1">
+             {['א', 'ב', 'ג'].map(g => (
+               <button
+                 key={g}
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   const groups = student.groups || [];
+                   updateStudent('groups', groups.includes(g) ? groups.filter((pg: string) => pg !== g) : [...groups, g]);
+                 }}
+                 className={cn(
+                   "px-2 py-1 rounded-lg text-[9px] font-black border transition-all",
+                   student.groups?.includes(g) ? "bg-brand-100 border-brand-200 text-brand-700" : "bg-white border-slate-100 text-slate-400"
+                 )}
+               >
+                 {g}
+               </button>
+             ))}
            </div>
+        </div>
+
+        {/* Notes */}
+        <div className="flex flex-col gap-2">
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">הערות</label>
+           <textarea 
+             value={student.notes || ''}
+             rows={1}
+             onChange={(e) => updateStudent('notes', e.target.value)}
+             onClick={(e) => e.stopPropagation()}
+             placeholder="הערה פדגוגית..."
+             className="w-full bg-white border border-slate-100 rounded-xl p-2 text-xs font-medium text-slate-600 focus:ring-1 focus:ring-brand-200 outline-none resize-none"
+           />
         </div>
 
         <div className="p-3 bg-white/50 rounded-2xl border border-slate-100/50 space-y-2">
@@ -740,6 +1005,7 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) =>
                  <input 
                     placeholder="מזהי חברים (מופרדים בפסיק)"
                     value={student.preferred.join(', ')}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
                       updateCurrentConfig((prev: any) => ({
@@ -755,6 +1021,7 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications }: any) =>
                  <input 
                     placeholder="מזהי הפרדות (מופרדים בפסיק)"
                     value={student.forbidden.join(', ')}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
                       updateCurrentConfig((prev: any) => ({
@@ -781,7 +1048,12 @@ const SettingsView = ({
   setAccessibility, 
   currentConfig, 
   updateCurrentConfig, 
-  setNotifications 
+  setNotifications,
+  selectedStudentId,
+  setSelectedStudentId,
+  setViewType,
+  exportToPDF,
+  exportToJSON
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
   
@@ -1046,15 +1318,152 @@ const SettingsView = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentConfig.students.map((student: any, idx: number) => (
-              <StudentCard 
-                key={`${student.id}-${idx}`}
-                student={student}
-                updateCurrentConfig={updateCurrentConfig}
-                setNotifications={setNotifications}
-              />
-            ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {currentConfig.students.map((student: any, idx: number) => (
+                  <StudentCard 
+                    key={`${student.id}-${idx}`}
+                    student={student}
+                    updateCurrentConfig={updateCurrentConfig}
+                    setNotifications={setNotifications}
+                    isSelected={selectedStudentId === student.id}
+                    onClick={() => {
+                      setSelectedStudentId(student.id);
+                      setViewType('studentDetail');
+                    }}
+                  />
+                ))}
+              </div>
+        </div>
+
+        {/* Export Apps Section */}
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-indigo-600 text-white shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 text-center md:text-right">
+              <div className="flex items-center justify-center md:justify-start gap-4">
+                <Download className="w-10 h-10" />
+                <h3 className="text-3xl font-black">ייצוא כאפליקציית מחשב ונייד</h3>
+              </div>
+              <p className="text-lg font-medium text-indigo-100 max-w-2xl">
+                הכנו את הקוד עבורכם! כדי לקבל קובץ EXE (למחשב) או APK (לאנדרואיד), יש להוריד את קוד המקור ולהריץ פקודה אחת פשוטה.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+                <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20">
+                  <h4 className="text-xl font-black mb-2 flex items-center gap-2">
+                    <Monitor className="w-6 h-6" />
+                    קובץ EXE (מחשב)
+                  </h4>
+                  <p className="text-sm opacity-80 mb-4 font-bold">מתאים לשימוש לוקאלי ללא אינטרנט</p>
+                  <code className="block bg-black/30 p-3 rounded-xl text-xs font-mono mb-2 text-emerald-400">
+                    npm run app:exe
+                  </code>
+                </div>
+                
+                <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20">
+                  <h4 className="text-xl font-black mb-2 flex items-center gap-2">
+                    <Smartphone className="w-6 h-6" />
+                    קובץ APK (אנדרואיד)
+                  </h4>
+                  <p className="text-sm opacity-80 mb-4 font-bold">להתקנה ישירות על הטלפון</p>
+                  <code className="block bg-black/30 p-3 rounded-xl text-xs font-mono mb-2 text-emerald-400">
+                    npm run app:android
+                  </code>
+                </div>
+
+                <button 
+                  onClick={exportToPDF}
+                  className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20 hover:bg-white/20 transition-all text-right flex flex-col justify-between"
+                >
+                  <FileText className="w-8 h-8 mb-2" />
+                  <div>
+                    <h4 className="text-xl font-black mb-1">הדפסה (PDF)</h4>
+                    <p className="text-xs opacity-70 font-bold">סידור הכיתה מוכן להדפסה</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={exportToJSON}
+                  className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20 hover:bg-white/20 transition-all text-right flex flex-col justify-between"
+                >
+                  <Share2 className="w-8 h-8 mb-2" />
+                  <div>
+                    <h4 className="text-xl font-black mb-1">גיבוי (JSON)</h4>
+                    <p className="text-xs opacity-70 font-bold">שמירת המבנה כקובץ להעברה</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => {
+                const instructions = "כדי ליצור את הקבצים:\n1. הורידו את הפרויקט (Download Project)\n2. פתחו טרמינל בתיקיית הפרויקט\n3. הריצו npm install\n4. הריצו את הפקודה המבוקשת (app:exe או app:android)";
+                alert(instructions);
+              }}
+              className="px-10 py-5 bg-white text-indigo-600 rounded-3xl text-xl font-black shadow-2xl hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
+            >
+              הורד קוד מקור
+            </button>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] border-2 border-rose-100 bg-rose-50/20 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-rose-100 rounded-[1.5rem] shadow-sm">
+              <ShieldAlert className="w-8 h-8 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-rose-900 leading-none">אזור מסוכן</h3>
+              <p className="text-sm font-bold text-rose-700/60 mt-2 uppercase tracking-widest">פעולות בלתי הפיכות</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-white/60 p-6 rounded-[2rem] border border-rose-100 space-y-4">
+              <div className="flex flex-col gap-1">
+                <h4 className="text-lg font-black text-slate-800">איפוס שיבוצים</h4>
+                <p className="text-xs font-medium text-slate-500">ביטול כל שיבוצי התלמידים והחזרתם למאגר (מבנה הכיתה יישמר)</p>
+              </div>
+              <button 
+                onClick={() => {
+                  if (confirm("האם אתה בטוח שברצונך לבטל את כל השיבוצים? כל התלמידים יוחזרו למאגר.")) {
+                    updateCurrentConfig((prev: any) => ({
+                      ...prev,
+                      grid: Array(prev.rows * prev.cols).fill(null)
+                    }));
+                    setNotifications((prev: any) => [{ id: Date.now(), text: "כל השיבוצים בוטלו בהצלחה", type: 'success' }, ...prev]);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 active:scale-95"
+              >
+                <RotateCcw className="w-5 h-5" />
+                איפוס כל השיבוצים
+              </button>
+            </div>
+
+            <div className="bg-white/60 p-6 rounded-[2rem] border border-rose-100 space-y-4">
+              <div className="flex flex-col gap-1">
+                <h4 className="text-lg font-black text-slate-800">מחיקת נתונים מלאה</h4>
+                <p className="text-xs font-medium text-slate-500">מחיקת כל רשימת התלמידים, האילוצים והשיבוצים (פעולה סופית)</p>
+              </div>
+              <button 
+                onClick={() => {
+                  if (confirm("האם אתה בטוח שברצונך למחוק את כל נתוני התלמידים? פעולה זו אינה ניתנת לביטול.")) {
+                    updateCurrentConfig((prev: any) => ({
+                      ...prev,
+                      students: [],
+                      grid: Array(prev.rows * prev.cols).fill(null)
+                    }));
+                    setNotifications((prev: any) => [{ id: Date.now(), text: "כל נתוני התלמידים נמחקו", type: 'error' }, ...prev]);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white text-rose-600 rounded-2xl font-black border-2 border-rose-600 hover:bg-rose-50 transition-all active:scale-95"
+              >
+                <Trash2 className="w-5 h-5" />
+                מחיקת כל התלמידים
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1073,19 +1482,41 @@ export default function App() {
     cols: 8,
     grid: Array(48).fill(null) as (string | null)[],
     students: [
-      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'] },
-      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'] },
-      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'] }
+      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '' },
+      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '' },
+      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'], notes: '' }
     ],
     hiddenDesks: [] as number[],
     rowGaps: [] as number[],
     columnGaps: [] as number[],
-    groups: [] as any[]
+    teacherDesk: { index: -1, width: 2, height: 1 },
+    groups: [
+      { id: 'א', name: 'קבוצה א', constraint: 'none' },
+      { id: 'ב', name: 'קבוצה ב', constraint: 'none' },
+      { id: 'ג', name: 'קבוצה ג', constraint: 'none' },
+    ] as any[],
+    updatedAt: Date.now(),
+    columnGapSize: 32,
+    rowGapSize: 32,
+    obstructions: [] as number[]
   });
 
   const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail'>('grid');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile && !isSidebarOpen) {
+        setIsSidebarOpen(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
     if (!hasSeenOnboarding) {
@@ -1100,7 +1531,7 @@ export default function App() {
 
   const onboardingContent = [
     { title: "ברוכים הבאים!", text: "בואו נכיר את ClassManager Pro. המקום בו פדגוגיה פוגשת AI.", icon: <Sparkles className="w-10 h-10 text-brand-600" /> },
-    { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer2 className="w-10 h-10 text-indigo-600" /> },
+    { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer className="w-10 h-10 text-indigo-600" /> },
     { title: "אופטימיזציית AI", text: "לחצו על כפתור ה-AI כדי לתת למערכת למצוא את הסידור המושלם לפי אילוצים.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
     { title: "תצוגת 3D", text: "חדש! מעכשיו תוכלו לראות את הכיתה בפרספקטיבה תלת-ממדית.", icon: <Box className="w-10 h-10 text-amber-600" /> }
   ];
@@ -1110,6 +1541,71 @@ export default function App() {
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const dashboardStats = useMemo(() => {
+    const studentCount = currentConfig.students.length;
+    const placedCount = currentConfig.grid.filter(s => s !== null).length;
+    
+    // Conflict calculation
+    let conflictCount = 0;
+    currentConfig.grid.forEach((sid, idx) => {
+      if (!sid) return;
+      const student = currentConfig.students.find(s => s.id === sid);
+      if (!student || !student.forbidden) return;
+      const r = Math.floor(idx / currentConfig.cols);
+      const c = idx % currentConfig.cols;
+      [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
+          const neighborId = currentConfig.grid[nr * currentConfig.cols + nc];
+          if (neighborId && student.forbidden.includes(neighborId)) conflictCount++;
+        }
+      });
+    });
+
+    // Satisfaction calculation (simplified normalization of scoring)
+    let totalScore = 0;
+    const activeStudents = currentConfig.grid.filter(s => s !== null);
+    if (activeStudents.length > 0) {
+      currentConfig.grid.forEach((sid, idx) => {
+        if (!sid) return;
+        const student = currentConfig.students.find(s => s.id === sid);
+        if (!student) return;
+        const r = Math.floor(idx / currentConfig.cols);
+        const c = idx % currentConfig.cols;
+        
+        let sScore = 100; // Base score
+        // Height check
+        if (student.height === 'short' && r >= 2) sScore -= 40;
+        // Preferred check (very simple)
+        const neighbors = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dr, dc]) => {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
+            return currentConfig.grid[nr * currentConfig.cols + nc];
+          }
+          return null;
+        });
+        if (student.preferred?.some(id => neighbors.includes(id))) sScore += 20;
+        if (student.forbidden?.some(id => neighbors.includes(id))) sScore -= 60;
+        
+        totalScore += sScore;
+      });
+    }
+    const satisfaction = activeStudents.length > 0 ? Math.min(100, Math.max(0, Math.round(totalScore / activeStudents.length))) : 0;
+
+    return {
+      studentCount,
+      placedCount,
+      conflicts: Math.floor(conflictCount / 2),
+      satisfaction,
+      attendance: 98 // Static/Mock for now as requested
+    };
+  }, [currentConfig]);
 
   const aiInsights = useMemo(() => {
     if (!currentConfig.grid) return [];
@@ -1179,10 +1675,21 @@ export default function App() {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedStudentId && viewType === 'grid') {
+      const timer = setTimeout(() => {
+        const deskElement = document.querySelector(`[data-student-id="${selectedStudentId}"]`);
+        if (deskElement) {
+          deskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedStudentId, viewType]);
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [undoHistory, setUndoHistory] = useState<any[]>([]);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -1260,6 +1767,30 @@ export default function App() {
             if (!hasNeighbor) score += (pref.weight || 300);
             else score -= (pref.weight || 300);
           }
+        }
+
+        // 3. Group Constraints
+        if (student.groups && student.groups.length > 0) {
+          student.groups.forEach((groupId: string) => {
+            const groupConfig = currentConfig.groups.find(g => g.id === groupId);
+            if (!groupConfig || groupConfig.constraint === 'none') return;
+
+            // Check neighbors for group constraints
+            neighbors.forEach(nIdx => {
+              const neighborId = assignment[nIdx];
+              if (!neighborId) return;
+              const neighbor = students.find(s => s.id === neighborId);
+              if (!neighbor) return;
+
+              const inSameGroup = neighbor.groups?.includes(groupId);
+              if (inSameGroup) {
+                if (groupConfig.constraint === 'together') score += 100; // Strong bonus for staying together
+                if (groupConfig.constraint === 'separate') score -= 200; // Heavy penalty for being next to each other
+              }
+            });
+
+            // If separate, also check that THEY ARE NOT IN THE SAME CLUSTER (optional, but neighbors is enough for now)
+          });
         }
 
         // Height constraint (Front row for 'short')
@@ -1539,9 +2070,10 @@ export default function App() {
 
   const updateCurrentConfig = useCallback((update: any) => {
     setCurrentConfig(prev => {
-      const next = typeof update === 'function' ? update(prev) : update;
+      let next = typeof update === 'function' ? update(prev) : update;
       if (JSON.stringify(next) !== JSON.stringify(prev)) {
         setUndoHistory(h => [prev, ...h].slice(0, 10));
+        next = { ...next, updatedAt: Date.now() };
       }
       return next;
     });
@@ -1562,10 +2094,32 @@ export default function App() {
       
       const newRows = type === 'rows' ? newVal : prev.rows;
       const newCols = type === 'cols' ? newVal : prev.cols;
-      const newGrid = Array(newRows * newCols).fill(null);
+      const newGridSize = newRows * newCols;
+      const newGrid = Array(newGridSize).fill(null);
       
-      // Simple migration of grid (not perfectly optimized)
-      return { ...prev, [type]: newVal, grid: newGrid };
+      // Preserve students based on their old visual coordinates
+      for (let r = 0; r < Math.min(prev.rows, newRows); r++) {
+        for (let c = 0; c < Math.min(prev.cols, newCols); c++) {
+          const oldIdx = r * prev.cols + c;
+          const newIdx = r * newCols + c;
+          newGrid[newIdx] = prev.grid[oldIdx];
+        }
+      }
+
+      // Update teacher desk if it's now out of bounds
+      let teacherDesk = { ...prev.teacherDesk };
+      if (teacherDesk.index !== -1) {
+        const tr = Math.floor(teacherDesk.index / prev.cols);
+        const tc = teacherDesk.index % prev.cols;
+        if (tr >= newRows || tc >= newCols) {
+          teacherDesk.index = (Math.min(tr, newRows - 1) * newCols) + Math.min(tc, newCols - 1);
+        } else {
+          // Recalculate index for new width
+          teacherDesk.index = tr * newCols + tc;
+        }
+      }
+      
+      return { ...prev, [type]: newVal, grid: newGrid, teacherDesk };
     });
   };
 
@@ -1573,7 +2127,7 @@ export default function App() {
     const onBack = () => setViewType('dashboard');
     const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={{ studentCount: currentConfig.students.length, placedCount: currentConfig.grid.filter(id => id).length }} onBack={onBackToGrid} />;
+      case 'dashboard': return <DashboardView stats={dashboardStats} onBack={onBackToGrid} />;
       case 'attendance': return <AttendanceView students={currentConfig.students} onBack={onBack} />;
       case 'grades': return <GradesView onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
@@ -1588,22 +2142,41 @@ export default function App() {
           currentConfig={currentConfig}
           updateCurrentConfig={updateCurrentConfig}
           setNotifications={setNotifications}
+          exportToPDF={exportToPDF}
+          exportToJSON={exportToJSON}
+          selectedStudentId={selectedStudentId}
+          setSelectedStudentId={setSelectedStudentId}
+          setViewType={setViewType}
         />
       );
       case 'studentDetail': {
         const student = currentConfig.students.find(s => s.id === selectedStudentId);
-        return student ? <StudentDetailView student={student} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} /> : null;
+        return student ? (
+          <StudentDetailView 
+            student={student} 
+            students={currentConfig.students}
+            onBack={onBackToGrid} 
+            updateCurrentConfig={updateCurrentConfig}
+            onSelectStudent={setSelectedStudentId}
+          />
+        ) : null;
       }
       default: return null;
     }
   };
 
   const exportToExcel = () => console.log("Exporting to Excel...");
-  const exportToPDF = () => console.log("Exporting to PDF...");
 
   const Header = () => (
     <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-50">
       <div className="flex items-center gap-6">
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl transition-all shadow-sm"
+          title={isSidebarOpen ? "סגור תפריט" : "פתח תפריט"}
+        >
+          {isSidebarOpen ? <ChevronRight className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-200">
             <School className="w-6 h-6 text-white" />
@@ -1691,6 +2264,68 @@ export default function App() {
     </header>
   );
 
+  const handleResetGrid = () => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      grid: Array(prev.rows * prev.cols).fill(null)
+    }));
+    setIsResetConfirmOpen(false);
+    setNotifications((prev: any) => [{ id: Date.now(), text: "סידור הישיבה אופס בהצלחה", type: 'info' }, ...prev]);
+  };
+
+  const exportToPDF = async () => {
+    if (!gridRef.current) return;
+    setIsExporting(true);
+    setNotifications((prev: any) => [{ id: Date.now(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
+    
+    try {
+      // Temporarily switch off 3D if active for better printing
+      const was3D = is3DView;
+      if (was3D) setIs3DView(false);
+      
+      // Wait for layout to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const canvas = await html2canvas(gridRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`classroom-layout-${currentConfig.name || 'export'}.pdf`);
+      
+      if (was3D) setIs3DView(true);
+      setNotifications((prev: any) => [{ id: Date.now(), text: "הקובץ מוכן להורדה", type: 'info' }, ...prev]);
+    } catch (error) {
+      console.error('Export failed:', error);
+      setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה ביצוא ה-PDF", type: 'error' }, ...prev]);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  const exportToJSON = () => {
+    const dataStr = JSON.stringify(currentConfig, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `classroom-structure-${currentConfig.name || 'export'}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    setNotifications((prev: any) => [{ id: Date.now(), text: "מבנה הכיתה יוצא בהצלחה", type: 'success' }, ...prev]);
+  };
+
   const Sidebar = () => (
     <AnimatePresence>
       {isSidebarOpen && (
@@ -1725,12 +2360,72 @@ export default function App() {
                     <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">כיתה פעילה</h3>
                     <Badge className="bg-brand-100 text-brand-700 border border-brand-200">v3.2.0</Badge>
                   </div>
-                  <input
-                    value={currentConfig.name}
-                    onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-                    className="text-xl font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 w-full"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={currentConfig.name}
+                      onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
+                      className="text-xl font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 flex-1"
+                    />
+                    <button 
+                      onClick={() => {
+                        const newName = prompt("הזן שם חדש לכיתה:", currentConfig.name);
+                        if (newName && newName !== currentConfig.name) {
+                          if (confirm(`האם לשנות את שם הכיתה ל-"${newName}"?`)) {
+                            updateCurrentConfig((prev: any) => ({ ...prev, name: newName }));
+                          }
+                        }
+                      }}
+                      className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-brand-600 transition-all"
+                      title="שנה שם כיתה"
+                    >
+                      <Settings2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 opacity-50">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-500">
+                      עדכון אחרון: {new Intl.DateTimeFormat('he-IL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit',
+                        day: '2-digit',
+                        month: '2-digit'
+                      }).format(new Date(currentConfig.updatedAt))}
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Group Constraints Section */}
+              <div className="flex flex-col gap-4">
+                 <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest px-1">אילוצי קבוצות</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {currentConfig.groups.map((group: any) => (
+                      <div key={group.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white",
+                            group.id === 'א' ? "bg-brand-500" : group.id === 'ב' ? "bg-amber-500" : "bg-emerald-500"
+                          )}>
+                            {group.id}
+                          </div>
+                          <span className="text-sm font-black text-slate-700">{group.name}</span>
+                        </div>
+                        <select 
+                          value={group.constraint}
+                          onChange={(e) => updateCurrentConfig((prev: any) => ({
+                            ...prev,
+                            groups: prev.groups.map((g: any) => g.id === group.id ? { ...g, constraint: e.target.value } : g)
+                          }))}
+                          className="bg-slate-50 border-0 text-[10px] font-black rounded-lg focus:ring-1 focus:ring-brand-200 py-1 px-2"
+                        >
+                          <option value="none">ללא אילוץ</option>
+                          <option value="together">יחד (שכנים)</option>
+                          <option value="separate">בנפרד</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
               </div>
 
               {/* Student Pool */}
@@ -1792,10 +2487,32 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => setIsAIPanelOpen(true)}
-                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl shadow-brand-200 flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isLoadingAI}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-black shadow-xl flex items-center justify-center gap-3 transition-all relative overflow-hidden",
+                    isLoadingAI ? "bg-slate-100 text-slate-400" : "bg-brand-600 text-white shadow-brand-200 hover:scale-[1.02] active:scale-[0.98]"
+                  )}
                 >
-                  <Wand2 className="w-5 h-5 text-indigo-400" />
-                  שיבוץ חכם AI
+                  {isLoadingAI ? (
+                    <>
+                      <motion.div
+                        animate={{ x: ['-200%', '200%'] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-400/10 to-transparent"
+                      />
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                        className="w-2 h-2 bg-brand-500 rounded-full"
+                      />
+                      <span className="relative z-10">הסידור בביצוע...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-5 h-5 text-indigo-400" />
+                      <span>שיבוץ חכם AI</span>
+                    </>
+                  )}
                 </button>
                 <div className="grid grid-cols-2 gap-2">
                   <button 
@@ -1844,6 +2561,10 @@ export default function App() {
                     <button onClick={exportToPDF} className="flex items-center justify-center gap-3 px-2 py-4 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold hover:bg-rose-100 border border-rose-100">
                       <FileDown className="w-5 h-5" />
                       PDF
+                    </button>
+                    <button onClick={exportToJSON} className="flex items-center justify-center gap-3 px-2 py-4 bg-slate-50 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-100 border border-slate-200">
+                      <Share2 className="w-5 h-5" />
+                      JSON
                     </button>
                   </div>
                 </div>
@@ -1912,10 +2633,10 @@ export default function App() {
       } as React.CSSProperties}
       dir="rtl"
     >
-      <Header />
+      {Header()}
 
       <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar />
+        {Sidebar()}
 
         <main className="flex-1 overflow-hidden relative flex flex-col">
           <AnimatePresence mode="wait">
@@ -1998,106 +2719,223 @@ export default function App() {
                            <span className="w-6 text-center font-black text-xs">{currentConfig.cols}</span>
                            <button onClick={() => handleGridResize('cols', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
                          </div>
+
+                         {/* Gap Adjustment Controls */}
+                         <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                            <div className="flex flex-col items-center px-1">
+                              <span className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 whitespace-nowrap">מרווח רוחב</span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.max(8, prev.columnGapSize - 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Minus className="w-3 h-3" /></button>
+                                <span className="min-w-[16px] text-center font-black text-[9px]">{currentConfig.columnGapSize}</span>
+                                <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.min(120, prev.columnGapSize + 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Plus className="w-3 h-3" /></button>
+                              </div>
+                            </div>
+                            <div className="w-px h-6 bg-slate-200 mx-0.5" />
+                            <div className="flex flex-col items-center px-1">
+                              <span className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 whitespace-nowrap">מרווח גובה</span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.max(8, (prev.rowGapSize || 32) - 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Minus className="w-3 h-3" /></button>
+                                <span className="min-w-[16px] text-center font-black text-[9px]">{currentConfig.rowGapSize || 32}</span>
+                                <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.min(120, (prev.rowGapSize || 32) + 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Plus className="w-3 h-3" /></button>
+                              </div>
+                            </div>
+                         </div>
                          <button 
-                            onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, hiddenDesks: [] }))}
+                            onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, hiddenDesks: [], obstructions: [] }))}
                             className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-colors"
                          >
                            איפוס שולחנות
                          </button>
                        </div>
                      ) : (
-                       <button onClick={() => setShowDeskNumbers(!showDeskNumbers)} className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", showDeskNumbers ? "bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "text-slate-500")}>
-                          <Eye className="w-4 h-4" />
-                          מספרים
-                       </button>
+                       <div className="flex items-center gap-2">
+                         <button onClick={() => setShowDeskNumbers(!showDeskNumbers)} className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2", showDeskNumbers ? "bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "text-slate-500")}>
+                            <Eye className="w-4 h-4" />
+                            מספרים
+                         </button>
+                         <button 
+                           onClick={() => setIsResetConfirmOpen(true)}
+                           className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-100 transition-all flex items-center gap-2"
+                         >
+                           <RotateCcw className="w-4 h-4" />
+                           איפוס
+                         </button>
+                         <button 
+                           onClick={exportToPDF}
+                           disabled={isExporting}
+                           className="px-4 py-2 bg-brand-50 text-brand-700 rounded-xl text-xs font-black hover:bg-brand-100 transition-all flex items-center gap-2 disabled:opacity-50"
+                         >
+                           <FileDown className="w-4 h-4" />
+                           {isExporting ? 'מייצא...' : 'PDF'}
+                         </button>
+                       </div>
                      )}
                    </div>
 
                    {/* Grid Content */}
-                   <div className="relative w-full max-w-6xl flex flex-col items-center" id="classroom-grid-container">
-                      {/* Teacher Table */}
-                      <div className="w-64 h-12 bg-white rounded-2xl border-b-8 border-slate-200 flex items-center justify-center shadow-xl mb-12">
-                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">שולחן מורה</span>
-                      </div>
+                   <div ref={gridRef} className="relative w-full max-w-6xl flex flex-col items-center" id="classroom-grid-container">
+                       {/* Floating Teacher Desk Toggle (Structure Mode Only) */}
+                       {editMode === 'structure' && currentConfig.teacherDesk.index === -1 && (
+                         <button 
+                           onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: 0 } }))}
+                           className="mb-8 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-xl hover:bg-brand-700 transition-all flex items-center gap-3 animate-bounce"
+                         >
+                           <Plus className="w-5 h-5" />
+                           הוסף שולחן מורה
+                         </button>
+                       )}
 
                     <div 
                       className={cn(
                         "grid p-20 transition-all duration-500 relative",
                         editMode === 'structure' ? "bg-white ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 rounded-[5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)]" : "bg-white rounded-[5rem] border-4 border-slate-200 shadow-2xl"
                       )}
-                    style={{ 
-                      display: 'grid',
-                      gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
-                        `${currentConfig.columnGaps.includes(i) ? '70px 32px' : '70px'}`
-                      ).join(' '),
-                      gridTemplateRows: Array.from({ length: currentConfig.rows }).map((_, i) => 
-                        `${currentConfig.rowGaps.includes(i) ? '48px 32px' : '48px'}`
-                      ).join(' '),
-                      perspective: '1000px',
-                    }}
-                  >
-                    {/* Gap Handles (Structure Mode Only) */}
+                     style={{ 
+                       display: 'grid',
+                       gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
+                         `${currentConfig.columnGaps.includes(i) ? `70px ${currentConfig.columnGapSize}px` : '70px'}`
+                       ).join(' '),
+                       gridTemplateRows: Array.from({ length: currentConfig.rows }).map((_, i) => 
+                         `${currentConfig.rowGapSize ? (currentConfig.rowGaps.includes(i) ? `48px ${currentConfig.rowGapSize}px` : '48px') : (currentConfig.rowGaps.includes(i) ? '48px 32px' : '48px')}`
+                       ).join(' '),
+                       perspective: '1000px',
+                     }}
+                   >
+                    {/* Teacher Desk Injection */}
+                    {currentConfig.teacherDesk && currentConfig.teacherDesk.index !== -1 && (
+                      <TeacherDesk 
+                        {...currentConfig.teacherDesk}
+                        colPos={(currentConfig.teacherDesk.index % currentConfig.cols) + 1 + currentConfig.columnGaps.filter(g => g < (currentConfig.teacherDesk.index % currentConfig.cols)).length}
+                        rowPos={Math.floor(currentConfig.teacherDesk.index / currentConfig.cols) + 1 + currentConfig.rowGaps.filter(g => g < Math.floor(currentConfig.teacherDesk.index / currentConfig.cols)).length}
+                        editMode={editMode}
+                        updateCurrentConfig={updateCurrentConfig}
+                      />
+                    )}
+
+                     {/* Gap Handles (Structure Mode Only) */}
                     {editMode === 'structure' && (
                       <>
-                        {/* Column Gap Handles */}
-                        {Array.from({ length: currentConfig.cols - 1 }).map((_, i) => {
-                          const colPos = (i + 1) + currentConfig.columnGaps.filter(g => g <= i).length;
-                          const hasGap = currentConfig.columnGaps.includes(i);
-                          return (
-                            <div 
-                              key={`col-gap-${i}`}
-                              onClick={() => updateCurrentConfig((prev: any) => ({
-                                ...prev,
-                                columnGaps: prev.columnGaps.includes(i) ? prev.columnGaps.filter((g: number) => g !== i) : [...prev.columnGaps, i]
-                              }))}
-                              style={{ 
-                                gridColumn: hasGap ? colPos + 1 : colPos, 
-                                gridRow: `1 / span ${currentConfig.rows + currentConfig.rowGaps.length}`,
-                                width: hasGap ? '32px' : '12px',
-                                marginRight: hasGap ? '-16px' : '-6px',
-                                marginLeft: hasGap ? '-16px' : '-6px',
-                                justifySelf: 'center'
-                              }}
-                              className={cn(
-                                "h-full cursor-pointer hover:bg-brand-400/20 transition-all rounded-full z-20 flex items-center justify-center group",
-                                hasGap ? "bg-brand-500/10" : "bg-transparent"
-                              )}
-                              title="רווח טור"
-                            >
-                               <div className={cn("w-1 h-8 rounded-full transition-all group-hover:scale-y-150", hasGap ? "bg-brand-400" : "bg-slate-200 opacity-0 group-hover:opacity-100")} />
-                            </div>
-                          );
-                        })}
+                         {/* Column Gap Handles */}
+                         {Array.from({ length: currentConfig.cols - 1 }).map((_, i) => {
+                           const colPos = (i + 1) + currentConfig.columnGaps.filter(g => g <= i).length;
+                           const hasGap = currentConfig.columnGaps.includes(i);
+                           return (
+                             <div 
+                               key={`col-gap-${i}`}
+                               style={{ 
+                                 gridColumn: hasGap ? colPos + 1 : colPos, 
+                                 gridRow: `1 / span ${currentConfig.rows + (currentConfig.rowGaps?.length || 0)}`,
+                                 width: hasGap ? `${currentConfig.columnGapSize}px` : '16px',
+                                 marginRight: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-8px',
+                                 marginLeft: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-8px',
+                                 justifySelf: 'center'
+                               }}
+                               className={cn(
+                                 "h-full relative flex items-center justify-center group",
+                                 hasGap ? "bg-brand-500/5" : "bg-transparent"
+                               )}
+                             >
+                                <div 
+                                  onClick={() => updateCurrentConfig((prev: any) => ({
+                                    ...prev,
+                                    columnGaps: prev.columnGaps.includes(i) ? prev.columnGaps.filter((g: number) => g !== i) : [...prev.columnGaps, i]
+                                  }))}
+                                  className={cn(
+                                    "w-1 h-full cursor-pointer transition-all rounded-full",
+                                    hasGap ? "bg-brand-400 group-hover:scale-x-[3]" : "bg-slate-200 group-hover:bg-brand-300 group-hover:scale-x-[4]"
+                                  )} 
+                                />
+                                
+                                {hasGap && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                                  >
+                                    <div className="bg-white shadow-lg border border-brand-100 rounded-full px-2 py-4 flex flex-col items-center gap-1.5 pointer-events-auto">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.min(prev.columnGapSize + 4, 120) })); }}
+                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                      <div className="flex flex-col items-center -space-y-0.5">
+                                        <Ruler className="w-2.5 h-2.5 text-slate-300" />
+                                        <span className="text-[9px] font-black text-brand-700">{currentConfig.columnGapSize}</span>
+                                      </div>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.max(prev.columnGapSize - 4, 8) })); }}
+                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                             </div>
+                           );
+                         })}
 
-                        {/* Row Gap Handles */}
-                        {Array.from({ length: currentConfig.rows - 1 }).map((_, i) => {
-                          const rowPos = (i + 1) + currentConfig.rowGaps.filter(g => g <= i).length;
-                          const hasGap = currentConfig.rowGaps.includes(i);
-                          return (
-                            <div 
-                              key={`row-gap-${i}`}
-                              onClick={() => updateCurrentConfig((prev: any) => ({
-                                ...prev,
-                                rowGaps: prev.rowGaps.includes(i) ? prev.rowGaps.filter((g: number) => g !== i) : [...prev.rowGaps, i]
-                              }))}
-                              style={{ 
-                                gridRow: hasGap ? rowPos + 1 : rowPos, 
-                                gridColumn: `1 / span ${currentConfig.cols + currentConfig.columnGaps.length}`,
-                                height: hasGap ? '32px' : '12px',
-                                marginTop: hasGap ? '-16px' : '-6px',
-                                marginBottom: hasGap ? '-16px' : '-6px',
-                                alignSelf: 'center'
-                              }}
-                              className={cn(
-                                "w-full cursor-pointer hover:bg-brand-400/20 transition-all rounded-full z-20 flex items-center justify-center group",
-                                hasGap ? "bg-brand-500/10" : "bg-transparent"
-                              )}
-                              title="רווח שורה"
-                            >
-                               <div className={cn("h-1 w-8 rounded-full transition-all group-hover:scale-x-150", hasGap ? "bg-brand-400" : "bg-slate-200 opacity-0 group-hover:opacity-100")} />
-                            </div>
-                          );
-                        })}
+                         {/* Row Gap Handles */}
+                         {Array.from({ length: currentConfig.rows - 1 }).map((_, i) => {
+                           const rowPos = (i + 1) + currentConfig.rowGaps.filter(g => g <= i).length;
+                           const hasGap = currentConfig.rowGaps.includes(i);
+                           return (
+                             <div 
+                               key={`row-gap-${i}`}
+                               style={{ 
+                                 gridRow: hasGap ? rowPos + 1 : rowPos, 
+                                 gridColumn: `1 / span ${currentConfig.cols + (currentConfig.columnGaps?.length || 0)}`,
+                                 height: hasGap ? `${currentConfig.rowGapSize}px` : '16px',
+                                 marginTop: hasGap ? `-${currentConfig.rowGapSize / 2}px` : '-8px',
+                                 marginBottom: hasGap ? `-${currentConfig.rowGapSize / 2}px` : '-8px',
+                                 alignSelf: 'center'
+                               }}
+                               className={cn(
+                                 "w-full relative flex items-center justify-center group",
+                                 hasGap ? "bg-brand-500/5" : "bg-transparent"
+                               )}
+                             >
+                                <div 
+                                  onClick={() => updateCurrentConfig((prev: any) => ({
+                                    ...prev,
+                                    rowGaps: prev.rowGaps.includes(i) ? prev.rowGaps.filter((g: number) => g !== i) : [...prev.rowGaps, i]
+                                  }))}
+                                  className={cn(
+                                    "h-1 w-full cursor-pointer transition-all rounded-full",
+                                    hasGap ? "bg-brand-400 group-hover:scale-y-[3]" : "bg-slate-200 group-hover:bg-brand-300 group-hover:scale-y-[4]"
+                                  )} 
+                                />
+
+                                {hasGap && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                  >
+                                    <div className="bg-white shadow-lg border border-brand-100 rounded-full px-4 py-2 flex items-center gap-1.5 pointer-events-auto">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.max((prev.rowGapSize || 32) - 4, 8) })); }}
+                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <div className="flex items-center gap-1.5">
+                                        <Ruler className="w-2.5 h-2.5 text-slate-300" />
+                                        <span className="text-[9px] font-black text-brand-700">{currentConfig.rowGapSize || 32}</span>
+                                      </div>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.min((prev.rowGapSize || 32) + 4, 120) })); }}
+                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                             </div>
+                           );
+                         })}
                       </>
                     )}
 
@@ -2124,9 +2962,12 @@ export default function App() {
                             rowPos={rowPos}
                             showDeskNumbers={showDeskNumbers}
                             draggedStudentId={draggedStudentId}
+                            selectedStudentId={selectedStudentId}
                             onDrop={handleDrop}
                             updateCurrentConfig={updateCurrentConfig}
                             currentConfig={currentConfig}
+                            is3DView={is3DView}
+                            activeDeskIdx={activeDeskIdx}
                             onShowHistory={(i: number) => {
                               setActiveDeskIdx(i);
                               setIsHistoryModalOpen(true);
@@ -2161,7 +3002,7 @@ export default function App() {
                       <History className="w-8 h-8 text-brand-600" />
                       <h2 className="text-2xl font-black text-slate-800">היסטוריית שולחן #{activeDeskIdx + 1}</h2>
                    </div>
-                   <button onClick={() => setIsHistoryModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
+                   <button onClick={() => { setIsHistoryModalOpen(false); setActiveDeskIdx(null); }} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
                 </div>
                 
                 <div className="space-y-4">
@@ -2179,7 +3020,41 @@ export default function App() {
                   )}
                 </div>
 
-                <button onClick={() => setIsHistoryModalOpen(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">סגור</button>
+                <button onClick={() => { setIsHistoryModalOpen(false); setActiveDeskIdx(null); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">סגור</button>
+            </motion.div>
+          </div>
+        )}
+
+        {isResetConfirmOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-md w-full flex flex-col gap-6 text-center"
+            >
+              <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-2">
+                <RotateCcw className="w-10 h-10 text-rose-600" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-slate-900">איפוס סידור ישיבה?</h2>
+                <p className="text-slate-500 font-medium leading-relaxed">
+                  פעולה זו תנקה את כל התלמידים מהשולחנות ותחזיר אותם למאגר. לא ניתן לבטל פעולה זו.
+                </p>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={() => setIsResetConfirmOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black hover:bg-slate-200 transition-colors"
+                >
+                  ביטול
+                </button>
+                <button 
+                  onClick={handleResetGrid}
+                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg shadow-rose-200 hover:bg-rose-700 transition-colors"
+                >
+                  איפוס הכל
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

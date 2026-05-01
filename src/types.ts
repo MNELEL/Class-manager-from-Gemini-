@@ -14,6 +14,7 @@ export interface Student {
   preferredRow?: 'front' | 'middle' | 'back';
   cornerPrefer?: boolean;
   notes?: string;
+  groups?: string[];
   // New fields
   attendance?: { date: string; status: 'present' | 'absent' | 'late' }[];
   grades?: { subject: string; score: number; date: string }[];
@@ -38,7 +39,12 @@ export interface ClassroomConfig {
   columnGaps: number[];
   rowGaps: number[];
   obstructionZones?: number[]; // indices of desks/cells that are obstructions
-  groups?: StudentGroup[];
+  teacherDesk?: {
+    index: number;
+    width: number;
+    height: number;
+  };
+  groups: StudentGroup[];
   showDeskNumbers?: boolean;
   deskHistory?: Record<number, { studentId: string | number | null; timestamp: number }[]>;
   updatedAt: number;
@@ -49,13 +55,7 @@ export interface StudentGroup {
   id: string;
   name: string;
   color?: string;
-  studentIds: (string | number)[];
-  subgroupIds?: string[];
-  constraints?: {
-    together?: boolean;
-    separate?: boolean;
-    avoidGroupIds?: string[];
-  };
+  constraint: 'none' | 'together' | 'separate';
 }
 
 export interface Notification {
