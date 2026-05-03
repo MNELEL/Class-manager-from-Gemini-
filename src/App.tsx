@@ -51,6 +51,8 @@ import {
   Menu,
   Heart,
   Ban,
+  Edit3,
+  Layout,
   GraduationCap,
   LineChart,
   UserPlus,
@@ -68,13 +70,137 @@ import {
   Lightbulb,
   ArrowRight,
   MousePointer,
-  FileText
+  FileText,
+  Sun,
+  Moon,
+  Zap,
+  Shield,
+  TrendingUp,
+  Activity,
+  ChevronUp,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+// --- Logic Helpers ---
+
+/** 
+ * Checks if two indices in a grid are adjacent (including diagonals)
+ */
+function areAdjacent(idx1: number, idx2: number, cols: number) {
+  const r1 = Math.floor(idx1 / cols);
+  const c1 = idx1 % cols;
+  const r2 = Math.floor(idx2 / cols);
+  const c2 = idx2 % cols;
+  
+  return Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1 && idx1 !== idx2;
+}
+
+/** 
+ * Calculates conflicts for the current layout
+ */
+function calculateConflicts(config: any) {
+  const { grid, students, cols } = config;
+  const conflicts: { type: 'forbidden' | 'missing_pref' | 'height' | 'special', studentId1: string, studentId2?: string, deskIdx1: number, deskIdx2?: number, message: string }[] = [];
+  
+  // 1. Adjacency Based Conflicts (Forbidden / Group Escape)
+  grid.forEach((id1: string | null, idx1: number) => {
+    if (!id1) return;
+    const s1 = students.find((s: any) => s.id === id1);
+    if (!s1) return;
+    
+    // Check neighbors
+    grid.forEach((id2: string | null, idx2: number) => {
+      if (!id2 || idx1 === idx2) return;
+      if (areAdjacent(idx1, idx2, cols)) {
+        const s2 = students.find((s:any)=>s.id===id2);
+        if (!s2) return;
+
+        // Manual Forbidden
+        if (s1.forbidden?.includes(id2) || s1.separateFrom?.includes(id2)) {
+          conflicts.push({
+            type: 'forbidden',
+            studentId1: id1,
+            studentId2: id2,
+            deskIdx1: idx1,
+            deskIdx2: idx2,
+            message: `${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
+          });
+        }
+
+        // Group Separate Constraint
+        s1.groups?.forEach((gId: string) => {
+           const group = config.groups?.find((g: any) => g.id === gId);
+           if (group?.constraint === 'separate' && s2.groups?.includes(gId)) {
+              conflicts.push({
+                 type: 'forbidden',
+                 studentId1: id1,
+                 studentId2: id2,
+                 deskIdx1: idx1,
+                 deskIdx2: idx2,
+                 message: `קונפליקט בקבוצה ${group.name}: ${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
+              });
+           }
+        });
+      }
+    });
+
+    // 2. Group Together Constraint (Isolation Check)
+    s1.groups?.forEach((gId: string) => {
+       const group = config.groups?.find((g: any) => g.id === gId);
+       if (group?.constraint === 'together') {
+          const hasGroupMemberAdjacent = grid.some((id2: string | null, idx2: number) => {
+             if (!id2 || idx1 === idx2 || !areAdjacent(idx1, idx2, cols)) return false;
+             const s2 = students.find((s:any)=>s.id===id2);
+             return s2?.groups?.includes(gId);
+          });
+          if (!hasGroupMemberAdjacent) {
+             const otherMembersInClass = students.filter((s:any) => s.id !== s1.id && s.groups?.includes(gId) && grid.includes(s.id));
+             if (otherMembersInClass.length > 0) {
+                conflicts.push({
+                   type: 'special',
+                   studentId1: id1,
+                   deskIdx1: idx1,
+                   message: `${s1.name} מבודד מחבריו לקבוצת ${group.name}.`
+                });
+             }
+          }
+       }
+    });
+
+    // 2. Height Conflict (Short student in back)
+    if (s1.height === 'short') {
+      const row = Math.floor(idx1 / cols);
+      if (row >= 3) { // Front is usually first 2-3 rows
+        conflicts.push({
+          type: 'height',
+          studentId1: id1,
+          deskIdx1: idx1,
+          message: `${s1.name} (קדמי) יושב רחוק מדי.`
+        });
+      }
+    }
+    
+    // 3. Special Area Prefs
+    if (s1.areaPref?.special === 'window_or_microwave') {
+      const col = idx1 % cols;
+      if (col !== 0 && col !== cols - 1) {
+        conflicts.push({
+          type: 'special',
+          studentId1: id1,
+          deskIdx1: idx1,
+          message: `${s1.name} ביקש לשבת בקצה הכיתה.`
+        });
+      }
+    }
+  });
+  
+  return conflicts;
 }
 
 // --- Helper Components (Hoisted) ---
@@ -86,6 +212,103 @@ function Badge({ children, className, style, ...props }: { children: React.React
     </span>
   );
 }
+
+const BulkUpdateModal = ({ students, groups = [], onUpdate, onClose }: any) => {
+  const [text, setText] = useState("");
+
+  const handleUpdate = () => {
+    const lines = text.split('\n').filter(l => l.trim());
+    const updates: any[] = [...students];
+
+    lines.forEach(line => {
+      const parts = line.split(',').map(p => p.trim());
+      const name = parts[0];
+      if (!name) return;
+
+      const studentIdx = updates.findIndex((s: any) => s.name === name);
+      if (studentIdx !== -1) {
+        let updated = { ...updates[studentIdx] };
+        parts.slice(1).forEach(p => {
+          if (p.startsWith('חברים:')) {
+            const names = p.replace('חברים:', '').split(';').map(n => n.trim());
+            updated.preferred = students.filter((s: any) => names.includes(s.name)).map((s: any) => s.id);
+          } else if (p.startsWith('להרחיק:')) {
+            const names = p.replace('להרחיק:', '').split(';').map(n => n.trim());
+            updated.forbidden = students.filter((s: any) => names.includes(s.name)).map((s: any) => s.id);
+          } else if (p.startsWith('גובה:')) {
+            const h = p.replace('גובה:', '').trim();
+            if (h === 'נמוך' || h === 'קדמי') updated.height = 'short';
+            else if (h === 'גבוה' || h === 'אחורי') updated.height = 'tall';
+            else updated.height = 'medium';
+          } else if (p.startsWith('קבוצה:')) {
+            const groupNames = p.replace('קבוצה:', '').split(';').map(n => n.trim());
+            const currentGroups = [...(updated.groups || [])];
+            groupNames.forEach(gn => {
+              const group = groups.find((g: any) => g.name === gn);
+              if (group && !currentGroups.includes(group.id)) {
+                currentGroups.push(group.id);
+              }
+            });
+            updated.groups = currentGroups;
+          }
+        });
+        updates[studentIdx] = updated;
+      }
+    });
+
+    onUpdate(updates);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-8">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+      >
+        <div className="p-10 space-y-8">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-brand-50 dark:bg-brand-900/20 rounded-2xl">
+                   <Edit3 className="w-7 h-7 text-brand-600" />
+                </div>
+                <div>
+                   <h3 className="text-2xl font-black text-slate-800 dark:text-white">עדכון קבוצתי בטקסט חופשי</h3>
+                   <p className="text-slate-500 font-bold">פורמט: שם התלמיד, חברים: חבר1; חבר2, להרחיק: חבר3</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+                 <X className="w-6 h-6 text-slate-400" />
+              </button>
+           </div>
+
+           <textarea 
+             className="w-full h-80 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] border-2 border-slate-100 dark:border-slate-700 font-mono text-sm leading-relaxed outline-none focus:border-brand-500 transition-colors"
+             placeholder={`ישראל ישראלי, חברים: יונתן; דנה, גובה: נמוך\nיונית לוי, להרחיק: דביר, גובה: גבוה`}
+             value={text}
+             onChange={(e) => setText(e.target.value)}
+           />
+
+           <div className="flex gap-4">
+              <button 
+                onClick={handleUpdate}
+                className="flex-1 py-5 bg-brand-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-brand-100 dark:shadow-none hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                עדכן את כל התלמידים
+              </button>
+              <button 
+                onClick={onClose}
+                className="px-10 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-[2rem] font-black hover:bg-slate-200 transition-all"
+              >
+                ביטול
+              </button>
+           </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const SatisfactionGauge = ({ score }: { score: number }) => (
   <div className="relative w-full h-8 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
@@ -164,7 +387,8 @@ const DeskCell = ({
   activeDeskIdx,
   onShowHistory,
   onShowProfile,
-  setNotifications
+  setNotifications,
+  conflicts = []
 }: any) => {
   const [isOver, setIsOver] = useState(false);
   const draggingS = currentConfig.students.find((s: any) => s.id === draggedStudentId);
@@ -173,10 +397,20 @@ const DeskCell = ({
 
   const isSelected = studentId && selectedStudentId === studentId;
   const isObstruction = currentConfig.obstructions?.includes(idx);
+  
+  // Find conflicts for this specific desk
+  const deskConflicts = conflicts.filter((c: any) => c.deskIdx1 === idx || c.deskIdx2 === idx);
+  const hasConflict = deskConflicts.length > 0;
 
-  if ((isHidden || isObstruction) && editMode === 'normal') return <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent flex items-center justify-center">
-    {isObstruction && <ShieldAlert className="w-5 h-5 text-slate-200" />}
-  </div>;
+  const isPrinting = currentConfig.isPrinting;
+
+  if (((isHidden || isObstruction) && !isPrinting) && editMode === 'normal') return (
+    <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent flex items-center justify-center">
+      {isObstruction && <ShieldAlert className="w-5 h-5 text-slate-200" />}
+    </div>
+  );
+
+  if (isPrinting && (isHidden || isObstruction)) return <div style={{ gridColumn: colPos, gridRow: rowPos }} />;
 
   const handleDeskDragStart = (e: React.DragEvent) => {
     if (editMode === 'structure' && !isHidden) {
@@ -197,8 +431,6 @@ const DeskCell = ({
 
       updateCurrentConfig((prev: any) => {
         const newGrid = [...prev.grid];
-        
-        // Swap hidden state if target is hidden
         const isTargetHidden = prev.hiddenDesks.includes(idx);
         if (isTargetHidden) {
           const updatedHidden = prev.hiddenDesks.filter((i: number) => i !== idx).concat([fromIdx]);
@@ -225,6 +457,7 @@ const DeskCell = ({
 
   return (
     <motion.div 
+      layout
       layoutId={`desk-${idx}`}
       data-student-id={studentId || undefined}
       draggable={editMode === 'structure' && !isHidden}
@@ -244,9 +477,10 @@ const DeskCell = ({
           }
         }
       }}
-      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: 2, rotateY: -2 } : { scale: 1.02 }}
+      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: 2, rotateY: -2 } : { scale: 1.05, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      animate={isSelected ? { scale: 1.1, y: -10, z: 50 } : { scale: 1, y: 0, z: 0 }}
+      animate={isSelected ? { scale: 1.1, y: -10, z: 50, shadow: "0 20px 40px rgba(0,0,0,0.2)" } : { scale: 1, y: 0, z: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
       style={{ 
         gridColumn: colPos, 
         gridRow: rowPos,
@@ -256,48 +490,59 @@ const DeskCell = ({
             ? '0 40px 80px rgba(0,0,0,0.3)' 
             : '0 20px 40px rgba(0,0,0,0.15)',
           transformStyle: 'preserve-3d',
-          transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease'
         } : {})
       }}
       onClick={() => {
         if (editMode === 'structure') {
-           if (isObstruction) {
+          if (isObstruction) {
             updateCurrentConfig((prev: any) => ({
               ...prev,
               obstructions: prev.obstructions.filter((i: number) => i !== idx),
               hiddenDesks: prev.hiddenDesks.filter((i: number) => i !== idx)
             }));
-           } else if (isHidden) {
+          } else if (isHidden) {
             updateCurrentConfig((prev: any) => ({
               ...prev,
               obstructions: [...(prev.obstructions || []), idx]
             }));
-           } else {
+          } else {
             updateCurrentConfig((prev: any) => ({
               ...prev,
               hiddenDesks: [...prev.hiddenDesks, idx],
               grid: prev.grid.map((val: any, i: number) => i === idx ? null : val)
             }));
-           }
+          }
         } else if (!isHidden && !isObstruction) {
           onShowHistory(idx);
         }
       }}
       className={cn(
         "aspect-square rounded-[2rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
-        isObstruction ? "bg-slate-100 border-2 border-slate-300 opacity-80" :
-        isHidden ? "border-2 border-dashed border-slate-200 bg-slate-50/30 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
-        !student ? "bg-slate-50/30 border border-slate-100 hover:bg-slate-50" : "bg-white border border-brand-100 shadow-sm ring-2 ring-brand-50",
+        isPrinting ? "bg-white border-slate-100" : (
+          isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 opacity-80" :
+          isHidden ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
+          !student ? "bg-slate-50/30 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950"
+        ),
         compatibilityClass,
-        isSelected && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
-        editMode === 'structure' && !isHidden && !isObstruction && "cursor-move hover:ring-2 hover:ring-amber-300"
+        (isSelected && !isPrinting) && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
+        (hasConflict && !isPrinting) && "ring-4 ring-rose-400/30 border-rose-200 dark:border-rose-900",
+        (editMode === 'structure' && !isHidden && !isObstruction && !isPrinting) && "cursor-move hover:ring-2 hover:ring-amber-300"
       )}
     >
+      {/* Conflict Overlay Pulse */}
+      {hasConflict && student && (
+        <motion.div 
+          animate={{ opacity: [0.1, 0.3, 0.1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute inset-0 bg-rose-500 rounded-[2rem] pointer-events-none z-0"
+        />
+      )}
+
       {editMode === 'structure' && (
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="flex flex-col items-center gap-1"
+          className="flex flex-col items-center gap-1 z-10"
         >
           {isObstruction ? (
             <>
@@ -306,7 +551,7 @@ const DeskCell = ({
             </>
           ) : isHidden ? (
             <>
-              <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-brand-600 group-hover:scale-110 transition-all">
+              <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-brand-600 group-hover:scale-110 transition-all">
                 <Plus className="w-5 h-5" />
               </div>
               <span className="text-[8px] font-black text-slate-400 group-hover:text-brand-600 uppercase tracking-tighter">הוסף</span>
@@ -317,30 +562,69 @@ const DeskCell = ({
 
       {/* Desk Surface Visualization */}
       {!isHidden && !isObstruction && (
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-1" />
       )}
       
       {showDeskNumbers && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
       
       {student ? (
-        <div className="flex flex-col items-center gap-1 w-full">
+        <div className="flex flex-col items-center gap-1 w-full z-10">
            {/* Chair Backrest Icon */}
-           <div className="w-10 h-7 bg-slate-200 rounded-t-lg -mb-2 z-0 border border-slate-300 shadow-inner flex items-center justify-center">
-             <div className="w-5 h-1 bg-slate-300 rounded-full" />
+           <div className="w-10 h-7 bg-slate-200 dark:bg-slate-700 rounded-t-lg -mb-2 z-0 border border-slate-300 dark:border-slate-600 shadow-inner flex items-center justify-center">
+             <div className="w-5 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
            </div>
            
-           <div className="z-10 flex flex-col items-center bg-white px-5 py-2.5 rounded-2xl border-2 border-slate-400 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] relative w-[90%]">
-             <span className="text-lg font-black text-slate-900 leading-tight">{student.name}</span>
-             {student.height === 'short' && <Badge className="bg-amber-100 text-amber-900 font-black scale-[0.9] mt-1 border border-amber-200">קדמי</Badge>}
+           <div className={cn(
+             "z-10 flex flex-col items-center bg-white dark:bg-slate-800 px-5 py-2.5 rounded-2xl border-2 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] relative w-[90%]",
+             hasConflict ? "border-rose-400 dark:border-rose-900" : "border-slate-400 dark:border-slate-600",
+              isPrinting && "shadow-none border-slate-200"
+           )}>
+             <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
+             
+             {/* Indicators for constraints */}
+             <div className="flex gap-1.5 mt-2">
+               {student.height === 'short' && (
+                 <div title="ראייה/קדמי" className="p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800 shadow-sm">
+                   <Eye className="w-3.5 h-3.5 text-amber-600" />
+                 </div>
+               )}
+               {student.preferred?.length > 0 && (
+                 <div title="חברים" className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800 shadow-sm">
+                   <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                 </div>
+               )}
+               {student.forbidden?.length > 0 && (
+                 <div title="הפרדות" className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                   <Ban className="w-3.5 h-3.5 text-slate-600" />
+                 </div>
+               )}
+               {(student.groups && student.groups.length > 0) && (
+                 <div title="שייך לקבוצה" className="p-1.5 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-100 dark:border-brand-800 shadow-sm">
+                   <Layers className="w-3.5 h-3.5 text-brand-600" />
+                 </div>
+               )}
+             </div>
+
+             {/* Conflict Badge */}
+             {hasConflict && (
+               <motion.div 
+                 initial={{ scale: 0 }}
+                 animate={{ scale: 1 }}
+                 className="absolute -top-3 -left-3 w-7 h-7 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800"
+               >
+                 <AlertCircle className="w-4 h-4" />
+               </motion.div>
+             )}
              
              {/* Group Dot Indicators */}
              {student.groups && student.groups.length > 0 && (
                <div className="absolute -top-2 -right-2 flex gap-1">
-                 {student.groups.map((g: string, i: number) => {
-                   const gIdx = ['א', 'ב', 'ג'].indexOf(g);
-                   const colors = ['bg-brand-500', 'bg-amber-500', 'bg-emerald-500'];
+                 {student.groups.map((gId: string, i: number) => {
+                   const group = currentConfig.groups?.find((g: any) => g.id === gId);
+                   const colors = ['bg-brand-500', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-rose-500'];
+                   const groupIndex = (currentConfig.groups || []).findIndex((g: any) => g.id === gId);
                    return (
-                    <div key={i} className={cn("w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm", colors[gIdx % colors.length] || 'bg-slate-400')} title={`קבוצה ${g}`} />
+                     <div key={i} className={cn("w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-800 shadow-sm", colors[groupIndex % colors.length] || 'bg-slate-400')} title={group?.name || `קבוצה ${gId}`} />
                    );
                  })}
                </div>
@@ -348,38 +632,36 @@ const DeskCell = ({
            </div>
            
            {/* Desk Shadow Area */}
-           <div className="w-12 h-1.5 bg-slate-300/40 rounded-full blur-[2px] mt-2" />
+           <div className="w-12 h-1.5 bg-slate-300/40 dark:bg-black/40 rounded-full blur-[2px] mt-2" />
            
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                updateCurrentConfig((prev: any) => {
-                  const newGrid = [...prev.grid];
-                  newGrid[idx] = null;
-                  return { ...prev, grid: newGrid };
-                });
-                setNotifications((prev: any) => [{ id: Date.now(), text: `השיבוץ בוטל: ${student.name} הוחזר למאגר`, type: 'info' }, ...prev]);
-              }}
-              title="ביטול שיבוץ"
-              className="absolute -top-3 -right-3 w-10 h-10 bg-white border-2 border-slate-300 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-rose-600 hover:text-white hover:border-rose-700 transition-all shadow-xl z-30 scale-90 hover:scale-110 active:scale-95"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-            
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onShowProfile();
-              }}
-              title="צפייה בפרופיל"
-              className="absolute -bottom-3 -left-3 w-10 h-10 bg-white border-2 border-slate-300 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-brand-600 hover:text-white hover:border-brand-700 transition-all shadow-xl z-30 scale-90 hover:scale-110 active:scale-95"
-            >
-              <Eye className="w-5 h-5" />
-            </button>
-            
-            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-slate-800 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-xl z-50">
-              לחץ לצפייה בהיסטוריה
-            </div>
+           {/* Actions */}
+           <div className="absolute inset-0 flex items-center justify-center pt-8 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <div className="flex gap-2 pointer-events-auto">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateCurrentConfig((prev: any) => {
+                      const newGrid = [...prev.grid];
+                      newGrid[idx] = null;
+                      return { ...prev, grid: newGrid };
+                    });
+                    setNotifications((prev: any) => [{ id: Date.now(), text: `השיבוץ בוטל: ${student.name}`, type: 'info' }, ...prev]);
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white hover:border-rose-700 shadow-xl transition-all"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShowProfile();
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-brand-600 hover:text-white hover:border-brand-700 shadow-xl transition-all"
+                >
+                  <Eye className="w-5 h-5" />
+                </button>
+              </div>
+           </div>
         </div>
       ) : !isHidden && (
         <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-50 transition-opacity">
@@ -388,12 +670,73 @@ const DeskCell = ({
         </div>
       )}
 
-      {isOver && isHidden && (
-         <div className="absolute inset-0 bg-rose-500/10 rounded-2xl flex items-center justify-center">
-            <Ban className="w-6 h-6 text-rose-500 opacity-40" />
-         </div>
-      )}
     </motion.div>
+  );
+};
+
+const ConflictPanel = ({ conflicts, students, onResolve }: any) => {
+  if (conflicts.length === 0) return (
+    <div className="flex flex-col items-center justify-center p-8 bg-emerald-50/20 dark:bg-emerald-950/10 border border-dashed border-emerald-200 dark:border-emerald-900 rounded-[2rem]">
+      <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-2" />
+      <p className="text-sm font-black text-emerald-600 uppercase tracking-widest text-center">אין קונפליקטים פעילים</p>
+      <p className="text-[10px] font-bold text-emerald-600/60 mt-1">כל האילוצים וההעדפות נענו בהצלחה!</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-2">
+        <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-500" />
+          ניתוח קונפליקטים ({conflicts.length})
+        </h3>
+      </div>
+      
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        {conflicts.map((conflict: any, idx: number) => (
+          <motion.div 
+            key={idx}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02 }}
+            className="p-4 bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/50 rounded-2xl shadow-sm flex gap-3 items-start group"
+          >
+            <div className="p-2 bg-rose-50 dark:bg-rose-900/10 rounded-xl group-hover:bg-rose-100 transition-colors">
+              {conflict.type === 'height' ? <Eye className="w-4 h-4 text-rose-600" /> : <Ban className="w-4 h-4 text-rose-600" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{conflict.message}</p>
+              <div className="flex gap-4 mt-2">
+                <button 
+                  onClick={() => onResolve(conflict)}
+                  className="text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase tracking-widest hover:underline underline-offset-4"
+                >
+                  הצע פתרון
+                </button>
+                <button 
+                  onClick={() => {
+                    // Logic to highlight the desks involved
+                  }}
+                  className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest hover:text-slate-600"
+                >
+                  הצג במפה
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      
+      <div className="p-4 bg-brand-50/50 dark:bg-brand-950/10 rounded-2xl border border-brand-100 dark:border-brand-900/50">
+        <div className="flex items-center gap-2 mb-2">
+          <Zap className="w-4 h-4 text-brand-600" />
+          <span className="text-[10px] font-black text-brand-700 dark:text-brand-400 uppercase tracking-widest">עצה חכמה</span>
+        </div>
+        <p className="text-[11px] font-bold text-brand-800 dark:text-brand-300 leading-relaxed">
+          ניסית להחליף בין {students.find((s:any)=>s.id===conflicts[0]?.studentId1)?.name || 'התלמיד'} לבין מקום פנוי בשורה הראשונה?
+        </p>
+      </div>
+    </div>
   );
 };
 
@@ -401,82 +744,369 @@ const DeskCell = ({
 
 // --- Views ---
 
-const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => void }) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
-    <div className="flex items-center gap-4">
-      <button 
-        onClick={onBack}
-        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <div className="flex items-center justify-between flex-1">
-        <h2 className="text-2xl font-black text-slate-700">נוכחות יומית</h2>
-        <Badge className="bg-emerald-50 text-emerald-600">יום שלישי, 28 באפריל</Badge>
-      </div>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {students.map((s, idx) => (
-        <div key={`${s.id}-${idx}`} className="glass-card p-5 rounded-3xl flex items-center justify-between hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400">
-              {s.name[0]}
-            </div>
-            <span className="text-xl font-bold text-slate-800">{s.name}</span>
+const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => void }) => {
+  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+
+  const toggleStatus = (id: string, status: 'present' | 'absent' | 'late') => {
+    setAttendance(prev => ({ ...prev, [id]: status }));
+  };
+
+  const presentCount = Object.values(attendance).filter(v => v === 'present').length;
+  const lateCount = Object.values(attendance).filter(v => v === 'late').length;
+  const absentCount = Object.values(attendance).filter(v => v === 'absent').length;
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">נוכחות יומית</h2>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">
+              יום שלישי, 28 באפריל, 2024
+            </p>
           </div>
           <div className="flex items-center gap-2">
-             <button className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-black uppercase">נוכח</button>
-             <button className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-black uppercase">נעדר</button>
+            <div className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-black">
+              {presentCount} נוכחים
+            </div>
+            <div className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-black">
+              {lateCount} מאחרים
+            </div>
+            <div className="px-4 py-2 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl text-xs font-black">
+              {absentCount} נעדרים
+            </div>
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-);
-
-const GradesView = ({ onBack }: { onBack: () => void }) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto flex flex-col">
-    <div className="flex items-center gap-4">
-      <button 
-        onClick={onBack}
-        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <h2 className="text-2xl font-black text-slate-700">ניהול ציונים</h2>
-    </div>
-    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-      <div className="p-6 bg-brand-50 rounded-full">
-        <GraduationCap className="w-12 h-12 text-brand-600" />
       </div>
-      <p className="max-w-md text-slate-500 font-medium">כאן תוכלו לראות ולנהל את הישגי התלמידים. מודול הציונים בבנייה ויעלה בקרוב בגרסה 3.1.</p>
-    </div>
-  </div>
-);
 
-const ProgressView = ({ onBack }: { onBack: () => void }) => (
-  <div className="p-8 space-y-8 h-full overflow-y-auto flex flex-col">
-    <div className="flex items-center gap-4">
-      <button 
-        onClick={onBack}
-        className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-colors"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <h2 className="text-2xl font-black text-slate-700">גרף התקדמות</h2>
-    </div>
-    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-      <div className="p-6 bg-indigo-50 rounded-full">
-        <LineChart className="w-12 h-12 text-indigo-600" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {students.map((s, idx) => {
+          const status = attendance[s.id] || 'none';
+          return (
+            <div key={`${s.id}-${idx}`} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col gap-6 hover:shadow-xl hover:-translate-y-1 transition-all group">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-2xl text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-colors uppercase">
+                  {s.name[0]}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{s.name}</span>
+                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500">תלמיד מן המניין</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button 
+                  onClick={() => toggleStatus(s.id, 'present')}
+                  className={cn(
+                    "py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
+                    status === 'present' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100 dark:shadow-none" : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                  )}
+                >
+                  נוכח
+                </button>
+                <button 
+                   onClick={() => toggleStatus(s.id, 'late')}
+                   className={cn(
+                     "py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
+                     status === 'late' ? "bg-amber-500 text-white shadow-lg shadow-amber-100 dark:shadow-none" : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                   )}
+                >
+                  מאחר
+                </button>
+                <button 
+                   onClick={() => toggleStatus(s.id, 'absent')}
+                   className={cn(
+                     "py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
+                     status === 'absent' ? "bg-rose-500 text-white shadow-lg shadow-rose-100 dark:shadow-none" : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                   )}
+                >
+                  נעדר
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <p className="max-w-md text-slate-500 font-medium">מעקב אחר יעדים פדגוגיים ושינויי התנהגות לאורך זמן. מודול זה בבנייה בקרוב.</p>
     </div>
-  </div>
-);
+  );
+};
 
-const StudentDetailView = ({ student, onBack, updateCurrentConfig, students, onSelectStudent }: { student: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'academic' | 'behavior' | 'attendance' | 'ai'>('info');
+const GradesView = ({ onBack }: { onBack: () => void }) => {
+  const [grades, setGrades] = useState([
+    { id: '1', name: 'יוני לוי', math: 85, english: 92, science: 78, history: 95 },
+    { id: '2', name: 'ענבר כהן', math: 92, english: 88, science: 94, history: 82 },
+    { id: '3', name: 'גיל שרון', math: 78, english: 85, science: 82, history: 88 },
+    { id: '4', name: 'נועה ברק', math: 95, english: 94, science: 91, history: 97 },
+  ]);
 
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <div className="flex items-center justify-between flex-1">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">ניהול הישגים וציונים</h2>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">סקירה פדגוגית של הישגי המחצית</p>
+          </div>
+          <button className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <Download className="w-5 h-5" />
+            ייצוא גיליון
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+        <table className="w-full text-right border-collapse">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">שם התלמיד</th>
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">מתמטיקה</th>
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">אנגלית</th>
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">מדעים</th>
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">היסטוריה</th>
+              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">ממוצע</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {grades.map((s) => {
+              const avg = Math.round((s.math + s.english + s.science + s.history) / 4);
+              return (
+                <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-400 dark:text-slate-500 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                        {s.name[0]}
+                      </div>
+                      <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{s.name}</span>
+                    </div>
+                  </td>
+                  {[s.math, s.english, s.science, s.history].map((grade, i) => (
+                    <td key={i} className="px-8 py-6">
+                      <div className="flex justify-center">
+                        <div className={cn(
+                          "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black",
+                          grade >= 90 ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : 
+                          grade >= 80 ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" :
+                          "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                        )}>
+                          {grade}
+                        </div>
+                      </div>
+                    </td>
+                  ))}
+                  <td className="px-8 py-6">
+                    <div className="flex justify-center">
+                      <div className="w-16 h-16 rounded-full border-4 border-slate-50 dark:border-slate-800 flex items-center justify-center text-2xl font-black text-brand-600 dark:text-brand-400 bg-brand-50/30 dark:bg-brand-900/10">
+                        {avg}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+
+const ProgressView = ({ onBack }: { onBack: () => void }) => {
+  const { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell } = require('recharts');
+
+  // Mock data for analytics
+  const engagementData = [
+    { name: 'אייר', engagement: 65, attendance: 92, satisfaction: 78 },
+    { name: 'סיוון', engagement: 72, attendance: 88, satisfaction: 82 },
+    { name: 'תמוז', engagement: 68, attendance: 94, satisfaction: 85 },
+    { name: 'אב', engagement: 85, attendance: 91, satisfaction: 89 },
+    { name: 'אלול', engagement: 78, attendance: 95, satisfaction: 92 },
+    { name: 'תשרי', engagement: 92, attendance: 97, satisfaction: 94 },
+  ];
+
+  const categoryData = [
+    { name: 'ריכוז', value: 85 },
+    { name: 'שיתוף פעולה', value: 72 },
+    { name: 'משמעת', value: 91 },
+    { name: 'הישגים', value: 78 },
+  ];
+
+  const COLORS = ['#6366f1', '#6366f1', '#a5b4fc', '#e0e7ff'];
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">אופטימיזציה וניתוח נתונים</h2>
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">מבט על התקדמות הכיתה והשיפור במרחבי הלמידה</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Chart */}
+        <div className="lg:col-span-2 glass-card p-8 rounded-[3rem] space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+              <TrendingUp className="w-6 h-6 text-brand-600" />
+              מגמות שביעות רצון ומעורבות
+            </h3>
+            <select className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-black p-2 outline-none">
+              <option>6 חודשים אחרונים</option>
+              <option>שנה אחרונה</option>
+            </select>
+          </div>
+          
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={engagementData}>
+                <defs>
+                  <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '1.5rem', 
+                    border: 'none', 
+                    boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                    backgroundColor: '#1e293b',
+                    color: '#fff'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="engagement" 
+                  stroke="#6366f1" 
+                  strokeWidth={4}
+                  fillOpacity={1} 
+                  fill="url(#colorEngagement)" 
+                  name="מעורבות"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="satisfaction" 
+                  stroke="#fbbf24" 
+                  strokeWidth={4}
+                  fill="transparent"
+                  name="שביעות רצון"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Breakdown Card */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+            <PieChartIcon className="w-6 h-6 text-brand-600" />
+            חלוקת מדדים
+          </h3>
+          
+          <div className="h-[250px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={8}
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-3xl font-black text-slate-900 dark:text-white">82%</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">ממוצע כיתתי</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {categoryData.map((item, i) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                </div>
+                <span className="text-sm font-black text-slate-900 dark:text-white">{item.value}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Small Analytics Cards */}
+        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+           {[
+             { label: 'שיפור ממוצע', value: '+12%', sub: 'מאז השינוי האחרון', color: 'emerald', icon: <ChevronUp /> },
+             { label: 'ריכז בכיתה', value: '7.8/10', sub: 'מדד מבוסס AI', color: 'indigo', icon: <Brain /> },
+             { label: 'שת"פ בין תלמידים', value: '4.2', sub: 'אינטראקציות לשעה', color: 'amber', icon: <Zap /> },
+             { label: 'שקט תעשייתי', value: '92%', sub: 'מדד רעש ממוצע', color: 'brand', icon: <Activity /> }
+           ].map((card, i) => (
+             <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[3rem] space-y-4 relative overflow-hidden group hover:scale-[1.02] transition-all">
+                <div className={cn(
+                  "absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-5 group-hover:scale-150 transition-transform",
+                  `bg-${card.color}-500`
+                )} />
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center mb-2",
+                  `bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`
+                )}>
+                  {React.cloneElement(card.icon as React.ReactElement, { className: "w-6 h-6" })}
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{card.label}</h4>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{card.value}</span>
+                    <span className="text-xs font-bold text-slate-400">{card.sub}</span>
+                  </div>
+                </div>
+             </div>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void }) => {
+  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'pedagogy' | 'academic' | 'attendance'>('info');
+  
   const currentIndex = students.findIndex(s => s.id === student.id);
   const prevStudent = students[currentIndex - 1];
   const nextStudent = students[currentIndex + 1];
@@ -493,322 +1123,444 @@ const StudentDetailView = ({ student, onBack, updateCurrentConfig, students, onS
     updateStudent('areaPref', { ...currentPref, [field]: value });
   };
 
+  const tabs = [
+    { id: 'info', label: 'מידע חברתי', icon: <Heart className="w-4 h-4" /> },
+    { id: 'ai', label: 'הגדרות AI', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'pedagogy', label: 'פדגוגיה', icon: <FileText className="w-4 h-4" /> },
+    { id: 'academic', label: 'הישגים', icon: <GraduationCap className="w-4 h-4" /> },
+    { id: 'attendance', label: 'נוכחות', icon: <Calendar className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar bg-slate-50">
-      <div className="flex items-center gap-6">
-        <div className="flex gap-2">
+    <div className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors">
+      {/* Upper Navigation Bar */}
+      <div className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-10 transition-colors">
+        <div className="flex items-center gap-6">
           <button 
             onClick={onBack}
-            className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+            className="group flex items-center gap-2 p-2 px-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-xs transition-all"
           >
-            <ChevronLeft className="w-7 h-7" />
+            <ChevronRight className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            חזרה לסידור
           </button>
-          <div className="flex gap-1">
-            <button 
-              disabled={!prevStudent}
-              onClick={() => onSelectStudent(prevStudent.id)}
-              className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95 disabled:opacity-30"
-              title="תלמיד הקודם"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-            <button 
-              disabled={!nextStudent}
-              onClick={() => onSelectStudent(nextStudent.id)}
-              className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95 disabled:opacity-30"
-              title="תלמיד הבא"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
+          
+          <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+          
+          <div className="flex items-center gap-3">
+             <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-brand-200 ring-4 ring-brand-50 dark:ring-brand-900/20">
+               {student.name[0]}
+             </div>
+             <div>
+                <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none">{student.name}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">תלמיד #{student.id}</span>
+                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                  <span className="text-[10px] font-black text-brand-600 leading-none">פעיל במערכת</span>
+                </div>
+             </div>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-[2rem] bg-brand-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
-              {student.name[0]}
-            </div>
-            <div>
-              <input 
-                value={student.name}
-                onChange={(e) => updateStudent('name', e.target.value)}
-                className="text-3xl font-black text-slate-900 tracking-tight bg-transparent border-0 p-0 focus:ring-0"
-              />
-              <div className="flex gap-2 mt-1">
-                <Badge className="bg-brand-50 text-brand-600 border border-brand-200">ID: {student.id}</Badge>
-                <select 
-                  value={student.height}
-                  onChange={(e) => updateStudent('height', e.target.value)}
-                  className="bg-slate-100 text-slate-600 border border-slate-200 rounded-full px-3 py-0.5 text-xs font-black focus:ring-0"
-                >
-                  <option value="short">קדמי</option>
-                  <option value="medium">בינוני</option>
-                  <option value="tall">גבוה</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-[1.5rem] font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-              <Download className="w-5 h-5" />
-              ייצוא דוח
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-2 p-1.5 bg-white border-2 border-slate-100 rounded-[2rem] w-fit shadow-sm">
-        {(['info', 'ai', 'academic', 'behavior', 'attendance'] as const).map(tab => (
-          <button 
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-8 py-3 rounded-[1.5rem] text-sm font-black transition-all",
-              activeTab === tab ? "bg-brand-600 text-white shadow-lg" : "text-slate-500 hover:bg-slate-50"
-            )}
-          >
-            {tab === 'info' ? 'מידע כללי' : tab === 'ai' ? 'הגדרות AI' : tab === 'academic' ? 'הישגים' : tab === 'behavior' ? 'התנהגות' : 'נוכחות'}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {activeTab === 'info' && (
-          <>
-            <div className="lg:col-span-2 space-y-8">
-              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
-                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                  <Heart className="w-6 h-6 text-rose-500" />
-                  העדפות חברתיות (חברים)
-                </h3>
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-500 font-medium italic">הזן מזהי תלמידים ש {student.name} רוצה לשבת לידם (מופרדים בפסיק):</p>
-                  <input 
-                    value={student.preferred?.join(', ') || ''}
-                    onChange={(e) => updateStudent('preferred', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                    placeholder="לדוגמה: 1, 5, 12"
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-brand-500 outline-none transition-all"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {student.preferred?.map((id: string) => (
-                      <Badge key={id} className="bg-rose-50 text-rose-600 border border-rose-100">{id}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
-                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                  <Ban className="w-6 h-6 text-slate-500" />
-                  הפרדות מנדטוריות
-                </h3>
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-500 font-medium italic">הזן מזהי תלמידים ש {student.name} לא צריך לשבת לידם:</p>
-                  <input 
-                    value={student.forbidden?.join(', ') || ''}
-                    onChange={(e) => updateStudent('forbidden', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                    placeholder="לדוגמה: 2, 8"
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-slate-400 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Notes Section */}
-              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
-                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                  <FileText className="w-6 h-6 text-slate-500" />
-                  הערות פדגוגיות
-                </h3>
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-500 font-medium italic">תיעוד חופשי על התלמיד, נקודות לשימור ושיפור:</p>
-                  <textarea 
-                    value={student.notes || ''}
-                    rows={4}
-                    onChange={(e) => updateStudent('notes', e.target.value)}
-                    placeholder="הזן הערה..."
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-slate-800 focus:border-brand-500 outline-none transition-all resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-8">
-              <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
-                 <h3 className="text-lg font-black text-slate-900 mb-4">קבוצות פדגוגיות</h3>
-                 <div className="flex flex-wrap gap-2">
-                    {['א', 'ב', 'ג', 'ד'].map(g => (
-                      <button 
-                         key={g}
-                         onClick={() => {
-                           const groups = student.groups || [];
-                           updateStudent('groups', groups.includes(g) ? groups.filter((pg: string) => pg !== g) : [...groups, g]);
-                         }}
-                         className={cn(
-                           "px-4 py-2 rounded-xl text-sm font-black transition-all",
-                           student.groups?.includes(g) ? "bg-brand-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-100"
-                         )}
-                      >
-                        קבוצה {g}
-                      </button>
-                    ))}
-                 </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {activeTab === 'ai' && (
-          <div className="lg:col-span-3 space-y-8">
-            <div className="bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm space-y-10">
-              <div className="flex items-center gap-4">
-                 <Sparkles className="w-8 h-8 text-indigo-600" />
-                 <div>
-                    <h3 className="text-2xl font-black text-slate-900">אילוצי מיקום חכמים</h3>
-                    <p className="text-slate-500 font-medium">הגדרות אלו משפיעות ישירות על האופטימיזציה של ה-AI</p>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-6">
-                   <div className="space-y-3">
-                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest">משקולת חשיבות (0-300)</label>
-                      <input 
-                        type="range" min="0" max="300" step="10"
-                        value={student.areaPref?.weight || 50}
-                        onChange={(e) => updateAreaPref('weight', parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
-                      />
-                      <div className="flex justify-between text-xs font-bold text-slate-400">
-                        <span>נמוכה</span>
-                        <span className="text-brand-600 font-black">{student.areaPref?.weight || 50}</span>
-                        <span>קריטית</span>
-                      </div>
-                   </div>
-
-                   <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all border border-slate-100">
-                      <input 
-                         type="checkbox"
-                         checked={!!student.areaPref?.isolated}
-                         onChange={(e) => updateAreaPref('isolated', e.target.checked)}
-                         className="w-5 h-5 rounded-lg text-brand-600 border-slate-300 focus:ring-brand-500"
-                      />
-                      <div className="flex-1">
-                        <span className="block font-black text-slate-800">בידוד (Isolated)</span>
-                        <span className="text-xs font-bold text-slate-500">ה-AI ינסה להושיב את התלמיד ללא שכנים קרובים</span>
-                      </div>
-                   </label>
-
-                   <div className="space-y-3">
-                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest">מיקום מועדף (Row/Col)</label>
-                      <div className="flex gap-4">
-                        <select 
-                          value={student.areaPref?.row ?? ""}
-                          onChange={(e) => updateAreaPref('row', e.target.value === "" ? undefined : parseInt(e.target.value))}
-                          className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-bold text-slate-700 outline-none"
-                        >
-                          <option value="">בחר שורה...</option>
-                          {Array.from({ length: 10 }).map((_, i) => <option key={i} value={i}>שורה {i + 1}</option>)}
-                        </select>
-                        <select 
-                          value={student.areaPref?.col ?? ""}
-                          onChange={(e) => updateAreaPref('col', e.target.value === "" ? undefined : parseInt(e.target.value))}
-                          className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-bold text-slate-700 outline-none"
-                        >
-                          <option value="">בחר טור...</option>
-                          {Array.from({ length: 12 }).map((_, i) => <option key={i} value={i}>טור {i + 1}</option>)}
-                        </select>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="space-y-6">
-                   <div className="space-y-3">
-                      <label className="text-sm font-black text-slate-600 uppercase tracking-widest text-indigo-600">אילוץ מיוחד</label>
-                      <select 
-                         value={student.areaPref?.special || ""}
-                         onChange={(e) => updateAreaPref('special', e.target.value)}
-                         className="w-full bg-indigo-50 border-2 border-indigo-100 rounded-xl p-4 font-black text-indigo-700 outline-none"
-                      >
-                         <option value="">ללא אילוץ מיוחד</option>
-                         <option value="window_or_microwave">ליד חלון או קצה כיתה (טור 1 או אחרון)</option>
-                      </select>
-                   </div>
-
-                   <p className="p-4 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold rounded-2xl">
-                     שים לב: ה-AI משקלל את כל האילוצים יחד. אילוצים סותרים עשויים להוביל לציון אופטימיזציה נמוך יותר.
-                   </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'academic' && (
-          <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-            <div className="p-8 bg-brand-50 rounded-full">
-              <GraduationCap className="w-16 h-16 text-brand-600" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-900 italic">"המסע אל הידע הוא אינסופי"</h3>
-              <p className="mt-4 text-slate-500 max-w-md mx-auto font-medium">כאן תוצג היסטוריית הציונים, המבחנים והעבודות. מודול האנליטיקה הלימודית יהיה זמין החל מגרסה 3.3.</p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'behavior' && (
-          <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-10 rounded-[4rem] shadow-sm flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-            <div className="p-8 bg-amber-50 rounded-full">
-              <Smile className="w-16 h-16 text-amber-600" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-900">מעקב התנהגות רגשי</h3>
-              <p className="mt-4 text-slate-500 max-w-md mx-auto font-medium">תיעוד נקודות חיוביות, דיווחים וציוני דרך חברתיים. המערכת תספק תובנות AI על דפוסי התנהגות.</p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'attendance' && (
-           <div className="lg:col-span-3 bg-white border-2 border-slate-200 p-8 rounded-[3rem] shadow-sm">
-             <div className="flex items-center justify-between mb-8">
-               <h3 className="text-xl font-black text-slate-900">יומן נוכחות מפורט</h3>
-               <div className="flex gap-4">
-                 <div className="flex items-center gap-2">
-                   <div className="w-3 h-3 bg-emerald-500 rounded-full" />
-                   <span className="text-xs font-bold text-slate-500">נוכח</span>
-                 </div>
-                 <div className="flex items-center gap-2">
-                   <div className="w-3 h-3 bg-rose-500 rounded-full" />
-                   <span className="text-xs font-bold text-slate-500">נעדר</span>
-                 </div>
-               </div>
-             </div>
-             <div className="grid grid-cols-7 gap-4">
-               {Array.from({ length: 35 }).map((_, i) => {
-                 const isWeekend = i % 7 >= 5;
-                 const isAbsent = i === 14 || i === 22;
-                 return (
-                   <div 
-                     key={i} 
-                     className={cn(
-                       "aspect-square rounded-2xl flex items-center justify-center text-xs font-black transition-all",
-                       isWeekend ? "bg-slate-50 text-slate-300" :
-                       isAbsent ? "bg-rose-50 text-rose-500 border-2 border-rose-100" : 
-                       "bg-emerald-50 text-emerald-600 border-2 border-emerald-100"
-                     )}
-                   >
-                     {i + 1}
-                   </div>
-                 );
-               })}
-             </div>
+        <div className="flex items-center gap-4">
+           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <button 
+                disabled={!prevStudent}
+                onClick={() => onSelectStudent(prevStudent.id)}
+                className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-slate-500 transition-all disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <button 
+                disabled={!nextStudent}
+                onClick={() => onSelectStudent(nextStudent.id)}
+                className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-slate-500 transition-all disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
            </div>
-        )}
+           
+           <button 
+              onClick={() => {
+                if (confirm(`האם למחוק את ${student.name}?`)) {
+                  updateCurrentConfig((prev: any) => ({ 
+                    ...prev, 
+                    students: prev.students.filter((s:any) => s.id !== student.id),
+                    grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+                  }));
+                  onBack();
+                }
+              }}
+              className="p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl hover:bg-rose-100 transition-all"
+           >
+              <Trash2 className="w-5 h-5" />
+           </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Tabs Navigation */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] w-fit shadow-inner">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex items-center gap-2 px-6 py-3.5 rounded-[2rem] text-sm font-black transition-all relative overflow-hidden",
+                  activeTab === tab.id 
+                    ? "bg-white dark:bg-slate-800 text-brand-600 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700" 
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                )}
+              >
+                {tab.icon}
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div layoutId="student-tab-indicator" className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-1 bg-brand-600 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+            >
+              {activeTab === 'info' && (
+                <>
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="glass-card p-10 rounded-[3.5rem] relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                      <h3 className="text-xl font-black text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                         <Heart className="w-6 h-6 text-brand-600" />
+                         העדפות חברתיות (חברים)
+                      </h3>
+                      
+                      <div className="space-y-8">
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">תלמידים מועדפים</label>
+                          <div className="flex flex-wrap gap-2.5">
+                            {students.filter(s => s.id !== student.id).map(s => {
+                              const isSelected = student.preferred?.includes(s.id);
+                              return (
+                                <button
+                                  key={s.id}
+                                  onClick={() => {
+                                    const current = student.preferred || [];
+                                    updateStudent('preferred', isSelected ? current.filter((id: string) => id !== s.id) : [...current, s.id]);
+                                  }}
+                                  className={cn(
+                                    "px-5 py-2.5 rounded-2xl text-sm font-black transition-all border-2",
+                                    isSelected 
+                                      ? "bg-rose-50 border-rose-200 text-rose-700 shadow-sm" 
+                                      : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200"
+                                  )}
+                                >
+                                  {s.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">הפרדות מנדטוריות</label>
+                          <div className="flex flex-wrap gap-2.5">
+                            {students.filter(s => s.id !== student.id).map(s => {
+                              const isSelected = student.forbidden?.includes(s.id);
+                              return (
+                                <button
+                                  key={s.id}
+                                  onClick={() => {
+                                    const current = student.forbidden || [];
+                                    updateStudent('forbidden', isSelected ? current.filter((id: string) => id !== s.id) : [...current, s.id]);
+                                  }}
+                                  className={cn(
+                                    "px-5 py-2.5 rounded-2xl text-sm font-black transition-all border-2",
+                                    isSelected 
+                                      ? "bg-slate-900 dark:bg-slate-100 border-slate-800 dark:border-slate-200 text-white dark:text-slate-900 shadow-xl" 
+                                      : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-200"
+                                  )}
+                                >
+                                  {s.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                    <div className="glass-card p-10 rounded-[3.5rem] space-y-8">
+                      <h3 className="text-lg font-black text-slate-800 dark:text-white">שיבוץ ישיבה</h3>
+                      
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">מגבלת גובה</label>
+                          <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[2rem]">
+                             {(['short', 'medium', 'tall'] as const).map(h => (
+                               <button
+                                 key={h}
+                                 onClick={() => updateStudent('height', h)}
+                                 className={cn(
+                                   "py-3.5 rounded-[1.5rem] text-[10px] font-black transition-all",
+                                   student.height === h 
+                                     ? "bg-white dark:bg-slate-700 text-brand-600 shadow-xl ring-1 ring-slate-200 dark:ring-slate-600" 
+                                     : "text-slate-400 hover:text-slate-600"
+                                 )}
+                               >
+                                 {h === 'short' ? 'קדמי' : h === 'medium' ? 'מרכז' : 'אחורי'}
+                               </button>
+                             ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">מגדר / קטגוריה</label>
+                          <div className="flex gap-2">
+                             {['זכר', 'נקבה'].map(g => (
+                               <button 
+                                key={g}
+                                onClick={() => updateStudent('gender', g)}
+                                className={cn(
+                                  "flex-1 py-4 rounded-3xl text-sm font-black transition-all border-2",
+                                  student.gender === g 
+                                    ? "bg-brand-50 border-brand-200 text-brand-600" 
+                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400"
+                                )}
+                               >
+                                  {g}
+                               </button>
+                             ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'ai' && (
+                <div className="lg:col-span-3">
+                   <div className="glass-card p-12 rounded-[4rem] space-y-12">
+                      <div className="flex items-center gap-6">
+                        <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2.5rem] shadow-sm">
+                           <Brain className="w-10 h-10 text-indigo-600" />
+                        </div>
+                        <div>
+                           <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">פרמטרים לאופטימיזציית AI</h3>
+                           <p className="text-lg font-medium text-slate-400 max-w-2xl">כאן תוכלו להגדיר אילוצים ספציפיים לתלמיד זה שישפיעו על האלגוריתם בעת חישוב הסידור האופטימלי.</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                        <div className="space-y-10">
+                           <div className="space-y-4">
+                              <h4 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                 <Layers className="w-4 h-4" />
+                                 חברות בקבוצות
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 {(currentConfig.groups || []).map((group: any) => {
+                                   const isMember = student.groups?.includes(group.id);
+                                   return (
+                                     <button
+                                       key={group.id}
+                                       onClick={() => {
+                                         const current = student.groups || [];
+                                         updateStudent('groups', isMember ? current.filter((id: string) => id !== group.id) : [...current, group.id]);
+                                       }}
+                                       className={cn(
+                                         "p-6 rounded-[2rem] border-2 text-right transition-all flex flex-col gap-2 relative overflow-hidden group/item",
+                                         isMember 
+                                           ? "bg-brand-50 border-brand-200 text-brand-900 shadow-sm" 
+                                           : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200"
+                                       )}
+                                     >
+                                       <div className="flex items-center justify-between">
+                                         <span className="font-black text-base">{group.name}</span>
+                                         {isMember && <div className="w-2 h-2 rounded-full bg-brand-500" />}
+                                       </div>
+                                       <span className="text-[10px] font-bold opacity-60">
+                                         אילוץ: {group.constraint === 'together' ? 'ישיבה יחד' : group.constraint === 'separate' ? 'הפרדה' : 'ללא אילוץ'}
+                                       </span>
+                                     </button>
+                                   );
+                                 })}
+                              </div>
+                              {(currentConfig.groups || []).length === 0 && (
+                                 <div className="p-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                    טרם הוגדרו קבוצות בהגדרות המערכת
+                                 </div>
+                              )}
+                           </div>
+
+                           <div className="space-y-4">
+                              <div className="flex justify-between items-end">
+                                 <label className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">משקולת חשיבות כללית</label>
+                                 <span className="text-2xl font-black text-brand-600">{student.areaPref?.weight || 50}</span>
+                              </div>
+                              <input 
+                                type="range" min="0" max="300" step="10"
+                                value={student.areaPref?.weight || 50}
+                                onChange={(e) => updateAreaPref('weight', parseInt(e.target.value))}
+                                className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-brand-500"
+                              />
+                              <div className="flex justify-between text-xs font-bold text-slate-400 italic">
+                                 <span>התחשבות מופחתת</span>
+                                 <span>עדיפות עליונה לשיבוץ</span>
+                              </div>
+                           </div>
+
+                           <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border border-slate-100 dark:border-slate-800 space-y-6">
+                              <h4 className="text-sm font-black text-slate-500 uppercase tracking-widest">מיקום יעד ספציפי</h4>
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400">שורה (0-10)</label>
+                                    <input 
+                                      type="number" min="0" max="10"
+                                      value={student.areaPref?.row ?? ""}
+                                      onChange={(e) => updateAreaPref('row', e.target.value === "" ? undefined : parseInt(e.target.value))}
+                                      placeholder="אוטומטי"
+                                      className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 font-black"
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400">טור (0-12)</label>
+                                    <input 
+                                      type="number" min="0" max="12"
+                                      value={student.areaPref?.col ?? ""}
+                                      onChange={(e) => updateAreaPref('col', e.target.value === "" ? undefined : parseInt(e.target.value))}
+                                      placeholder="אוטומטי"
+                                      className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 font-black"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-8">
+                           <button 
+                             onClick={() => updateAreaPref('isolated', !student.areaPref?.isolated)}
+                             className={cn(
+                               "w-full p-8 rounded-[3rem] border-2 text-right transition-all group relative overflow-hidden",
+                               student.areaPref?.isolated 
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200" 
+                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400"
+                             )}
+                           >
+                              <div className="flex items-center gap-6 relative z-10">
+                                 <div className={cn(
+                                   "p-4 rounded-3xl transition-colors",
+                                   student.areaPref?.isolated ? "bg-white/20" : "bg-slate-50 dark:bg-slate-800"
+                                 )}>
+                                    <Shield className={cn("w-8 h-8", student.areaPref?.isolated ? "text-white" : "text-slate-400")} />
+                                 </div>
+                                 <div>
+                                    <h4 className="text-xl font-black mb-1">מצב בידוד (Isolation)</h4>
+                                    <p className={cn("text-sm font-medium", student.areaPref?.isolated ? "text-indigo-100" : "text-slate-400")}>ה-AI ינסה למצוא מיקום ללא שכנים קרובים כלל</p>
+                                 </div>
+                              </div>
+                           </button>
+
+                           <div className="p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-[3rem] space-y-4">
+                              <div className="flex items-center gap-3 text-amber-700 dark:text-amber-400">
+                                 <ShieldAlert className="w-6 h-6" />
+                                 <h4 className="text-base font-black">מידע חשוב</h4>
+                              </div>
+                              <p className="text-sm font-medium text-amber-600 dark:text-amber-500 italic leading-relaxed">
+                                שים לב שהגדרת מיקומים קשיחים (שורה/טור) עלולה לפגוע ביכולת ה-AI למצוא פתרון העונה על כל האילוצים החברתיים. השתמש בזה רק כשזה הכרחי במיוחד.
+                              </p>
+                           </div>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+              )}
+
+              {activeTab === 'pedagogy' && (
+                <div className="lg:col-span-3">
+                   <div className="glass-card p-12 rounded-[4rem] space-y-10">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-6">
+                            <div className="p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-[2.5rem]">
+                               <FileText className="w-10 h-10 text-emerald-600" />
+                            </div>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">הערות ותיעוד פדגוגי</h3>
+                         </div>
+                         <div className="text-sm font-black text-slate-400 tracking-widest uppercase">מעודכן לאחרונה: היום</div>
+                      </div>
+
+                      <textarea 
+                         value={student.notes || ''}
+                         onChange={(e) => updateStudent('notes', e.target.value)}
+                         placeholder="הזן תיעוד פדגוגי, נקודות לשימור, קשיים לימודיים או הערות התנהגותיות..."
+                         className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 text-xl font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-4 focus:ring-emerald-50 dark:focus:ring-emerald-900/20 min-h-[400px] transition-all resize-none shadow-inner"
+                      />
+                   </div>
+                </div>
+              )}
+
+              {activeTab === 'academic' && (
+                <div className="lg:col-span-3">
+                   <EmptyState 
+                      icon={<GraduationCap className="w-12 h-12" />}
+                      title="מודול הישגים לימודיים"
+                      description="כאן תוכלו לראות גרפים ומגמות על ציוני התלמיד לאורך שנת הלימודים. מודול זה יהיה זמין בעדכון התוכנה הבא."
+                   />
+                </div>
+              )}
+
+              {activeTab === 'attendance' && (
+                <div className="lg:col-span-3">
+                   <div className="glass-card p-12 rounded-[4rem] space-y-10">
+                      <div className="flex items-center gap-6">
+                         <div className="p-5 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem]">
+                            <Calendar className="w-10 h-10 text-brand-600" />
+                         </div>
+                         <h3 className="text-3xl font-black text-slate-900 dark:text-white">יומן נוכחות (Monthly)</h3>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-4">
+                        {Array.from({ length: 35 }).map((_, i) => {
+                          const isWeekend = i % 7 >= 5;
+                          const isAbsent = i === 14 || i === 22;
+                          return (
+                            <div 
+                              key={i} 
+                              className={cn(
+                                "aspect-square rounded-[1.5rem] flex items-center justify-center text-sm font-black transition-all",
+                                isWeekend ? "bg-slate-50 dark:bg-slate-900 text-slate-300 dark:text-slate-700" :
+                                isAbsent ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-2 border-rose-100 dark:border-rose-800 shadow-sm" : 
+                                "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-800"
+                              )}
+                            >
+                              {i + 1}
+                            </div>
+                          );
+                        })}
+                      </div>
+                   </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
 };
 
 const DashboardView = ({ stats, onBack }: any) => (
-  <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50">
+  <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
     <div className="flex items-center gap-6">
       <button 
         onClick={onBack}
@@ -823,68 +1575,178 @@ const DashboardView = ({ stats, onBack }: any) => (
     </div>
     
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-        <div className="relative flex items-center justify-between">
-          <div className="p-4 bg-brand-100 rounded-2xl border border-brand-200 shadow-inner">
-            <Users className="w-8 h-8 text-brand-700" />
+      {[
+        { label: 'תלמידים רשומים', value: stats.studentCount, icon: <Users />, color: 'brand' },
+        { label: 'שביעות רצון', value: `${stats.satisfaction}%`, icon: <Sparkles />, color: 'amber', badge: '98% נוכחות' },
+        { label: 'שיבוץ נוכחי', value: `${stats.placedCount} / ${stats.studentCount}`, icon: <LayoutGrid />, color: 'indigo', badge: 'מעודכן' },
+        { label: 'אילוצים לא פתורים', value: stats.conflicts, icon: <AlertCircle />, color: 'rose', badge: stats.conflicts > 0 ? "נדרש טיפול" : "תקין" },
+      ].map((card, i) => (
+        <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+          <div className={cn(
+            "absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-10",
+            `bg-${card.color}-500`
+          )} />
+          <div className="relative flex items-center justify-between">
+            <div className={cn(
+              "p-4 rounded-2xl border shadow-inner",
+              `bg-${card.color}-100 dark:bg-${card.color}-900/20 border-${card.color}-200 dark:border-${card.color}-800`
+            )}>
+              {React.cloneElement(card.icon as React.ReactElement, { className: `w-8 h-8 text-${card.color}-700 dark:text-${card.color}-400` })}
+            </div>
+            {card.badge && (
+              <Badge className={cn(
+                "px-2 py-1 rounded-lg text-[10px] font-bold uppercase",
+                card.color === 'rose' && card.value > 0 ? "bg-rose-50 dark:bg-rose-900/40 text-rose-600 border border-rose-100 dark:border-rose-800" : "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800"
+              )}>
+                {card.badge}
+              </Badge>
+            )}
           </div>
-          <Badge className="bg-brand-50 text-brand-600 border border-brand-200">פעיל</Badge>
-        </div>
-        <div className="relative">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">תלמידים רשומים</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.studentCount || 0}</p>
-        </div>
-      </div>
-      
-      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-        <div className="relative flex items-center justify-between">
-          <div className="p-4 bg-amber-100 rounded-2xl border border-amber-200 shadow-inner">
-            <Sparkles className="w-8 h-8 text-amber-700" />
+          <div className="relative">
+            <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{card.label}</h3>
+            <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{card.value}</p>
           </div>
-          <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-200">98% נוכחות</Badge>
         </div>
-        <div className="relative">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">שביעות רצון</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.satisfaction || 0}%</p>
-        </div>
-      </div>
-      
-      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-        <div className="relative flex items-center justify-between">
-          <div className="p-4 bg-indigo-100 rounded-2xl border border-indigo-200 shadow-inner">
-            <LayoutGrid className="w-8 h-8 text-indigo-700" />
-          </div>
-          <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-200">מעודכן</Badge>
-        </div>
-        <div className="relative">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">שיבוץ נוכחי</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.placedCount || 0} / {stats.studentCount || 0}</p>
-        </div>
-      </div>
-
-      <div className="bg-white border-2 border-slate-200 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform" />
-        <div className="relative flex items-center justify-between">
-          <div className="p-4 bg-rose-100 rounded-2xl border border-rose-200 shadow-inner">
-            <AlertCircle className="w-8 h-8 text-rose-700" />
-          </div>
-          <Badge className={cn("px-2 py-1 rounded-lg text-[10px] font-bold uppercase", stats.conflicts > 0 ? "bg-rose-50 text-rose-600 border border-rose-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100")}>
-            {stats.conflicts > 0 ? "נדרש טיפול" : "תקין"}
-          </Badge>
-        </div>
-        <div className="relative">
-          <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-1">אילוצים לא פתורים</h3>
-          <p className="text-5xl font-black text-slate-900 tracking-tighter">{stats.conflicts || 0}</p>
-        </div>
-      </div>
+      ))}
     </div>
   </div>
 );
 
-const StudentCard = ({ student, updateCurrentConfig, setNotifications, isSelected, onClick }: any) => {
+const LoadingSkeleton = ({ count = 3 }: { count?: number }) => (
+  <div className="space-y-4 w-full">
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="p-5 bg-white dark:bg-white/5 border-2 border-slate-100 dark:border-white/5 rounded-[2rem] flex items-center gap-4 animate-pulse">
+        <div className="w-12 h-12 bg-slate-200 dark:bg-white/10 rounded-2xl" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-slate-200 dark:bg-white/10 rounded-full w-2/3" />
+          <div className="h-3 bg-slate-100 dark:bg-white/5 rounded-full w-1/3" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: any) => {
+  const addGroup = () => {
+    const name = prompt("שם הקבוצה החדשה:");
+    if (!name) return;
+    const id = (groups.length + 1).toString();
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      groups: [...(prev.groups || []), { id, name, constraint: 'none' }]
+    }));
+    setNotifications((prev: any) => [{ id: Date.now(), text: `קבוצה חדשה נוצרה: ${name}`, type: 'success' }, ...prev]);
+  };
+
+  const removeGroup = (id: string) => {
+    if (!confirm("האם למחוק קבוצה זו? (שיוכי תלמידים יישמרו אך לא ישפיעו על ה-AI)")) return;
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      groups: prev.groups.filter((g: any) => g.id !== id)
+    }));
+  };
+
+  const updateGroup = (id: string, field: string, value: any) => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      groups: prev.groups.map((g: any) => g.id === id ? { ...g, [field]: value } : g)
+    }));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Layers className="w-6 h-6 text-indigo-500" />
+          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">ניהול קבוצות ואילוצי ישיבה</h3>
+        </div>
+        <button 
+          onClick={addGroup}
+          className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100 dark:border-indigo-800 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          הוסף קבוצה
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {groups.map((group: any) => (
+          <div key={group.id} className="p-6 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[2rem] space-y-4 hover:shadow-lg transition-all group overflow-hidden">
+            <div className="flex items-center justify-between">
+              <input 
+                value={group.name}
+                onChange={(e) => updateGroup(group.id, 'name', e.target.value)}
+                className="bg-transparent font-black text-slate-800 dark:text-slate-100 focus:ring-0 border-0 p-0 text-base flex-1"
+              />
+              <button 
+                onClick={() => removeGroup(group.id)}
+                className="p-2 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">אילוץ ישיבה (AI)</label>
+              <div className="flex gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
+                {[
+                  { value: 'none', label: 'ללא אילוץ', icon: <Minus className="w-3 h-3" /> },
+                  { value: 'together', label: 'שבו יחד', icon: <Heart className="w-3 h-3" /> },
+                  { value: 'separate', label: 'מופרדים', icon: <Ban className="w-3 h-3" /> }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateGroup(group.id, 'constraint', opt.value)}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all flex flex-col items-center gap-1",
+                      group.constraint === opt.value 
+                        ? (opt.value === 'together' ? "bg-emerald-500 text-white shadow-md" : opt.value === 'separate' ? "bg-rose-500 text-white shadow-md" : "bg-white dark:bg-slate-700 text-brand-600 shadow-sm")
+                        : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+              {group.constraint === 'together' ? 'ה-AI ינסה לשבץ חברי קבוצה זה לצד זה.' : 
+               group.constraint === 'separate' ? 'ה-AI ימנע משיבוץ חברי קבוצה זה לצד זה.' : 
+               'אין אילוץ מיוחד לקבוצה זו.'}
+            </p>
+          </div>
+        ))}
+        {groups.length === 0 && (
+          <div className="md:col-span-2 lg:col-span-3 py-10 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] flex flex-col items-center justify-center text-slate-400">
+            <Layers className="w-8 h-8 opacity-20 mb-2" />
+            <p className="text-xs font-bold uppercase tracking-widest">טרם הוגדרו קבוצות</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const EmptyState = ({ icon, title, description, action }: any) => (
+  <motion.div 
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="flex flex-col items-center justify-center p-12 text-center space-y-6"
+  >
+    <div className="w-24 h-24 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem] flex items-center justify-center text-brand-600 dark:text-brand-400 shadow-bento">
+      {icon}
+    </div>
+    <div className="space-y-2">
+      <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xs mx-auto">{description}</p>
+    </div>
+    {action && action}
+  </motion.div>
+);
+
+const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotifications, isSelected, onClick }: any) => {
   const [localName, setLocalName] = useState(student.name);
 
   useEffect(() => {
@@ -892,6 +1754,10 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications, isSelecte
   }, [student.name]);
 
   const commitName = () => {
+    if (!localName.trim()) {
+      setLocalName(student.name);
+      return;
+    }
     if (localName === student.name) return;
     updateCurrentConfig((prev: any) => ({
       ...prev,
@@ -907,138 +1773,136 @@ const StudentCard = ({ student, updateCurrentConfig, setNotifications, isSelecte
   };
 
   return (
-    <div 
+    <motion.div 
+      layout
       onClick={onClick}
+      whileHover={{ scale: 1.01, x: -4 }}
       className={cn(
-        "p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-5 hover:border-brand-200 transition-all group cursor-pointer",
-        isSelected && "ring-4 ring-brand-200 border-brand-300 bg-brand-50/30"
+        "p-5 bg-white dark:bg-slate-900 border-2 transition-all group cursor-pointer relative rounded-[2rem]",
+        isSelected ? "border-brand-500 ring-4 ring-brand-100 dark:ring-brand-900 shadow-xl" : "border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
       )}
     >
-      <div className="flex items-center justify-between">
-        <input 
-          value={localName}
-          onChange={(e) => setLocalName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => e.key === 'Enter' && commitName()}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-transparent font-black text-slate-700 focus:ring-0 border-0 p-0 w-32 text-sm"
-        />
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm(`האם למחוק את ${student.name}?`)) {
-              updateCurrentConfig((prev: any) => ({ 
-                ...prev, 
-                students: prev.students.filter((s:any) => s.id !== student.id),
-                grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
-              }));
-              setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
-            }
-          }}
-          className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg group-hover:opacity-100 transition-all"
+      <div className="flex items-center gap-4">
+        <div className={cn(
+          "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-colors shadow-sm",
+          isSelected ? "bg-brand-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+        )}>
+          {student.name[0]}
+        </div>
+        
+        <div className="flex-1 flex flex-col gap-0.5">
+          <input 
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => e.key === 'Enter' && commitName()}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-transparent font-black text-slate-800 dark:text-slate-100 focus:ring-0 border-0 p-0 text-base"
+          />
+          <div className="flex gap-2">
+             <Badge className={cn(
+               "text-[9px] px-2 py-0.5 rounded-md",
+               student.height === 'short' ? "bg-amber-100 text-amber-900" : student.height === 'tall' ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-600"
+             )}>
+                {student.height === 'short' ? 'קדמי' : student.height === 'tall' ? 'אחורי' : 'בינוני'}
+             </Badge>
+             {student.groups?.map((g: string) => (
+                <Badge key={g} className="bg-brand-50 text-brand-700 text-[9px] px-2 py-0.5 rounded-md">
+                   קבוצה {g}
+                </Badge>
+             ))}
+          </div>
+        </div>
+
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+           <button 
+             onClick={(e) => {
+               e.stopPropagation();
+               if (confirm(`האם למחוק את ${student.name}?`)) {
+                 updateCurrentConfig((prev: any) => ({ 
+                   ...prev, 
+                   students: prev.students.filter((s:any) => s.id !== student.id),
+                   grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+                 }));
+                 setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
+               }
+             }}
+             className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
+           >
+             <Trash2 className="w-4 h-4" />
+           </button>
+        </div>
+      </div>
+
+      {isSelected && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4"
         >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {/* Height Selection (Radio-like) */}
-        <div className="flex flex-col gap-2">
-           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">גובה תלמיד</label>
-           <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-100 shadow-sm">
-             {(['short', 'medium', 'tall'] as const).map(h => (
-               <button
-                 key={h}
-                 onClick={(e) => { e.stopPropagation(); updateStudent('height', h); }}
-                 className={cn(
-                   "flex-1 py-1 rounded-lg text-[9px] font-black transition-all",
-                   student.height === h ? "bg-brand-600 text-white" : "text-slate-400 hover:bg-slate-50"
-                 )}
-               >
-                 {h === 'short' ? 'קדמי' : h === 'medium' ? 'בינוני' : 'גבוה'}
-               </button>
-             ))}
-           </div>
-        </div>
-
-        {/* Group Management */}
-        <div className="flex flex-col gap-2">
-           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">קבוצות</label>
-           <div className="flex flex-wrap gap-1">
-             {['א', 'ב', 'ג'].map(g => (
-               <button
-                 key={g}
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   const groups = student.groups || [];
-                   updateStudent('groups', groups.includes(g) ? groups.filter((pg: string) => pg !== g) : [...groups, g]);
-                 }}
-                 className={cn(
-                   "px-2 py-1 rounded-lg text-[9px] font-black border transition-all",
-                   student.groups?.includes(g) ? "bg-brand-100 border-brand-200 text-brand-700" : "bg-white border-slate-100 text-slate-400"
-                 )}
-               >
-                 {g}
-               </button>
-             ))}
-           </div>
-        </div>
-
-        {/* Notes */}
-        <div className="flex flex-col gap-2">
-           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">הערות</label>
-           <textarea 
-             value={student.notes || ''}
-             rows={1}
-             onChange={(e) => updateStudent('notes', e.target.value)}
-             onClick={(e) => e.stopPropagation()}
-             placeholder="הערה פדגוגית..."
-             className="w-full bg-white border border-slate-100 rounded-xl p-2 text-xs font-medium text-slate-600 focus:ring-1 focus:ring-brand-200 outline-none resize-none"
-           />
-        </div>
-
-        <div className="p-3 bg-white/50 rounded-2xl border border-slate-100/50 space-y-2">
-           <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">עריכת אילוצים (IDs)</h4>
-           <div className="grid grid-cols-1 gap-2">
-              <div className="flex items-center gap-2">
-                 <Heart className="w-3 h-3 text-rose-500 shrink-0" />
-                 <input 
-                    placeholder="מזהי חברים (מופרדים בפסיק)"
-                    value={student.preferred.join(', ')}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                      updateCurrentConfig((prev: any) => ({
-                        ...prev,
-                        students: prev.students.map((s: any) => s.id === student.id ? { ...s, preferred: val } : s)
-                      }));
-                    }}
-                    className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
-                 />
-              </div>
-              <div className="flex items-center gap-2">
-                 <Ban className="w-4 h-4 text-slate-500 shrink-0" />
-                 <input 
-                    placeholder="מזהי הפרדות (מופרדים בפסיק)"
-                    value={student.forbidden.join(', ')}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      const val = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                      updateCurrentConfig((prev: any) => ({
-                        ...prev,
-                        students: prev.students.map((s: any) => s.id === student.id ? { ...s, forbidden: val } : s)
-                      }));
-                    }}
-                    className="w-full bg-transparent border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 placeholder:text-slate-300"
-                 />
-              </div>
-           </div>
-        </div>
-      </div>
-    </div>
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">גובה עבור הושבה</label>
+                <div className="flex gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
+                   {(['short', 'medium', 'tall'] as const).map(h => (
+                     <button
+                       key={h}
+                       onClick={(e) => { e.stopPropagation(); updateStudent('height', h); }}
+                       className={cn(
+                         "flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all",
+                         student.height === h ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                       )}
+                     >
+                       {h === 'short' ? 'קדמי' : h === 'medium' ? 'אמצע' : 'אחור'}
+                     </button>
+                   ))}
+                </div>
+             </div>
+             <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">קבוצת לימוד</label>
+                <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
+                   {(currentConfig.groups || []).map((g: any) => (
+                     <button
+                       key={g.id}
+                       onClick={(e) => { 
+                         e.stopPropagation(); 
+                         const current = student.groups || [];
+                         updateStudent('groups', current.includes(g.id) ? current.filter((cg: string) => cg !== g.id) : [...current, g.id]);
+                       }}
+                       className={cn(
+                         "px-3 py-1.5 rounded-lg text-[9px] font-black transition-all",
+                         student.groups?.includes(g.id) ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                       )}
+                     >
+                       {g.name}
+                     </button>
+                   ))}
+                   {(currentConfig.groups || []).length === 0 && <span className="text-[9px] text-slate-400 p-1">אין קבוצות מוגדרות</span>}
+                </div>
+             </div>
+          </div>
+          
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1">
+               <Heart className={cn("w-3 h-3", student.preferred?.length > 0 ? "text-rose-500" : "text-slate-300")} />
+               <span className="text-[10px] font-bold text-slate-500">{student.preferred?.length || 0} העדפות</span>
+            </div>
+            <div className="flex items-center gap-1">
+               <Ban className={cn("w-3 h-3", student.forbidden?.length > 0 ? "text-slate-600" : "text-slate-300")} />
+               <span className="text-[10px] font-bold text-slate-500">{student.forbidden?.length || 0} הרחקות</span>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onClick(); }} 
+              className="px-4 py-2 bg-brand-600 text-white rounded-xl text-[10px] font-black hover:bg-brand-700 shadow-lg shadow-brand-100"
+            >
+              פרופיל מלא
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
   );
 };
-
 const SettingsView = ({ 
   onBack, 
   handleFileImport, 
@@ -1276,6 +2140,15 @@ const SettingsView = ({
             </div>
           </div>
         </div>
+        
+        {/* Group Management */}
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40 shadow-sm border border-slate-100">
+          <GroupManager 
+            groups={currentConfig.groups} 
+            updateCurrentConfig={updateCurrentConfig}
+            setNotifications={setNotifications} 
+          />
+        </div>
 
         <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-slate-100">
@@ -1318,20 +2191,43 @@ const SettingsView = ({
             </div>
           </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentConfig.students.map((student: any, idx: number) => (
-                  <StudentCard 
-                    key={`${student.id}-${idx}`}
-                    student={student}
-                    updateCurrentConfig={updateCurrentConfig}
-                    setNotifications={setNotifications}
-                    isSelected={selectedStudentId === student.id}
-                    onClick={() => {
-                      setSelectedStudentId(student.id);
-                      setViewType('studentDetail');
-                    }}
-                  />
-                ))}
+              <div className={cn(
+                "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
+                currentConfig.students.length === 0 && "md:col-span-1 md:flex md:justify-center"
+              )}>
+                {currentConfig.students.length === 0 ? (
+                  <div className="md:col-span-2 lg:col-span-3 w-full">
+                    <EmptyState 
+                      icon={<Users className="w-12 h-12" />}
+                      title="אין תלמידים רשומים"
+                      description="הוסיפו תלמידים ידנית או יבאו קובץ Excel כדי להתחיל בשיבוץ."
+                      action={
+                        <button 
+                          onClick={loadExampleData}
+                          className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl hover:bg-brand-700 transition-all flex items-center gap-2 active:scale-95"
+                        >
+                          <Zap className="w-5 h-5" />
+                          טען נתוני דוגמה מהסימולציה
+                        </button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  currentConfig.students.map((student: any, idx: number) => (
+                    <StudentCard 
+                      key={`${student.id}-${idx}`}
+                      student={student}
+                      currentConfig={currentConfig}
+                      updateCurrentConfig={updateCurrentConfig}
+                      setNotifications={setNotifications}
+                      isSelected={selectedStudentId === student.id}
+                      onClick={() => {
+                        setSelectedStudentId(student.id);
+                        setViewType('studentDetail');
+                      }}
+                    />
+                  ))
+                )}
               </div>
         </div>
 
@@ -1504,7 +2400,18 @@ export default function App() {
   const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail'>('grid');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const conflicts = useMemo(() => calculateConflicts(currentConfig), [currentConfig]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1543,6 +2450,7 @@ export default function App() {
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const isPrinting = (currentConfig as any).isPrinting;
   const gridRef = useRef<HTMLDivElement>(null);
 
   const dashboardStats = useMemo(() => {
@@ -1693,6 +2601,7 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState("");
   const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
   const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
 
   const runAIShuffle = () => {
@@ -1748,8 +2657,8 @@ export default function App() {
           const neighborId = assignment[nIdx];
           if (!neighborId) return;
 
-          if (student.preferred?.includes(neighborId)) score += 12;
-          if (student.forbidden?.includes(neighborId)) score -= 40;
+          if (student.preferred?.includes(neighborId)) score += weights.preferred;
+          if (student.forbidden?.includes(neighborId)) score -= weights.forbidden;
         });
 
         // 2. Spatial / Area Prefs
@@ -1775,7 +2684,6 @@ export default function App() {
             const groupConfig = currentConfig.groups.find(g => g.id === groupId);
             if (!groupConfig || groupConfig.constraint === 'none') return;
 
-            // Check neighbors for group constraints
             neighbors.forEach(nIdx => {
               const neighborId = assignment[nIdx];
               if (!neighborId) return;
@@ -1784,16 +2692,14 @@ export default function App() {
 
               const inSameGroup = neighbor.groups?.includes(groupId);
               if (inSameGroup) {
-                if (groupConfig.constraint === 'together') score += 100; // Strong bonus for staying together
-                if (groupConfig.constraint === 'separate') score -= 200; // Heavy penalty for being next to each other
+                if (groupConfig.constraint === 'together') score += 100;
+                if (groupConfig.constraint === 'separate') score -= 200;
               }
             });
-
-            // If separate, also check that THEY ARE NOT IN THE SAME CLUSTER (optional, but neighbors is enough for now)
           });
         }
 
-        // Height constraint (Front row for 'short')
+        // Height constraint
         if (student.height === 'short') {
           if (r < 2) score += 50;
           else score -= 100;
@@ -1806,12 +2712,10 @@ export default function App() {
     setTimeout(() => {
       let currentAssignment: (string | null)[] = Array(rows * cols).fill(null);
       
-      // Initial Random Assignment (respecting fixed seats)
       const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
       const pool = [...validSeats].sort(() => Math.random() - 0.5);
 
-      // Handle fixed seats first
-      shuffledStudents.forEach((s, i) => {
+      shuffledStudents.forEach((s) => {
         const pref = (s as any).areaPref;
         if (pref && pref.fixed_seat) {
           const [fr, fc] = pref.fixed_seat;
@@ -1824,7 +2728,6 @@ export default function App() {
         }
       });
 
-      // Fill rest
       shuffledStudents.forEach(s => {
         if (currentAssignment.includes(s.id)) return;
         if (pool.length > 0) {
@@ -1838,14 +2741,12 @@ export default function App() {
       let bestScore = currentScore;
       
       let temp = 1000;
-      const iterations = 5000; // Reduced for browser performance but still effective
+      const iterations = 5000;
       
       for (let i = 0; i < iterations; i++) {
-        // Swap two random seats
         const idx1 = validSeats[Math.floor(Math.random() * validSeats.length)];
         const idx2 = validSeats[Math.floor(Math.random() * validSeats.length)];
         
-        // Don't swap if one is fixed seat? (For simplicity we just skip students with fixed_seat in random swap)
         const s1 = students.find(s => s.id === currentAssignment[idx1]);
         const s2 = students.find(s => s.id === currentAssignment[idx2]);
         if (s1?.areaPref?.fixed_seat || s2?.areaPref?.fixed_seat) continue;
@@ -1898,11 +2799,11 @@ export default function App() {
     localStorage.setItem('desk-history', JSON.stringify(deskHistory));
   }, [currentConfig, deskHistory]);
 
-  const studentsInPool = currentConfig.students.filter(s => {
+  const studentsInPool = useMemo(() => currentConfig.students.filter(s => {
     const isPlaced = currentConfig.grid.includes(s.id);
     const matchesFilter = selectedGroups.length === 0 || (s.groups && s.groups.some((g: string) => selectedGroups.includes(g)));
     return !isPlaced && matchesFilter;
-  });
+  }), [currentConfig.students, currentConfig.grid, selectedGroups]);
 
   const handleDrop = (deskIdx: number) => {
     if (!draggedStudentId) return;
@@ -1979,7 +2880,7 @@ export default function App() {
         } else {
           // Excel logic
           const bstr = content;
-          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wb = XLSX.read(bstr as string, { type: 'binary' });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
@@ -2026,7 +2927,7 @@ export default function App() {
       // Check adjacent
       const neighbors = [
         [r, c-1], [r, c+1], [r-1, c], [r+1, c],
-        [r-1, c-1], [r-1, c+1], [r+1, c-1], [r+1, c+1] // Add diagonal checks
+        [r-1, c-1], [r-1, c+1], [r+1, c-1], [r+1, c+1]
       ];
 
       neighbors.forEach(([nr, nc]) => {
@@ -2039,8 +2940,7 @@ export default function App() {
 
         const isForbidden = 
           (student.forbidden && student.forbidden.includes(nSid)) || 
-          (student.separateFrom && student.separateFrom.includes(nSid)) ||
-          (student.keepDistantFrom && student.keepDistantFrom.includes(nSid));
+          (student.separateFrom && student.separateFrom.includes(nSid));
 
         if (isForbidden) {
           newNotifications.push({ 
@@ -2065,8 +2965,6 @@ export default function App() {
     const timer = setTimeout(checkViolations, 1000);
     return () => clearTimeout(timer);
   }, [currentConfig.grid, checkViolations]);
-
-  const totalCells = currentConfig.rows * currentConfig.cols;
 
   const updateCurrentConfig = useCallback((update: any) => {
     setCurrentConfig(prev => {
@@ -2154,6 +3052,7 @@ export default function App() {
         return student ? (
           <StudentDetailView 
             student={student} 
+            currentConfig={currentConfig}
             students={currentConfig.students}
             onBack={onBackToGrid} 
             updateCurrentConfig={updateCurrentConfig}
@@ -2167,34 +3066,41 @@ export default function App() {
 
   const exportToExcel = () => console.log("Exporting to Excel...");
 
+
   const Header = () => (
-    <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-50">
+    <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-50 transition-colors">
       <div className="flex items-center gap-6">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl transition-all shadow-sm"
+          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all shadow-sm"
           title={isSidebarOpen ? "סגור תפריט" : "פתח תפריט"}
         >
           {isSidebarOpen ? <ChevronRight className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-200">
-            <School className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 via-brand-600 to-emerald-500 rounded-2xl flex items-center justify-center shadow-2xl scale-110 shadow-brand-200 dark:shadow-none -rotate-2 group hover:rotate-0 transition-all duration-500">
+            <Sparkles className="w-7 h-7 text-white animate-pulse" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-brand-700 leading-none tracking-tight">ClassManager</h1>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Smart Learning Spaces</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">ClassManager <span className="text-brand-600">Pro</span></h1>
+            <div className="flex items-center gap-2 mt-1">
+               <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">v3.5 Enterprise</span>
+               <span className="w-1 h-1 bg-emerald-500 rounded-full animate-ping" />
+               <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">AI Core Ready</span>
+            </div>
           </div>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
+        <nav className="hidden lg:flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
            {(['grid', 'dashboard', 'attendance', 'grades', 'progress', 'settings'] as const).map(nav => (
              <button
                key={nav}
                onClick={() => setViewType(nav)}
                className={cn(
                  "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                 viewType === nav ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                 viewType === nav 
+                  ? "bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm" 
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                )}
              >
                {nav === 'grid' && 'סידור הושבה'}
@@ -2213,7 +3119,9 @@ export default function App() {
               onClick={() => setIs3DView(!is3DView)}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all",
-                is3DView ? "bg-brand-600 text-white shadow-lg" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                is3DView 
+                  ? "bg-brand-600 text-white shadow-lg" 
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
               )}
             >
               <Box className="w-4 h-4" />
@@ -2221,9 +3129,9 @@ export default function App() {
             </button>
             
             {aiInsights.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl">
-                <Brain className="w-4 h-4 text-indigo-600" />
-                <p className="text-[10px] font-black text-indigo-800">{aiInsights[0].text}</p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 rounded-xl">
+                <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <p className="text-[10px] font-black text-indigo-800 dark:text-indigo-300">{aiInsights[0].text}</p>
               </div>
             )}
           </div>
@@ -2231,19 +3139,34 @@ export default function App() {
       </div>
 
       <div className="flex items-center gap-4">
+        <button 
+          onClick={() => setIsBulkUpdateOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-2xl font-black text-xs hover:bg-brand-700 transition-all shadow-md active:scale-95"
+          title="עדכון קבוצתי"
+        >
+          <Edit3 className="w-4 h-4" />
+          עדכון מהיר
+        </button>
         {undoHistory.length > 0 && (
           <button 
             onClick={undo}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-50 text-brand-700 rounded-2xl font-black text-xs hover:bg-brand-100 transition-all border border-brand-100 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-2xl font-black text-xs hover:bg-brand-100 dark:hover:bg-brand-800 transition-all border border-brand-100 dark:border-brand-800 shadow-sm"
           >
             <ArrowRightLeft className="w-4 h-4 rotate-180" />
             ביטול פעולה
           </button>
         )}
         <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
+          title={isDarkMode ? "מצב יום" : "מצב לילה"}
+        >
+          {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+        <button 
           onClick={() => setOnboardingStep(0)}
-          className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl transition-all"
-          title="מדריך למשתמש"
+          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
+          title="עזרה והדרכה"
         >
           <HelpCircle className="w-5 h-5" />
         </button>
@@ -2251,13 +3174,13 @@ export default function App() {
           onClick={() => setViewType('settings')}
           className={cn(
             "p-3 rounded-2xl transition-all relative overflow-hidden",
-            viewType === 'settings' ? "bg-brand-50 text-brand-600" : "bg-slate-50 hover:bg-slate-100 text-slate-500"
+            viewType === 'settings' ? "bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400" : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
           )}
         >
           <Settings className="w-5 h-5" />
           {viewType === 'settings' && <motion.div layoutId="nav-active" className="absolute inset-0 bg-brand-200/20" />}
         </button>
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-black text-slate-500 border border-slate-200 cursor-pointer hover:scale-105 transition-transform">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center font-black text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 cursor-pointer hover:scale-105 transition-transform">
           AD
         </div>
       </div>
@@ -2278,16 +3201,19 @@ export default function App() {
     setIsExporting(true);
     setNotifications((prev: any) => [{ id: Date.now(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
     
+    // Set printing mode to hide UI elements
+    updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
+
     try {
       // Temporarily switch off 3D if active for better printing
       const was3D = is3DView;
       if (was3D) setIs3DView(false);
       
-      // Wait for layout to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for layout and state to settle
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       const canvas = await html2canvas(gridRef.current, {
-        scale: 2,
+        scale: 3, // Higher scale for better PDF quality
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false
@@ -2301,6 +3227,7 @@ export default function App() {
       });
       
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      
       pdf.save(`classroom-layout-${currentConfig.name || 'export'}.pdf`);
       
       if (was3D) setIs3DView(true);
@@ -2309,6 +3236,7 @@ export default function App() {
       console.error('Export failed:', error);
       setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה ביצוא ה-PDF", type: 'error' }, ...prev]);
     } finally {
+      updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: false }));
       setIsExporting(false);
     }
   };
@@ -2338,34 +3266,34 @@ export default function App() {
             className="fixed inset-0 bg-brand-900/5 backdrop-blur-sm z-30 lg:hidden"
           />
           <motion.aside
-            initial={isMobile ? { y: '100%' } : { x: 300 }}
-            animate={isMobile ? { y: 0 } : { x: 0 }}
-            exit={isMobile ? { y: '100%' } : { x: 300 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={cn(
-              "absolute z-40 bg-white shadow-2xl flex flex-col",
-              isMobile 
-                ? "inset-x-0 bottom-0 h-[80vh] rounded-t-[3rem] border-t border-slate-200 pb-[env(safe-area-inset-bottom)]" 
-                : "right-0 lg:relative lg:right-auto w-[300px] h-full border-l border-slate-200"
-            )}
-          >
-            {isMobile && (
-              <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto my-4 shrink-0" />
-            )}
-            <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
-              {/* Classroom Header */}
-              <div className="bg-white border-2 border-slate-200 p-6 rounded-3xl flex flex-col gap-4 shadow-sm">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">כיתה פעילה</h3>
-                    <Badge className="bg-brand-100 text-brand-700 border border-brand-200">v3.2.0</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={currentConfig.name}
-                      onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-                      className="text-xl font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 flex-1"
-                    />
+    initial={isMobile ? { y: '100%' } : { x: 300 }}
+    animate={isMobile ? { y: 0 } : { x: 0 }}
+    exit={isMobile ? { y: '100%' } : { x: 300 }}
+    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+    className={cn(
+      "absolute z-40 bg-white dark:bg-slate-900 shadow-2xl flex flex-col transition-colors",
+      isMobile 
+        ? "inset-x-0 bottom-0 h-[80vh] rounded-t-[3rem] border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]" 
+        : "right-0 lg:relative lg:right-auto w-[300px] h-full border-l border-slate-200 dark:border-slate-800"
+    )}
+  >
+    {isMobile && (
+      <div className="w-12 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
+    )}
+    <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
+      {/* Classroom Header */}
+      <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-6 rounded-3xl flex flex-col gap-4 shadow-sm transition-colors">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">כיתה פעילה</h3>
+            <Badge className="bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 border border-brand-100 dark:border-brand-800">v3.2.0</Badge>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              value={currentConfig.name}
+              onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
+              className="text-xl font-black text-slate-900 dark:text-white bg-transparent border-0 p-0 focus:ring-0 flex-1 leading-none"
+            />
                     <button 
                       onClick={() => {
                         const newName = prompt("הזן שם חדש לכיתה:", currentConfig.name);
@@ -2396,37 +3324,37 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Group Constraints Section */}
-              <div className="flex flex-col gap-4">
-                 <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest px-1">אילוצי קבוצות</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {currentConfig.groups.map((group: any) => (
-                      <div key={group.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white",
-                            group.id === 'א' ? "bg-brand-500" : group.id === 'ב' ? "bg-amber-500" : "bg-emerald-500"
-                          )}>
-                            {group.id}
-                          </div>
-                          <span className="text-sm font-black text-slate-700">{group.name}</span>
-                        </div>
-                        <select 
-                          value={group.constraint}
-                          onChange={(e) => updateCurrentConfig((prev: any) => ({
-                            ...prev,
-                            groups: prev.groups.map((g: any) => g.id === group.id ? { ...g, constraint: e.target.value } : g)
-                          }))}
-                          className="bg-slate-50 border-0 text-[10px] font-black rounded-lg focus:ring-1 focus:ring-brand-200 py-1 px-2"
-                        >
-                          <option value="none">ללא אילוץ</option>
-                          <option value="together">יחד (שכנים)</option>
-                          <option value="separate">בנפרד</option>
-                        </select>
-                      </div>
-                    ))}
+      {/* Group Constraints Section */}
+      <div className="flex flex-col gap-4">
+         <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest px-1">אילוצי קבוצות</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {currentConfig.groups.map((group: any) => (
+              <div key={group.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white",
+                    group.id === 'א' ? "bg-brand-500" : group.id === 'ב' ? "bg-amber-500" : "bg-emerald-500"
+                  )}>
+                    {group.id}
                   </div>
+                  <span className="text-sm font-black text-slate-700 dark:text-slate-200">{group.name}</span>
+                </div>
+                <select 
+                  value={group.constraint}
+                  onChange={(e) => updateCurrentConfig((prev: any) => ({
+                    ...prev,
+                    groups: prev.groups.map((g: any) => g.id === group.id ? { ...g, constraint: e.target.value } : g)
+                  }))}
+                  className="bg-slate-50 dark:bg-slate-900 border-0 text-[10px] font-black rounded-lg focus:ring-1 focus:ring-brand-200 py-1 px-2 text-slate-700 dark:text-slate-300 transition-colors"
+                >
+                  <option value="none">ללא אילוץ</option>
+                  <option value="together">יחד (שכנים)</option>
+                  <option value="separate">בנפרד</option>
+                </select>
               </div>
+            ))}
+          </div>
+      </div>
 
               {/* Student Pool */}
               <div className="flex flex-col gap-4 min-h-[200px]">
@@ -2435,53 +3363,67 @@ export default function App() {
                   <button className="p-2 hover:bg-slate-100 rounded-xl bg-slate-50 border border-slate-200 transition-colors"><Plus className="w-5 h-5 text-slate-600" /></button>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {studentsInPool.map((student, idx) => (
-                    <motion.div
-                      key={`${student.id}-${idx}`}
-                      draggable
-                      onDragStart={() => setDraggedStudentId(student.id)}
-                      onDragEnd={() => setDraggedStudentId(null)}
-                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-500 hover:shadow-lg transition-all group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center font-black text-slate-600 text-base">
-                          {student.name[0]}
+                  {studentsInPool.length === 0 ? (
+                    <EmptyState 
+                      icon={<CheckCircle2 className="w-10 h-10" />}
+                      title="הכל מוכן!"
+                      description="כל התלמידים משולבים בכיתה בהצלחה."
+                    />
+                  ) : (
+                    studentsInPool.map((student, idx) => (
+                      <motion.div
+                        key={`${student.id}-${idx}`}
+                        draggable
+                        onDragStart={() => setDraggedStudentId(student.id)}
+                        onDragEnd={() => setDraggedStudentId(null)}
+                        className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-500 hover:shadow-lg transition-all group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-slate-600 dark:text-slate-400 text-base">
+                            {student.name[0]}
+                          </div>
+                          <span className="text-base font-black text-slate-900 dark:text-slate-100">{student.name}</span>
                         </div>
-                        <span className="text-base font-black text-slate-900">{student.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                           onClick={() => {
-                             setSelectedStudentId(student.id);
-                             setViewType('studentDetail');
-                           }}
-                           className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-brand-600 transition-colors"
-                        >
-                           <Eye className="w-5 h-5" />
-                        </button>
-                        <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                      </div>
-                    </motion.div>
-                  ))}
-                  {studentsInPool.length === 0 && (
-                    <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">כל התלמידים משובצים</p>
-                    </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                             onClick={() => {
+                               setSelectedStudentId(student.id);
+                               setViewType('studentDetail');
+                             }}
+                             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-brand-600 transition-colors"
+                          >
+                             <Eye className="w-5 h-5" />
+                          </button>
+                          <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                        </div>
+                      </motion.div>
+                    ))
                   )}
                 </div>
               </div>
 
-              {/* View Satisfaction Indicator */}
-              <div className="glass-card p-5 rounded-3xl border border-slate-100 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">ממוצע שביעות רצון</h3>
-                  <div className="flex items-center gap-1 text-xs font-black text-emerald-500">
-                    <Sparkles className="w-3 h-3" />
-                     +15%
-                  </div>
-                </div>
-                <SatisfactionGauge score={80} />
+              {/* Conflict Analysis Section */}
+              <div className="glass-card p-6 bg-rose-50/10 border border-rose-100 dark:border-rose-900/20 rounded-[2.5rem]">
+                <ConflictPanel 
+                  conflicts={conflicts} 
+                  students={currentConfig.students}
+                  onResolve={(conflict: any) => {
+                    setNotifications(prev => [{ id: Date.now(), text: `הצעה: העבר את ${currentConfig.students.find((s:any)=>s.id===conflict.studentId1)?.name} למקום פנוי בשורה 1`, type: 'info' }, ...prev]);
+                  }}
+                />
               </div>
+
+      {/* View Satisfaction Indicator */}
+      <div className="glass-card p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ממוצע שביעות רצון</h3>
+          <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500">
+            <Sparkles className="w-3 h-3" />
+             +15%
+          </div>
+        </div>
+        <SatisfactionGauge score={80} />
+      </div>
 
               {/* Main Actions */}
               <div className="flex flex-col gap-2">
@@ -2625,7 +3567,8 @@ export default function App() {
 
       <div 
         className={cn(
-        "flex flex-col h-screen overflow-hidden bg-transparent font-sans rtl selection:bg-brand-100",
+        "flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans rtl selection:bg-brand-100 transition-colors",
+        isDarkMode && "dark",
         accessibility.highContrast && "high-contrast grayscale"
       )} 
       style={{ 
@@ -2688,18 +3631,19 @@ export default function App() {
                      <div className="flex items-center gap-2">
                        <Filter className="w-4 h-4 text-slate-400" />
                        <div className="flex gap-1 overflow-x-auto max-w-[200px] scrollbar-hide py-1">
-                          {['א', 'ב', 'ג'].map(g => (
+                          {(currentConfig.groups || []).map(group => (
                             <button
-                               key={g}
-                               onClick={() => setSelectedGroups(prev => prev.includes(g) ? prev.filter(pg => pg !== g) : [...prev, g])}
+                               key={group.id}
+                               onClick={() => setSelectedGroups(prev => prev.includes(group.id) ? prev.filter(pg => pg !== group.id) : [...prev, group.id])}
                                className={cn(
                                  "px-4 py-2 rounded-lg text-xs font-black transition-all whitespace-nowrap",
-                                 selectedGroups.includes(g) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-500 border border-slate-100"
+                                 selectedGroups.includes(group.id) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-500 border border-slate-100"
                                )}
                             >
-                              קבוצה {g}
+                              קבוצה {group.name}
                             </button>
                           ))}
+                          {(currentConfig.groups || []).length === 0 && <span className="text-[10px] text-slate-400 italic">לא הוגדרו קבוצות</span>}
                        </div>
                      </div>
 
@@ -2774,6 +3718,17 @@ export default function App() {
 
                    {/* Grid Content */}
                    <div ref={gridRef} className="relative w-full max-w-6xl flex flex-col items-center" id="classroom-grid-container">
+                        {/* Print Header only for PDF */}
+                        {isPrinting && (
+                          <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100">
+                             <h1 className="text-4xl font-black text-slate-900">מפת הושבה: {currentConfig.name}</h1>
+                             <div className="flex items-center justify-center gap-6 mt-4">
+                                <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">סה"כ תלמידים: {currentConfig.students.length}</span>
+                                <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">תאריך: {new Date().toLocaleDateString('he-IL')}</span>
+                             </div>
+                             <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות ClassManager Pro AI</p>
+                          </div>
+                        )}
                        {/* Floating Teacher Desk Toggle (Structure Mode Only) */}
                        {editMode === 'structure' && currentConfig.teacherDesk.index === -1 && (
                          <button 
@@ -2788,7 +3743,9 @@ export default function App() {
                     <div 
                       className={cn(
                         "grid p-20 transition-all duration-500 relative",
-                        editMode === 'structure' ? "bg-white ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 rounded-[5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)]" : "bg-white rounded-[5rem] border-4 border-slate-200 shadow-2xl"
+                        editMode === 'structure' 
+                         ? "bg-white dark:bg-slate-900 ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 dark:ring-offset-slate-950 rounded-[5rem] shadow-bento" 
+                         : "bg-white dark:bg-slate-900 rounded-[5rem] border-4 border-slate-200 dark:border-slate-800 shadow-2xl"
                       )}
                      style={{ 
                        display: 'grid',
@@ -2979,6 +3936,7 @@ export default function App() {
                               }
                             }}
                             setNotifications={setNotifications}
+                            conflicts={conflicts}
                           />
                         );
                       })
@@ -3086,6 +4044,63 @@ export default function App() {
                         </div>
                       ))}
                    </div>
+
+                   {/* PDF Alphabetical Student List - Advanced Version */}
+                   {isPrinting && (
+                     <div className="w-full mt-24 px-12 pb-20">
+                        <div className="h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent w-full mb-16" />
+                        <div className="flex items-center gap-4 mb-10">
+                           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
+                              <Layout className="w-6 h-6" />
+                           </div>
+                           <h2 className="text-3xl font-black text-slate-800">רשימת שיבוצים שמית</h2>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                           {currentConfig.students
+                             .slice()
+                             .sort((a: any, b: any) => a.name.localeCompare(b.name, 'he'))
+                             .map((s: any, idx: number) => {
+                               const deskIdx = currentConfig.grid.indexOf(s.id);
+                               const sRow = deskIdx !== -1 ? Math.floor(deskIdx / currentConfig.cols) + 1 : null;
+                               const sCol = deskIdx !== -1 ? (deskIdx % currentConfig.cols) + 1 : null;
+                               const group = s.groups && s.groups.length > 0 ? currentConfig.groups.find((g: any) => g.id === s.groups[0]) : null;
+
+                               return (
+                                 <div key={s.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+                                   <div className="flex justify-between items-start">
+                                      <span className="text-xl font-black text-slate-900">{s.name}</span>
+                                      {group && (
+                                         <span className="text-[9px] font-black px-2 py-1 bg-slate-50 text-slate-500 rounded-lg border border-slate-100">
+                                            {group.name}
+                                         </span>
+                                      )}
+                                   </div>
+                                   <div className="flex items-center gap-3 mt-2">
+                                      <div className={cn(
+                                        "w-12 h-12 rounded-2xl flex flex-col items-center justify-center border-2",
+                                        deskIdx !== -1 ? "bg-brand-600 border-brand-500 text-white shadow-lg shadow-brand-100" : "bg-slate-50 border-slate-200 text-slate-300"
+                                      )}>
+                                         <span className="text-[8px] font-black uppercase opacity-50">שולחן</span>
+                                         <span className="text-xl font-black leading-none">{deskIdx !== -1 ? deskIdx + 1 : '--'}</span>
+                                      </div>
+                                      <div className="flex flex-col">
+                                         <span className="text-[10px] font-black text-slate-400 uppercase">מיקום במערך:</span>
+                                         <span className="text-xs font-bold text-slate-600">
+                                            {deskIdx !== -1 ? `שורה ${sRow}, טור ${sCol}` : 'טרם שובץ'}
+                                         </span>
+                                      </div>
+                                   </div>
+                                 </div>
+                               );
+                             })
+                           }
+                        </div>
+                        <div className="mt-20 text-center text-slate-300 text-[10px] font-bold uppercase tracking-[0.2em]">
+                           Generated by ClassManager Pro // End of Report
+                        </div>
+                     </div>
+                   )}
                 </div>
 
                 <button 
@@ -3099,6 +4114,21 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      
+      {/* Notifications & Overlays */}
+      {isBulkUpdateOpen && (
+        <BulkUpdateModal 
+          students={currentConfig.students}
+          groups={currentConfig.groups}
+          onClose={() => setIsBulkUpdateOpen(false)}
+          onUpdate={(updates: any[]) => {
+            updateCurrentConfig((prev: any) => ({
+              ...prev,
+              students: updates
+            }));
+          }}
+        />
+      )}
 
       {/* Floating Notifications */}
       <div className="fixed bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
@@ -3111,14 +4141,14 @@ export default function App() {
               exit={{ opacity: 0, scale: 0.8 }}
               className={cn(
                 "p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto border-l-4 min-w-[280px]",
-                n.type === 'error' ? "bg-rose-50 border-rose-500 text-rose-800 shadow-rose-200" : "bg-white border-brand-500 text-slate-700 shadow-slate-200"
+                n.type === 'error' ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-800 dark:text-rose-200 shadow-rose-200 dark:shadow-none" : "bg-white dark:bg-slate-900 border-brand-500 text-slate-700 dark:text-slate-200 shadow-slate-200 dark:shadow-none"
               )}
             >
               {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-brand-500" />}
               <div className="flex-1">
                 <p className="text-xs font-black">{n.text}</p>
               </div>
-              <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 rounded-lg transition-colors">
+              <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
                 <X className="w-3 h-3" />
               </button>
             </motion.div>
@@ -3126,7 +4156,7 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <footer className="h-12 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest shrink-0">
+      <footer className="h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
         <div>ClassManager Pro v3.0 // Ready</div>
         <div className="flex gap-4">
           <span>{currentConfig.students.length} תלמידים</span>

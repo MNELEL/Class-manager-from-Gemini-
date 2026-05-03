@@ -1,41 +1,42 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @theme {
-  --font-sans: "Assistant", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Assistant", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-brand-50: #f5f7ff;
-  --color-brand-100: #ebf0fe;
-  --color-brand-200: #dce4fd;
-  --color-brand-300: #c2cffb;
-  --color-brand-400: #99aef7;
-  --color-brand-500: #7089f2;
-  --color-brand-600: #5567e9;
-  --color-brand-700: #4653d6;
-  --color-brand-800: #3c45b0;
-  --color-brand-900: #353c8c;
-  --color-brand-950: #1d214a;
+  --color-brand-50: #f0f7ff;
+  --color-brand-100: #e0effe;
+  --color-brand-200: #bae0fd;
+  --color-brand-300: #7cc8fb;
+  --color-brand-400: #38aef7;
+  --color-brand-500: #0e93e9;
+  --color-brand-600: #0274c7;
+  --color-brand-700: #035ca1;
+  --color-brand-800: #074e82;
+  --color-brand-900: #0c426d;
+  --color-brand-950: #082a4a;
 
   --shadow-bento: 0 0 0 1px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.05);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
 @layer base {
-  .high-contrast {
-    filter: contrast(1.5) saturate(0);
-    background: white !important;
-    color: black !important;
+  :root {
+    --radius: 1.25rem;
+    --app-font-size: 16px;
   }
-  
-  .high-contrast * {
-    border-color: black !important;
-    box-shadow: none !important;
-  }
-  
-  .font-small { font-size: 0.875rem; }
-  .font-medium { font-size: 1rem; }
-  .font-large { font-size: 1.25rem; }
 
+  body {
+    font-size: var(--app-font-size);
+    @apply font-sans bg-slate-50 text-slate-900 antialiased selection:bg-brand-100 selection:text-brand-900 overflow-hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+  }
+
+  /* Accessible Print Styles */
   @media print {
     header, aside, .z-30, button, .toolbar, .no-print {
       display: none !important;
@@ -58,112 +59,73 @@
       box-shadow: none !important;
       border: 1px solid #e2e8f0 !important;
     }
-
-    .bg-slate-50, .bg-indigo-50, .bg-brand-50 {
-      background-color: white !important;
-    }
-
-    .grid {
-      page-break-inside: avoid;
-    }
   }
-}
-
-:root {
-  --radius: 1.25rem;
-  --app-font-size: 16px;
-}
-
-body {
-  font-size: var(--app-font-size);
-  @apply bg-white text-slate-800 antialiased selection:bg-brand-100 selection:text-brand-900;
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(225, 100%, 99.5%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(210, 100%, 99.5%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 100%, hsla(220, 100%, 99%, 1) 0, transparent 50%);
-  background-attachment: fixed;
-  overscroll-behavior: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-slate-950 text-slate-100;
-    background-image: 
-      radial-gradient(at 0% 0%, hsla(225, 30%, 10%, 1) 0, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(210, 30%, 8%, 1) 0, transparent 50%),
-      radial-gradient(at 50% 100%, hsla(220, 30%, 12%, 1) 0, transparent 50%);
-  }
-  
-  .glass-card {
-    @apply bg-slate-900/70 border-white/10;
-  }
-  
-  .glass-header {
-    @apply bg-black/60 border-white/10;
-  }
-  
-  :root {
-    --color-brand-100: #1d214a;
-    --color-brand-200: #252a5d;
-    --color-brand-600: #7089f2;
-    --color-brand-700: #99aef7;
-  }
-
-  .bg-white { @apply bg-slate-900; }
-  .text-slate-900 { @apply text-slate-100; }
-  .text-slate-800 { @apply text-slate-200; }
-  .text-slate-600 { @apply text-slate-400; }
-  .text-slate-500 { @apply text-slate-500; }
-  .border-slate-200 { @apply border-slate-800; }
-  .bg-slate-50 { @apply bg-slate-950; }
-  .bg-slate-100 { @apply bg-slate-800; }
-}
-
-button, 
-nav, 
-a, 
-[role="button"] {
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-glass;
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl;
   }
   
-  .glass-header {
-    @apply bg-white/60 backdrop-blur-2xl border-b border-white/40 sticky top-0 z-50;
+  .dark .glass-card {
+    @apply bg-slate-900/80 border-slate-800/50 shadow-2xl;
   }
 
-  .interactive-glow:hover {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+  .glass-header {
+    @apply bg-white/60 backdrop-blur-2xl border-b border-slate-200/60 sticky top-0 z-50;
+  }
+
+  .dark .glass-header {
+    @apply bg-slate-950/60 border-slate-800/60;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 hover:bg-slate-600;
+  }
+
+  .technical-grid {
+    background-image: 
+      linear-gradient(to right, rgba(203, 213, 225, 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(203, 213, 225, 0.2) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .dark .technical-grid {
+    background-image: 
+      linear-gradient(to right, rgba(30, 41, 59, 0.3) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(30, 41, 59, 0.3) 1px, transparent 1px);
   }
 }
 
-@layer base {
-  * {
-    @apply border-slate-200/60;
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
   }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }
 
 .desk-shadow {
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
 }
 
-.desk-shadow-hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+.dark .desk-shadow {
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
 }
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
-}
-

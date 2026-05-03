@@ -7,15 +7,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
-  console.log("Initializing startServer...");
   const app = express();
   const PORT = 3000;
 
-  console.log("__dirname:", __dirname);
-  const distPath = path.join(__dirname, "dist");
-  console.log("distPath:", distPath);
+  // Health check route for Cloud Run
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      env: process.env.NODE_ENV,
+      time: new Date().toISOString()
+    });
+  });
 
-  // Use Vite as middleware for development
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in development mode...");
     try {
@@ -26,21 +30,23 @@ async function startServer() {
       });
       app.use(vite.middlewares);
     } catch (e) {
-      console.error("Vite middleware failed:", e);
+      console.error("Vite middleware failed to load:", e);
+      const distPath = path.join(__dirname, 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
     }
   } else {
     console.log("Starting server in production mode...");
-    // Serve static files in production
+    const distPath = path.join(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
-      console.log("distPath exists, setting up static middleware");
+      console.log("Serving static files from:", distPath);
       app.use(express.static(distPath));
-      app.get("*", (req, res) => {
-        res.sendFile(path.join(distPath, "index.html"));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
       });
     } else {
-      console.error(`Production build not found at ${distPath}. Did you run 'npm run build'?`);
-      // Define a basic route so Cloud Run doesn't fail health checks completely
-      app.get("/", (req, res) => res.send("Production build not found."));
+      console.error(`Production build not found at ${distPath}.`);
+      app.get("*", (req, res) => res.status(500).send("Production build not found. Please run npm run build."));
     }
   }
 
