@@ -565,7 +565,7 @@ const DeskCell = ({
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-1" />
       )}
       
-      {showDeskNumbers && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
+      {showDeskNumbers && !isPrinting && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
       
       {student ? (
         <div className="flex flex-col items-center gap-1 w-full z-10">
@@ -576,7 +576,7 @@ const DeskCell = ({
            
            <div className={cn(
              "z-10 flex flex-col items-center bg-white dark:bg-slate-800 px-5 py-2.5 rounded-2xl border-2 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] relative w-[90%]",
-             hasConflict ? "border-rose-400 dark:border-rose-900" : "border-slate-400 dark:border-slate-600",
+             (hasConflict && !isPrinting) ? "border-rose-400 dark:border-rose-900" : "border-slate-400 dark:border-slate-600",
               isPrinting && "shadow-none border-slate-200"
            )}>
              <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
@@ -606,7 +606,7 @@ const DeskCell = ({
              </div>
 
              {/* Conflict Badge */}
-             {hasConflict && (
+             {(hasConflict && !isPrinting) && (
                <motion.div 
                  initial={{ scale: 0 }}
                  animate={{ scale: 1 }}
@@ -617,7 +617,7 @@ const DeskCell = ({
              )}
              
              {/* Group Dot Indicators */}
-             {student.groups && student.groups.length > 0 && (
+             {(student.groups && student.groups.length > 0 && !isPrinting) && (
                <div className="absolute -top-2 -right-2 flex gap-1">
                  {student.groups.map((gId: string, i: number) => {
                    const group = currentConfig.groups?.find((g: any) => g.id === gId);
@@ -1806,11 +1806,16 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
              )}>
                 {student.height === 'short' ? 'קדמי' : student.height === 'tall' ? 'אחורי' : 'בינוני'}
              </Badge>
-             {student.groups?.map((g: string) => (
-                <Badge key={g} className="bg-brand-50 text-brand-700 text-[9px] px-2 py-0.5 rounded-md">
-                   קבוצה {g}
-                </Badge>
-             ))}
+             {student.groups?.map((gId: string) => {
+                const group = currentConfig.groups?.find((g: any) => g.id === gId);
+                const groupIndex = (currentConfig.groups || []).findIndex((g: any) => g.id === gId);
+                const colors = ['bg-brand-50 text-brand-700 border-brand-100', 'bg-amber-50 text-amber-700 border-amber-100', 'bg-emerald-50 text-emerald-700 border-emerald-100', 'bg-indigo-50 text-indigo-700 border-indigo-100', 'bg-rose-50 text-rose-700 border-rose-100'];
+                return (
+                  <Badge key={gId} className={cn("text-[9px] px-2 py-0.5 rounded-md border", colors[groupIndex % colors.length] || 'bg-slate-50 text-slate-500 border-slate-100')}>
+                     {group?.name || `קבוצה ${gId}`}
+                  </Badge>
+                );
+             })}
           </div>
         </div>
 
@@ -2652,13 +2657,46 @@ export default function App() {
         const r = Math.floor(idx / cols);
         const c = idx % cols;
 
-        // 1. Social Score
+        // 1. Social Score (Personal + Groups)
         neighbors.forEach(nIdx => {
           const neighborId = assignment[nIdx];
           if (!neighborId) return;
+          const neighbor = students.find(s => s.id === neighborId);
+          if (!neighbor) return;
 
+          // Personal prefs
           if (student.preferred?.includes(neighborId)) score += weights.preferred;
           if (student.forbidden?.includes(neighborId)) score -= weights.forbidden;
+
+          // Group constraints
+          student.groups?.forEach((gId: string) => {
+            const group = (currentConfig as any).groups?.find((g: any) => g.id === gId);
+            if (!group) return;
+
+            if (neighbor.groups?.includes(gId)) {
+              // Same group
+              if (group.constraint === 'together') score += 15; // Positive weight for sitting together
+              if (group.constraint === 'separate') score -= 20; // Negative weight for sitting together when should separate
+            }
+          });
+        });
+
+        // 1.5 Together isolation penalty
+        student.groups?.forEach((gId: string) => {
+          const group = (currentConfig as any).groups?.find((g: any) => g.id === gId);
+          if (group?.constraint === 'together') {
+            const hasGroupMemberAdjacent = neighbors.some(nIdx => {
+               const neighborId = assignment[nIdx];
+               if (!neighborId) return false;
+               const neighbor = students.find(s => s.id === neighborId);
+               return neighbor?.groups?.includes(gId);
+            });
+            if (!hasGroupMemberAdjacent) {
+               // If there are other members of this group in the class, sitting alone is bad
+               const otherMembers = students.filter(s => s.id !== sid && s.groups?.includes(gId));
+               if (otherMembers.length > 0) score -= 50;
+            }
+          }
         });
 
         // 2. Spatial / Area Prefs

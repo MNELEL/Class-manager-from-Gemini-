@@ -4,9 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "vite",
     "build": "vite build",
-    "start": "tsx server.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "app:android": "npm run build && npx cap sync android",
