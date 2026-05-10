@@ -17,12 +17,21 @@ export interface Student {
   groups?: string[];
   // New fields
   attendance?: { date: string; status: 'present' | 'absent' | 'late' }[];
-  grades?: { subject: string; score: number; date: string }[];
+  grades?: { id?: string | number, subject: string; grade: number; testName?: string; date: string; category?: 'quiz' | 'midterm' | 'final' | 'homework' | 'other' }[];
   physicalHeight?: number; // cm
   physicalWidth?: number; // cm
   isAlwaysFront?: boolean;
   isAlwaysBack?: boolean;
   isAlwaysMiddle?: boolean;
+  birthday?: string; // YYYY-MM-DD
+  
+  // New School Features
+  diagnostics?: { id: string, type: string, description: string, date: string, accommodations: string[] }[];
+  communications?: { id: string, date: string, type: 'phone' | 'email' | 'letter' | 'meeting', summary: string, toParent: boolean }[];
+  documents?: { id: string, title: string, url: string, date: string, type: 'image' | 'pdf' | 'other' }[];
+  pastHistory?: { year: string, teacher: string, summary: string, gradesAvg: number }[];
+  tasks?: { id: string, title: string, description: string, dueDate: string, status: 'pending' | 'completed', category: 'homework' | 'project' | 'study' | 'other', priority: 'low' | 'medium' | 'high' }[];
+  lessons?: { id: string, name: string, day: string, time: string, room?: string }[];
 }
 
 export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock' | 'obstruction';

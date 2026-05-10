@@ -7,81 +7,121 @@ import {
   useMotionValue,
   useTransform
 } from 'motion/react';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Cell,
+  LineChart as RechartsLineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart as RechartsPieChart,
+  Pie
+} from 'recharts';
+import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { 
-  Users, 
-  LayoutGrid, 
-  Settings, 
-  History, 
-  Sparkles, 
-  Download, 
-  Plus, 
-  Trash2, 
-  ChevronRight, 
-  ChevronLeft,
-  X,
-  Search,
-  Check,
+  Activity,
   AlertCircle,
-  FileDown,
-  Monitor,
-  Maximize2,
-  Wand2,
-  Layers,
+  BarChart3,
+  ArrowRight,
   ArrowRightLeft,
-  Columns,
-  Rows,
-  Minus,
-  CheckCircle2,
-  Lock,
-  ChevronDown,
-  Info,
-  Smartphone,
-  Tablet,
-  Computer,
-  Eye,
-  Settings2,
-  Calendar,
-  Clock,
-  Filter,
-  Ruler,
-  ShieldAlert,
-  MoreVertical,
-  Menu,
-  Heart,
   Ban,
-  Edit3,
-  Layout,
-  GraduationCap,
-  LineChart,
-  UserPlus,
-  School,
-  ClipboardList,
-  Upload,
-  RotateCcw,
-  Share2,
-  CloudLightning,
-  Grid3X3,
-  Smile,
+  Bell,
+  Bookmark,
+  BookOpen,
   Box,
   Brain,
-  HelpCircle,
-  Lightbulb,
-  ArrowRight,
-  MousePointer,
-  FileText,
-  Sun,
-  Moon,
-  Zap,
-  Shield,
-  TrendingUp,
-  Activity,
+  Briefcase,
+  Cake,
+  Calendar,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  CheckSquare,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
+  ClipboardList,
+  Clock,
+  CloudLightning,
+  Columns,
+  Computer,
+  CreditCard,
+  Download,
+  Edit3,
+  Eye,
+  FileDown,
+  FileText,
+  Filter,
+  FlaskConical,
+  FolderOpen,
+  GraduationCap,
+  Grid3X3,
+  Heart,
+  HelpCircle,
+  History,
+  Info,
+  Layers,
+  Layout,
+  LayoutGrid,
+  Lightbulb,
+  LineChart,
+  Lock,
+  Maximize2,
+  Menu,
+  Minus,
+  Monitor,
+  Moon,
+  MoreVertical,
+  MousePointer,
+  PhoneCall,
   PieChart as PieChartIcon,
+  Plus,
+  Printer,
+  RotateCcw,
+  Rows,
+  Ruler,
+  Save,
+  School,
+  Search,
+  Settings,
+  Settings2,
+  Share2,
+  Shield,
+  ShieldAlert,
+  Smartphone,
+  Smile,
+  Sparkles,
+  Star,
+  Stethoscope,
+  Sun,
+  Tablet,
+  Trash2,
+  TrendingUp,
+  User,
+  Upload,
+  UserPlus,
+  Users,
+  Wand2,
+  Wrench,
+  X,
+  XCircle,
+  Zap,
+  Paperclip,
+  File,
+  FileUp
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { HDate, HebrewCalendar, Location } from '@hebcal/core';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -213,6 +253,82 @@ function Badge({ children, className, style, ...props }: { children: React.React
   );
 }
 
+const GroupsPanelModal = ({ groups, updateCurrentConfig, setNotifications, onClose }: any) => {
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[3rem] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-8 left-8 p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+          <X className="w-6 h-6 text-slate-400" />
+        </button>
+        <div className="mb-6">
+          <h2 className="text-2xl font-black text-slate-800 dark:text-white">ניהול קבוצות משתמשים</h2>
+          <p className="text-slate-500 font-medium">כאן תוכלו לנהל קבוצות תלמידים לפי הישגים, חוגים, או מצב חברתי</p>
+        </div>
+        <GroupManager groups={groups} updateCurrentConfig={updateCurrentConfig} setNotifications={setNotifications} />
+      </motion.div>
+    </div>
+  );
+};
+
+const IssuesPanelModal = ({ conflicts, students, updateCurrentConfig, onClose }: any) => {
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[3rem] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-8 left-8 p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+          <X className="w-6 h-6 text-slate-400" />
+        </button>
+        <div className="mb-6 z-10 relative bg-white dark:bg-slate-900">
+          <h2 className="text-2xl font-black text-rose-600 flex items-center gap-2">
+            <AlertCircle className="w-8 h-8" />
+            בעיות נוכחיות בשיבוץ ({conflicts.length})
+          </h2>
+          <p className="text-slate-500 font-medium mt-2">המערכת מזהה קונפליקטים בשיבוץ לפי אילוצי התלמידים. פתרו או התעלמו לפי הצורך.</p>
+        </div>
+        <div className="space-y-4">
+          {conflicts.length === 0 ? (
+            <div className="p-8 text-center bg-brand-50 rounded-3xl">
+              <CheckCircle2 className="w-12 h-12 text-brand-500 mx-auto mb-4" />
+              <h3 className="text-lg font-black text-brand-700">אין בעיות בשיבוץ!</h3>
+              <p className="text-brand-600 text-sm">נראה שהכיתה מסודרת באופן מושלם.</p>
+            </div>
+          ) : (
+            conflicts.map((c: any, index: number) => (
+               <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/50 gap-4">
+                 <div className="flex items-center gap-4">
+                   <div className="p-3 bg-white dark:bg-rose-800 rounded-xl shadow-sm shrink-0">
+                     <AlertCircle className="w-6 h-6 text-rose-500 text-white" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-black text-rose-700 dark:text-rose-400">{c.message}</p>
+                     <p className="text-xs font-bold text-rose-500/70 dark:text-rose-500 mt-1">
+                       מערב את: {students.find((s:any)=>s.id === c.studentId1)?.name} {c.studentId2 ? `ו-${students.find((s:any)=>s.id === c.studentId2)?.name}` : ''}
+                     </p>
+                   </div>
+                 </div>
+                 <button 
+                   onClick={() => {
+                     updateCurrentConfig((prev: any) => {
+                       const newGrid = [...prev.grid];
+                       newGrid[c.deskIdx1] = null;
+                       if (c.deskIdx2 !== undefined) {
+                         newGrid[c.deskIdx2] = null;
+                       }
+                       return { ...prev, grid: newGrid };
+                     });
+                   }}
+                   className="px-5 py-2.5 bg-white text-rose-600 rounded-xl font-black text-xs hover:bg-rose-100 transition-colors shadow-sm whitespace-nowrap self-stretch sm:self-auto uppercase tracking-wider"
+                 >
+                   להחזיר למאגר התלמידים
+                 </button>
+               </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const BulkUpdateModal = ({ students, groups = [], onUpdate, onClose }: any) => {
   const [text, setText] = useState("");
 
@@ -328,14 +444,19 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 
 // --- Helper Components ---
 
-const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig }: any) => {
+const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView }: any) => {
   return (
     <motion.div
       layoutId="teacher-desk"
-      whileHover={{ scale: 1.02 }}
+      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: -55, rotateY: -2 } : { scale: 1.02 }}
       style={{
         gridColumn: `${colPos} / span ${width}`,
         gridRow: `${rowPos} / span ${height}`,
+        ...(is3DView ? {
+          transform: 'translateZ(40px) rotateX(-55deg)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          transformStyle: 'preserve-3d',
+        } : {})
       }}
       draggable={editMode === 'structure'}
       onDragStart={(e) => {
@@ -380,6 +501,7 @@ const DeskCell = ({
   showDeskNumbers,
   draggedStudentId,
   selectedStudentId,
+  setDraggedStudentId,
   onDrop,
   updateCurrentConfig,
   currentConfig,
@@ -388,21 +510,31 @@ const DeskCell = ({
   onShowHistory,
   onShowProfile,
   setNotifications,
+  setNewStudent,
+  setIsAddStudentOpen,
   conflicts = []
 }: any) => {
   const [isOver, setIsOver] = useState(false);
+  const isObstruction = currentConfig.obstructions?.includes(idx);
+  const isPrinting = currentConfig.isPrinting;
   const draggingS = currentConfig.students.find((s: any) => s.id === draggedStudentId);
   const isCompatible = draggingS && draggingS.height === 'short' ? Math.floor(idx / currentConfig.cols) < 2 : true;
-  const compatibilityClass = isOver ? (isCompatible ? "bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100" : "bg-rose-50 border-rose-300 ring-4 ring-rose-100") : "";
+  
+  const compatibilityClass = isOver 
+    ? (isCompatible 
+       ? "bg-emerald-100 border-emerald-400 ring-4 ring-emerald-200 dark:bg-emerald-900/40 dark:border-emerald-600 dark:ring-emerald-800 shadow-xl scale-105 z-50" 
+       : "bg-rose-100 border-rose-400 ring-4 ring-rose-200 dark:bg-rose-900/40 dark:border-rose-600 dark:ring-rose-800 shadow-xl scale-105 z-50") 
+    : (draggedStudentId && editMode === 'placement' && !isHidden && !isObstruction && !isPrinting
+       ? (isCompatible
+          ? "border-brand-400 border-dashed bg-brand-50/50 dark:bg-brand-900/20 ring-2 ring-brand-200 dark:ring-brand-800 shadow-sm"
+          : "border-rose-200 border-dashed bg-rose-50/30 dark:bg-rose-900/10 opacity-50")
+       : "");
 
   const isSelected = studentId && selectedStudentId === studentId;
-  const isObstruction = currentConfig.obstructions?.includes(idx);
   
   // Find conflicts for this specific desk
   const deskConflicts = conflicts.filter((c: any) => c.deskIdx1 === idx || c.deskIdx2 === idx);
   const hasConflict = deskConflicts.length > 0;
-
-  const isPrinting = currentConfig.isPrinting;
 
   if (((isHidden || isObstruction) && !isPrinting) && editMode === 'normal') return (
     <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent flex items-center justify-center">
@@ -485,7 +617,7 @@ const DeskCell = ({
         gridColumn: colPos, 
         gridRow: rowPos,
         ...(is3DView && !isHidden ? {
-          transform: `translateZ(${idx === activeDeskIdx ? '80px' : '40px'}) rotateX(0deg)`,
+          transform: `translateZ(${idx === activeDeskIdx ? '80px' : '40px'}) rotateX(-55deg)`,
           boxShadow: idx === activeDeskIdx || isSelected
             ? '0 40px 80px rgba(0,0,0,0.3)' 
             : '0 20px 40px rgba(0,0,0,0.15)',
@@ -554,9 +686,16 @@ const DeskCell = ({
               <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-brand-600 group-hover:scale-110 transition-all">
                 <Plus className="w-5 h-5" />
               </div>
-              <span className="text-[8px] font-black text-slate-400 group-hover:text-brand-600 uppercase tracking-tighter">הוסף</span>
+              <span className="text-[8px] font-black text-slate-400 group-hover:text-brand-600 uppercase tracking-tighter">הוסף שולחן</span>
             </>
-          ) : null}
+          ) : (
+            <>
+              <div className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/30 shadow-sm flex items-center justify-center text-rose-400 opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all border border-rose-100 dark:border-rose-800">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <span className="text-[8px] font-black text-rose-500 opacity-0 group-hover:opacity-100 uppercase tracking-tighter mt-1 bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-full">הסר שולחן</span>
+            </>
+          )}
         </motion.div>
       )}
 
@@ -568,7 +707,23 @@ const DeskCell = ({
       {showDeskNumbers && !isPrinting && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
       
       {student ? (
-        <div className="flex flex-col items-center gap-1 w-full z-10">
+        <motion.div 
+          className={cn("flex flex-col items-center gap-1 w-full z-10 transition-all", editMode === 'placement' && "cursor-grab active:cursor-grabbing rounded-2xl")}
+          animate={draggedStudentId === student.id ? { scale: 0.95, opacity: 0.4 } : { scale: 1, opacity: 1 }}
+          whileHover={editMode === 'placement' ? { scale: 1.03, y: -4 } : {}}
+          whileTap={editMode === 'placement' ? { scale: 0.98 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          draggable={editMode === 'placement'}
+          onDragStart={(e: any) => {
+            if (editMode === 'placement') {
+              e.dataTransfer.setData('type', 'student');
+              if (setDraggedStudentId) setDraggedStudentId(student.id);
+            }
+          }}
+          onDragEnd={() => {
+            if (setDraggedStudentId) setDraggedStudentId(null);
+          }}
+        >
            {/* Chair Backrest Icon */}
            <div className="w-10 h-7 bg-slate-200 dark:bg-slate-700 rounded-t-lg -mb-2 z-0 border border-slate-300 dark:border-slate-600 shadow-inner flex items-center justify-center">
              <div className="w-5 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
@@ -660,13 +815,57 @@ const DeskCell = ({
                 >
                   <Eye className="w-5 h-5" />
                 </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`האם למחוק את התלמיד ${student.name} מהמערכת לחלוטין?`)) {
+                       updateCurrentConfig((prev: any) => {
+                          const newGrid = [...prev.grid];
+                          newGrid[idx] = null;
+                          return { 
+                            ...prev, 
+                            grid: newGrid,
+                            students: prev.students.filter((s:any) => s.id !== student.id)
+                          };
+                       });
+                       setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק לחלוטין`, type: 'error' }, ...prev]);
+                    }
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white hover:border-rose-700 shadow-xl transition-all"
+                  title="מחיקת תלמיד מהמערכת"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
               </div>
            </div>
-        </div>
-      ) : !isHidden && (
-        <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-50 transition-opacity">
-           <LayoutGrid className="w-6 h-6 text-slate-400" />
-           <Plus className="w-3 h-3 text-slate-400" />
+        </motion.div>
+      ) : !isHidden && !isObstruction && (
+        <div className="flex flex-col items-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity w-full h-full relative">
+           <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+             <div className="w-10 h-10 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-500 flex items-center justify-center bg-slate-50/50 dark:bg-slate-800/50 mb-1 transition-all group-hover:scale-110">
+               <Plus className="w-4 h-4 text-slate-500" />
+             </div>
+             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center leading-tight">שולחן<br/>פנוי</span>
+           </div>
+           
+           {editMode === 'normal' && (
+             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/80 dark:bg-slate-900/80 rounded-[2rem] transition-all backdrop-blur-sm z-20">
+               <button 
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   setNewStudent({ name: '', height: 'average' });
+                   setIsAddStudentOpen(true);
+                   // In a real app we would want to inject the clicked desk idx to the new student on creation. 
+                   // To keep it simple globally, the modal adds the student to the pool, and then they can drag it to this seat.
+                   // As placing it immediately in the grid requires saving the grid idx, let's keep the global "Add Student" modal behavior and show a notification.
+                 }}
+                 className="flex flex-col items-center gap-1 px-4 py-3 bg-brand-600 text-white rounded-2xl hover:bg-brand-700 hover:scale-105 active:scale-95 transition-all shadow-xl border border-brand-500"
+               >
+                 <Plus className="w-5 h-5 mx-auto" />
+                 <span className="text-[10px] font-black uppercase text-center w-full leading-none whitespace-nowrap">הוסף תלמיד</span>
+               </button>
+             </div>
+           )}
         </div>
       )}
 
@@ -744,16 +943,24 @@ const ConflictPanel = ({ conflicts, students, onResolve }: any) => {
 
 // --- Views ---
 
-const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => void }) => {
-  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
-
-  const toggleStatus = (id: string, status: 'present' | 'absent' | 'late') => {
-    setAttendance(prev => ({ ...prev, [id]: status }));
+const AttendanceView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: any }) => {
+  const toggleStatus = (id: string, status: 'present' | 'absent' | 'late' | 'none') => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => s.id === id ? { ...s, status } : s)
+    }));
   };
 
-  const presentCount = Object.values(attendance).filter(v => v === 'present').length;
-  const lateCount = Object.values(attendance).filter(v => v === 'late').length;
-  const absentCount = Object.values(attendance).filter(v => v === 'absent').length;
+  const markAllPresent = () => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => ({ ...s, status: 'present' }))
+    }));
+  };
+
+  const presentCount = students.filter(s => s.status === 'present').length;
+  const lateCount = students.filter(s => s.status === 'late').length;
+  const absentCount = students.filter(s => s.status === 'absent').length;
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -771,15 +978,24 @@ const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => v
               יום שלישי, 28 באפריל, 2024
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-black">
-              {presentCount} נוכחים
-            </div>
-            <div className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-black">
-              {lateCount} מאחרים
-            </div>
-            <div className="px-4 py-2 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl text-xs font-black">
-              {absentCount} נעדרים
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={markAllPresent}
+              className="flex items-center gap-2 px-6 py-2 border-2 border-brand-500 bg-brand-50 text-brand-600 rounded-xl text-sm font-black hover:bg-brand-500 hover:text-white transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              סמן הכל כנוכח
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-black">
+                {presentCount} נוכחים
+              </div>
+              <div className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-black">
+                {lateCount} מאחרים
+              </div>
+              <div className="px-4 py-2 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl text-xs font-black">
+                {absentCount} נעדרים
+              </div>
             </div>
           </div>
         </div>
@@ -787,7 +1003,7 @@ const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => v
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {students.map((s, idx) => {
-          const status = attendance[s.id] || 'none';
+          const status = s.status || 'none';
           return (
             <div key={`${s.id}-${idx}`} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col gap-6 hover:shadow-xl hover:-translate-y-1 transition-all group">
               <div className="flex items-center gap-4">
@@ -836,86 +1052,507 @@ const AttendanceView = ({ students, onBack }: { students: any[], onBack: () => v
   );
 };
 
-const GradesView = ({ onBack }: { onBack: () => void }) => {
-  const [grades, setGrades] = useState([
-    { id: '1', name: 'יוני לוי', math: 85, english: 92, science: 78, history: 95 },
-    { id: '2', name: 'ענבר כהן', math: 92, english: 88, science: 94, history: 82 },
-    { id: '3', name: 'גיל שרון', math: 78, english: 85, science: 82, history: 88 },
-    { id: '4', name: 'נועה ברק', math: 95, english: 94, science: 91, history: 97 },
-  ]);
+const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
+  const [filterCategory, setFilterCategory] = useState<'all' | 'quiz' | 'midterm' | 'final' | 'homework'>('all');
+  const [isAddingGrade, setIsAddingGrade] = useState(false);
+  const [newGrade, setNewGrade] = useState({ studentId: '', subject: 'מתמטיקה', grade: 90, testName: '', date: new Date().toISOString().split('T')[0], category: 'quiz' as any });
+
+  const categories = [
+    { id: 'quiz', label: 'בוחן', color: 'bg-indigo-500' },
+    { id: 'midterm', label: 'מבחן מחצית', color: 'bg-amber-500' },
+    { id: 'final', label: 'מבחן סוף שנה', color: 'bg-emerald-500' },
+    { id: 'homework', label: 'שיעורי בית', color: 'bg-brand-500' },
+    { id: 'other', label: 'אחר', color: 'bg-slate-500' },
+  ];
+
+  const allGrades = students.flatMap(s => (s.grades || []).map((g: any) => ({ ...g, studentName: s.name, studentId: s.id })));
+  const filteredGrades = filterCategory === 'all' ? allGrades : allGrades.filter(g => g.category === filterCategory);
+
+  // Subject Statistics
+  const subjectStats = useMemo(() => {
+    const stats: Record<string, { total: number, count: number, name: string }> = {};
+    allGrades.forEach(g => {
+      const subject = g.subject || 'כללי';
+      if (!stats[subject]) stats[subject] = { total: 0, count: 0, name: subject };
+      stats[subject].total += g.grade;
+      stats[subject].count += 1;
+    });
+    return Object.values(stats).map(s => ({
+      ...s,
+      average: Math.round(s.total / s.count)
+    })).sort((a, b) => b.average - a.average);
+  }, [allGrades]);
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
-      <div className="flex items-center gap-6">
-        <button 
-          onClick={onBack}
-          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
-        >
-          <ChevronLeft className="w-7 h-7" />
-        </button>
-        <div className="flex items-center justify-between flex-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={onBack}
+            className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
           <div>
             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">ניהול הישגים וציונים</h2>
-            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">סקירה פדגוגית של הישגי המחצית</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">סקירה פדגוגית לפי קטגוריות</p>
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
-            <Download className="w-5 h-5" />
-            ייצוא גיליון
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsAddingGrade(!isAddingGrade)}
+            className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 active:scale-95 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            הוסף ציון
           </button>
         </div>
       </div>
 
+      {/* Visual Analytics Grid */}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">פילוח הישגים לפי מקצוע</h3>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-brand-500 rounded-full" />
+                  <span className="text-[10px] font-black text-slate-400 capitalize">ממוצע</span>
+                </div>
+              </div>
+            </div>
+            <div className="h-[300px] w-full">
+              {subjectStats.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subjectStats}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#f8fafc' }}
+                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSze: '12px', fontWeight: 'bold' }}
+                    />
+                    <Bar 
+                      dataKey="average" 
+                      fill="url(#colorAvg)" 
+                      radius={[8, 8, 8, 8]}
+                      barSize={40}
+                    >
+                      <defs>
+                        <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#4f46e5" />
+                          <stop offset="100%" stopColor="#6366f1" />
+                        </linearGradient>
+                      </defs>
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400 font-black italic">
+                   לא הוזנו ציונים עדיין
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {subjectStats.slice(0, 2).map((stat, i) => (
+              <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                <div className={cn(
+                  "absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 group-hover:opacity-20 transition-opacity",
+                  stat.average >= 90 ? "bg-emerald-500" : stat.average >= 80 ? "bg-brand-500" : "bg-amber-500"
+                )} />
+                <div className="relative flex flex-col h-full">
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{stat.name}</span>
+                    <div className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-black",
+                      stat.average >= 85 ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+                    )}>
+                      {stat.average >= 85 ? 'מצטיין' : 'תקין'}
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-2 mt-auto">
+                    <span className="text-5xl font-black text-slate-900 dark:text-white">{stat.average}</span>
+                    <span className="text-sm font-bold text-slate-400">ממוצע כיתתי</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 mt-2">מבוסס על {stat.count} ציונים שהוזנו</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button 
+          onClick={() => setFilterCategory('all')}
+          className={cn(
+            "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap",
+            filterCategory === 'all' ? "bg-slate-900 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
+          )}
+        >
+          הכל
+        </button>
+        {categories.map(cat => (
+          <button 
+            key={cat.id}
+            onClick={() => setFilterCategory(cat.id as any)}
+            className={cn(
+              "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap flex items-center gap-2",
+              filterCategory === cat.id ? "bg-brand-600 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
+            )}
+          >
+            <div className={cn("w-2 h-2 rounded-full", cat.color)} />
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {isAddingGrade && (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-brand-100 dark:border-brand-900 shadow-xl space-y-6">
+           <h3 className="text-xl font-black text-slate-800 dark:text-white">הוספת ציון חדש</h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">תלמיד</label>
+                <select 
+                  value={newGrade.studentId}
+                  onChange={(e) => setNewGrade(prev => ({...prev, studentId: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                >
+                  <option value="">בחר תלמיד...</option>
+                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">מקצוע</label>
+                <input 
+                  value={newGrade.subject}
+                  onChange={(e) => setNewGrade(prev => ({...prev, subject: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                  placeholder="לדוגמה: מתמטיקה"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">קטגוריה</label>
+                <select 
+                  value={newGrade.category}
+                  onChange={(e) => setNewGrade(prev => ({...prev, category: e.target.value as any}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                >
+                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">שם המבחן/משימה</label>
+                <input 
+                  value={newGrade.testName}
+                  onChange={(e) => setNewGrade(prev => ({...prev, testName: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                  placeholder="לדוגמה: בוחן שברים"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">ציון (0-100)</label>
+                <input 
+                  type="number"
+                  value={newGrade.grade}
+                  onChange={(e) => setNewGrade(prev => ({...prev, grade: parseInt(e.target.value)}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">תאריך</label>
+                <input 
+                  type="date"
+                  value={newGrade.date}
+                  onChange={(e) => setNewGrade(prev => ({...prev, date: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                />
+              </div>
+           </div>
+           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button 
+                onClick={() => setIsAddingGrade(false)}
+                className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm"
+              >
+                ביטול
+              </button>
+              <button 
+                disabled={!newGrade.studentId || !newGrade.testName}
+                onClick={() => {
+                  updateCurrentConfig((prev: any) => ({
+                    ...prev,
+                    students: prev.students.map((s: any) => 
+                      s.id === newGrade.studentId 
+                        ? { ...s, grades: [...(s.grades || []), { ...newGrade, id: Date.now() }] } 
+                        : s
+                    )
+                  }));
+                  setIsAddingGrade(false);
+                }}
+                className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-brand-700 disabled:opacity-50"
+              >
+                שמירת ציון
+              </button>
+           </div>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
-        <table className="w-full text-right border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">שם התלמיד</th>
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">מתמטיקה</th>
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">אנגלית</th>
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">מדעים</th>
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">היסטוריה</th>
-              <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">ממוצע</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {grades.map((s) => {
-              const avg = Math.round((s.math + s.english + s.science + s.history) / 4);
-              return (
-                <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse min-w-[800px]">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">תאריך</th>
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">תלמיד</th>
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">מקצוע</th>
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">קטגוריה</th>
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">שם המשימה</th>
+                <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">ציון</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredGrades.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((g: any) => (
+                <tr key={g.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                  <td className="px-8 py-6 text-sm font-bold text-slate-500 whitespace-nowrap">
+                    {new Date(g.date).toLocaleDateString('he-IL')}
+                  </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-400 dark:text-slate-500 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                        {s.name[0]}
+                        {g.studentName[0]}
                       </div>
-                      <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{s.name}</span>
+                      <span className="text-xl font-black text-slate-800 dark:text-white leading-tight whitespace-nowrap">{g.studentName}</span>
                     </div>
                   </td>
-                  {[s.math, s.english, s.science, s.history].map((grade, i) => (
-                    <td key={i} className="px-8 py-6">
-                      <div className="flex justify-center">
-                        <div className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black",
-                          grade >= 90 ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : 
-                          grade >= 80 ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" :
-                          "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
-                        )}>
-                          {grade}
-                        </div>
-                      </div>
-                    </td>
-                  ))}
+                  <td className="px-8 py-6">
+                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-black">{g.subject}</span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <Badge className={cn("text-[10px] border-none uppercase", categories.find(c => c.id === g.category)?.color, "text-white")}>
+                      {categories.find(c => c.id === g.category)?.label || 'אחר'}
+                    </Badge>
+                  </td>
+                  <td className="px-8 py-6 font-bold text-slate-700 dark:text-slate-300">
+                    {g.testName}
+                  </td>
                   <td className="px-8 py-6">
                     <div className="flex justify-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-slate-50 dark:border-slate-800 flex items-center justify-center text-2xl font-black text-brand-600 dark:text-brand-400 bg-brand-50/30 dark:bg-brand-900/10">
-                        {avg}
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black",
+                        g.grade >= 90 ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : 
+                        g.grade >= 80 ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" :
+                        "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                      )}>
+                        {g.grade}
                       </div>
                     </div>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+              {filteredGrades.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-bold italic">
+                    אין ציונים להצגה בסינון הנוכחי.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTask, setNewTask] = useState({ studentId: 'all', title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium' as any, category: 'homework' as any });
+
+  const allTasks = students.flatMap(s => (s.tasks || []).map((t: any) => ({ ...t, studentName: s.name, studentId: s.id })));
+  const filteredTasks = filter === 'all' ? allTasks : allTasks.filter(t => t.status === filter);
+
+  const priorities = [
+    { id: 'low', label: 'נמוכה', color: 'bg-emerald-500' },
+    { id: 'medium', label: 'בינונית', color: 'bg-amber-500' },
+    { id: 'high', label: 'גבוהה', color: 'bg-rose-500' },
+  ];
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={onBack}
+            className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">תזכורות ומטלות</h2>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-widest">ניהול משימות אישיות וקבוצתיות לתלמידים</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setIsAddingTask(!isAddingTask)}
+          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all"
+        >
+          <Bell className="w-5 h-5" />
+          משימה חדשה
+        </button>
+      </div>
+
+      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-1">
+        {(['pending', 'completed', 'all'] as const).map(f => (
+          <button 
+            key={f}
+            onClick={() => setFilter(f)}
+            className={cn(
+              "px-6 py-3 font-black text-sm relative transition-all",
+              filter === f ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            {f === 'pending' ? 'בביצוע' : f === 'completed' ? 'הושלמו' : 'הכל'}
+            {filter === f && <motion.div layoutId="task-filter" className="absolute bottom-0 inset-x-0 h-1 bg-indigo-600 rounded-t-full" />}
+          </button>
+        ))}
+      </div>
+
+      {isAddingTask && (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6">
+           <h3 className="text-xl font-black text-slate-800 dark:text-white">יצירת משימה חדשה</h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">ליעד (תלמיד)</label>
+                <select 
+                  value={newTask.studentId}
+                  onChange={(e) => setNewTask(prev => ({...prev, studentId: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                >
+                  <option value="all">כל הכיתה</option>
+                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-xs font-black text-slate-500 uppercase">כותרת המשימה</label>
+                <input 
+                  value={newTask.title}
+                  onChange={(e) => setNewTask(prev => ({...prev, title: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                  placeholder="מה צריך לבצע?"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">תאריך יעד</label>
+                <input 
+                  type="date"
+                  value={newTask.dueDate}
+                  onChange={(e) => setNewTask(prev => ({...prev, dueDate: e.target.value}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">עדיפות</label>
+                <select 
+                  value={newTask.priority}
+                  onChange={(e) => setNewTask(prev => ({...prev, priority: e.target.value as any}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                >
+                  {priorities.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
+           </div>
+           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button 
+                onClick={() => setIsAddingTask(false)}
+                className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm"
+              >
+                ביטול
+              </button>
+              <button 
+                disabled={!newTask.title}
+                onClick={() => {
+                  const taskToSave = { ...newTask, id: Date.now().toString(), status: 'pending' as const };
+                  updateCurrentConfig((prev: any) => ({
+                    ...prev,
+                    students: prev.students.map((s: any) => 
+                      newTask.studentId === 'all' || s.id === newTask.studentId 
+                        ? { ...s, tasks: [...(s.tasks || []), taskToSave] } 
+                        : s
+                    )
+                  }));
+                  setIsAddingTask(false);
+                }}
+                className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                שריון משימה
+              </button>
+           </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredTasks.map((task: any) => (
+          <div key={task.id} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all group">
+             <div className="flex items-start justify-between mb-4">
+                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black text-white uppercase", priorities.find(p => p.id === task.priority)?.color)}>
+                  {priorities.find(p => p.id === task.priority)?.label}
+                </div>
+                <button 
+                  onClick={() => {
+                    updateCurrentConfig((prev: any) => ({
+                      ...prev,
+                      students: prev.students.map((s: any) => 
+                        s.id === task.studentId 
+                          ? { ...s, tasks: s.tasks.map((t: any) => t.id === task.id ? { ...t, status: t.status === 'pending' ? 'completed' : 'pending' } : t) } 
+                          : s
+                      )
+                    }));
+                  }}
+                  className={cn(
+                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors",
+                    task.status === 'completed' ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 hover:border-emerald-500"
+                  )}
+                >
+                  {task.status === 'completed' && <Check className="w-4 h-4" />}
+                </button>
+             </div>
+             <h4 className={cn("text-lg font-black text-slate-800 dark:text-white leading-tight", task.status === 'completed' && "line-through opacity-50")}>
+               {task.title}
+             </h4>
+             <div className="flex items-center gap-3 mt-6 pt-6 border-t border-slate-50 dark:border-slate-800/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500">
+                    {task.studentName[0]}
+                  </div>
+                  <span className="text-xs font-black text-slate-500">{task.studentName}</span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-auto text-slate-400">
+                  <CalendarDays className="w-3 h-3" />
+                  <span className="text-[10px] font-bold">{new Date(task.dueDate).toLocaleDateString('he-IL')}</span>
+                </div>
+             </div>
+          </div>
+        ))}
+        {filteredTasks.length === 0 && (
+          <div className="col-span-full py-20 text-center text-slate-400 font-bold italic bg-slate-50/50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
+            אין משימות להצגה.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -923,8 +1560,6 @@ const GradesView = ({ onBack }: { onBack: () => void }) => {
 
 
 const ProgressView = ({ onBack }: { onBack: () => void }) => {
-  const { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell } = require('recharts');
-
   // Mock data for analytics
   const engagementData = [
     { name: 'אייר', engagement: 65, attendance: 92, satisfaction: 78 },
@@ -1034,7 +1669,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
           
           <div className="h-[250px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <RechartsPieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
@@ -1049,7 +1684,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
                   ))}
                 </Pie>
                 <Tooltip />
-              </PieChart>
+              </RechartsPieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-3xl font-black text-slate-900 dark:text-white">82%</span>
@@ -1104,8 +1739,51 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'pedagogy' | 'academic' | 'attendance'>('info');
+const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent, aiWeights }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void, aiWeights: any }) => {
+  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isAddingDiag, setIsAddingDiag] = useState(false);
+  const [newDiag, setNewDiag] = useState({ type: '', date: '', description: '', accommodations: '' });
+
+  const [isAddingLesson, setIsAddingLesson] = useState(false);
+  const [newLesson, setNewLesson] = useState({ name: '', day: 'א', time: '08:00', room: '', category: 'regular' as any });
+
+  const availableLessons = currentConfig.availableLessons || [];
+
+  const lessonCategories = [
+    { id: 'regular', label: 'רגיל', color: 'bg-indigo-500', bgColor: 'bg-indigo-100', textColor: 'text-indigo-600' },
+    { id: 'elective', label: 'בחירה', color: 'bg-emerald-500', bgColor: 'bg-emerald-100', textColor: 'text-emerald-600' },
+    { id: 'remedial', label: 'תגבור', color: 'bg-rose-500', bgColor: 'bg-rose-100', textColor: 'text-rose-600' },
+    { id: 'enrichment', label: 'העשרה', color: 'bg-amber-500', bgColor: 'bg-amber-100', textColor: 'text-amber-600' },
+    { id: 'other', label: 'אחר', color: 'bg-slate-500', bgColor: 'bg-slate-100', textColor: 'text-slate-600' },
+  ];
+
+  const upcomingBirthdays = useMemo(() => {
+    const today = new Date();
+    // Normalize today to start of day
+    today.setHours(0, 0, 0, 0);
+
+    return (students || [])
+      .filter(s => s.birthday)
+      .map(s => {
+        const bday = new Date(s.birthday);
+        // Create a date for this year's birthday
+        const thisYearBday = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
+        
+        let targetBday = thisYearBday;
+        // If birthday already passed this year, calculate for next year
+        if (thisYearBday < today) {
+           targetBday = new Date(today.getFullYear() + 1, bday.getMonth(), bday.getDate());
+        }
+
+        const diffTime = targetBday.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return { ...s, daysUntil: diffDays, targetDate: targetBday };
+      })
+      .filter(s => s.daysUntil <= 60) // Show birthdays in next 60 days
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+  }, [students]);
   
   const currentIndex = students.findIndex(s => s.id === student.id);
   const prevStudent = students[currentIndex - 1];
@@ -1126,9 +1804,13 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   const tabs = [
     { id: 'info', label: 'מידע חברתי', icon: <Heart className="w-4 h-4" /> },
     { id: 'ai', label: 'הגדרות AI', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'lessons', label: 'שיעורים ומערכת', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'tasks', label: 'משימות ורשימות', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'pedagogy', label: 'פדגוגיה', icon: <FileText className="w-4 h-4" /> },
     { id: 'academic', label: 'הישגים', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'attendance', label: 'נוכחות', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'diagnostics', label: 'אבחונים והתאמות', icon: <Stethoscope className="w-4 h-4" /> },
+    { id: 'communications', label: 'קשר הורים', icon: <PhoneCall className="w-4 h-4" /> },
   ];
 
   return (
@@ -1342,7 +2024,61 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                              ))}
                           </div>
                         </div>
+
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">תאריך לידה</label>
+                          <input 
+                            type="date"
+                            value={student.birthday || ''}
+                            onChange={(e) => updateStudent('birthday', e.target.value)}
+                            className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-sm font-black text-slate-700 dark:text-slate-200 focus:border-brand-500 outline-none transition-all"
+                          />
+                        </div>
                       </div>
+                    </div>
+
+                    <div className="glass-card p-10 rounded-[3.5rem] space-y-8">
+                       <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                          <Cake className="w-6 h-6 text-brand-600" />
+                          ימי הולדת קרובים
+                       </h3>
+
+                       {upcomingBirthdays.length > 0 ? (
+                         <div className="space-y-4">
+                           {upcomingBirthdays.map(s => (
+                             <div key={s.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                               <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center font-black text-brand-600 shadow-sm border border-slate-100 dark:border-slate-700">
+                                   {s.name[0]}
+                                 </div>
+                                 <div>
+                                   <div className="font-black text-slate-800 dark:text-white text-sm">{s.name}</div>
+                                   <div className="text-[10px] font-bold text-slate-400 capitalize">
+                                     {new Date(s.birthday!).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })}
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className={cn(
+                                 "px-3 py-1 rounded-full text-[10px] font-black",
+                                 s.daysUntil === 0 
+                                   ? "bg-rose-500 text-white animate-pulse" 
+                                   : s.daysUntil <= 7 
+                                     ? "bg-brand-100 text-brand-700" 
+                                     : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                               )}>
+                                 {s.daysUntil === 0 ? 'היום!' : s.daysUntil === 1 ? 'מחר' : `בעוד ${s.daysUntil} ימים`}
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       ) : (
+                         <div className="text-center py-10">
+                            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                               <Cake className="w-8 h-8 text-slate-300" />
+                            </div>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">אין ימי הולדת קרובים ב-60 הימים הקרובים</p>
+                         </div>
+                       )}
                     </div>
                   </div>
                 </>
@@ -1499,55 +2235,985 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                          <div className="text-sm font-black text-slate-400 tracking-widest uppercase">מעודכן לאחרונה: היום</div>
                       </div>
 
-                      <textarea 
-                         value={student.notes || ''}
-                         onChange={(e) => updateStudent('notes', e.target.value)}
-                         placeholder="הזן תיעוד פדגוגי, נקודות לשימור, קשיים לימודיים או הערות התנהגותיות..."
-                         className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 text-xl font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-4 focus:ring-emerald-50 dark:focus:ring-emerald-900/20 min-h-[400px] transition-all resize-none shadow-inner"
-                      />
+                      <div className="space-y-8 w-full mt-8">
+                        <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border border-slate-100 dark:border-slate-800">
+                          <label className="text-sm font-black text-slate-500 uppercase tracking-widest block mb-4">תגיות אפיון (לפי פסיק או Enter)</label>
+                          <div className="flex items-center flex-wrap gap-2 mb-4">
+                            {(student.tags || []).map((tag: string, index: number) => (
+                              <div key={index} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm text-sm font-bold text-slate-700 dark:text-slate-300">
+                                <span>{tag}</span>
+                                <button
+                                  onClick={() => {
+                                    const newTags = student.tags.filter((_: any, i: number) => i !== index);
+                                    updateStudent('tags', newTags);
+                                  }}
+                                  className="text-slate-400 hover:text-rose-500 transition-colors"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="הוסף תגית (לדוגמה: מתקשה למקד קשב, פוטנציאל גבוה...)"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                const newTag = e.currentTarget.value.trim();
+                                if (newTag) {
+                                  const currentTags = student.tags || [];
+                                  if (!currentTags.includes(newTag)) {
+                                    updateStudent('tags', [...currentTags, newTag]);
+                                  }
+                                  e.currentTarget.value = '';
+                                }
+                              }
+                            }}
+                            className="w-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-medium text-slate-800 dark:text-slate-200 focus:border-emerald-300 outline-none transition-all shadow-sm"
+                          />
+                        </div>
+
+                        {student.ai_pedagogy_recommendation && (
+                          <div className="bg-brand-50 dark:bg-brand-900/10 p-8 rounded-[3rem] border border-brand-200 dark:border-brand-900/50 shadow-inner relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full -mr-16 -mt-16 pointer-events-none" />
+                            <div className="flex items-center gap-3 mb-4 relative z-10">
+                               <Sparkles className="w-8 h-8 text-brand-600" />
+                               <h4 className="font-black text-brand-800 dark:text-brand-300 text-xl">תוכנית קידום והספקים מבוססת AI</h4>
+                            </div>
+                            <p className="text-brand-800 dark:text-brand-200 leading-relaxed font-medium whitespace-pre-line relative z-10 text-lg">{student.ai_pedagogy_recommendation}</p>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-3">
+                            <label className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                              <Star className="w-4 h-4" /> הצלחות וחוזקות
+                            </label>
+                            <textarea
+                              value={student.successes || ''}
+                              onChange={(e) => updateStudent('successes', e.target.value)}
+                              placeholder="נקודות חוזק, תחביבים..."
+                              className="w-full bg-emerald-50/50 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-900/50 rounded-3xl p-6 font-medium min-h-[150px] text-slate-800 dark:text-slate-200 focus:border-emerald-300 outline-none transition-all resize-none shadow-sm placeholder:text-emerald-600/40"
+                            />
+                          </div>
+
+                          <div className="space-y-3 flex flex-col">
+                            <label className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center justify-between">
+                              <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> תיעוד חופשי / אתגרים</span>
+                              <div className="flex items-center gap-3">
+                                {student.notesLastUpdated && (
+                                  <span className="text-xs font-medium text-amber-500/70 border-r border-amber-200 dark:border-amber-800/50 pr-3">
+                                    עודכן: {new Date(student.notesLastUpdated).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                                  </span>
+                                )}
+                                <button
+                                  disabled={isGeneratingAI}
+                                  onClick={async () => {
+                                    if (isGeneratingAI) return;
+                                    setIsGeneratingAI(true);
+                                    updateStudent('ai_pedagogy_recommendation', '🤖 ה-AI מנתח לעומק את נתוני התלמיד ומגבש תובנות פדגוגיות...');
+                                    
+                                    const avg = student.grades && student.grades.length > 0
+                                      ? Math.round(student.grades.reduce((a:number, b:any)=>a+b.grade,0) / student.grades.length)
+                                      : 'לא הוזנו ציונים';
+                                    
+                                    const tags = student.tags?.length > 0 ? student.tags.join(', ') : 'אין תגיות אפיון';
+                                    const noteTags = student.noteTags?.length > 0 ? student.noteTags.join(', ') : '';
+                                    const successes = student.successes || 'לא צוינו חוזקות';
+                                    const notes = student.notes || 'אין הערות נוספות';
+  
+                                    try {
+                                      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+                                      const prompt = `${aiWeights.customSystemPrompt || 'אתה יועץ פדגוגי מומחה.'} עליך לספק המלצות לקידום אישי של תלמיד בכיתה.
+  נתוני התלמיד:
+  שם: ${student.name}
+  ממוצע ציונים: ${avg}
+  תגיות אפיון: ${tags}
+  תגיות הערות: ${noteTags}
+  חוזקות והצלחות: ${successes}
+  הערות ואתגרים: ${notes}
+  
+  כתוב המלצה מקצועית, מעשית ומעודדת ב-3-5 משפטים. התייחס ספציפית לנתונים שסופקו. השב בעברית בלבד.`;
+  
+                                      const response = await ai.models.generateContent({
+                                        model: "gemini-3-flash-preview",
+                                        contents: [{ parts: [{ text: prompt }] }],
+                                      });
+  
+                                      const rec = response.text || 'מצטערים, לא ניתן היה להפיק המלצה ברגע זה. נסה שנית.';
+                                      updateStudent('ai_pedagogy_recommendation', rec);
+                                    } catch (error) {
+                                      console.error("AI Error:", error);
+                                      updateStudent('ai_pedagogy_recommendation', '❌ חלה שגיאה בחיבור ל-AI. אנא ודא שהמערכת מחוברת לאינטרנט ונסה שוב.');
+                                    } finally {
+                                      setIsGeneratingAI(false);
+                                    }
+                                  }}
+                                  className={cn(
+                                    "px-4 py-2 text-white rounded-xl transition-all font-black text-[10px] flex items-center gap-2 shadow-sm",
+                                    isGeneratingAI ? "bg-slate-400 cursor-not-allowed" : "bg-brand-600 hover:bg-brand-700"
+                                  )}
+                                >
+                                  {isGeneratingAI ? (
+                                    <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                  ) : (
+                                    <Brain className="w-3 h-3" />
+                                  )}
+                                  {isGeneratingAI ? 'מפיק המלצה...' : 'הפק המלצת AI'}
+                                </button>
+                              </div>
+                            </label>
+                            <label className="relative block flex-1">
+                              <textarea 
+                                 value={student.notes || ''}
+                                 onChange={(e) => {
+                                   updateStudent('notes', e.target.value);
+                                   updateStudent('notesLastUpdated', new Date().toISOString());
+                                 }}
+                                 placeholder="רשמו תצפיות פדגוגיות, נקודות לשמירה, קשיי למידה או הערות התנהגותיות..."
+                                 className="w-full h-full bg-amber-50/50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/50 rounded-3xl p-6 font-medium outline-none focus:border-amber-300 min-h-[150px] resize-y transition-all text-slate-800 dark:text-slate-200 shadow-sm placeholder:text-amber-600/40"
+                              />
+                            </label>
+                            <div className="mt-2 p-4 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
+                              <label className="text-xs font-bold text-amber-600/80 dark:text-amber-400/80 block mb-3">תגיות להערות (הפרד בפסיק או שורה חדשה)</label>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {(student.noteTags || []).map((tag: string, idx: number) => (
+                                  <span key={idx} className="bg-amber-200/50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 font-bold shadow-sm">
+                                    {tag}
+                                    <button onClick={() => updateStudent('noteTags', student.noteTags.filter((_:any, i:number) => i !== idx))} className="hover:text-rose-600 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                              <input 
+                                  type="text"
+                                  placeholder="הוסף תגית הערה ולחץ Enter..."
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ',') {
+                                        e.preventDefault();
+                                        const newTags = e.currentTarget.value.split(/[,\n]/).map(t => t.trim()).filter(Boolean);
+                                        if (newTags.length > 0) {
+                                          const currentTags = student.noteTags || [];
+                                          const uniqueNewTags = newTags.filter((t: string) => !currentTags.includes(t));
+                                          if (uniqueNewTags.length > 0) {
+                                             updateStudent('noteTags', [...currentTags, ...uniqueNewTags]);
+                                          }
+                                          e.currentTarget.value = '';
+                                        }
+                                      }
+                                  }}
+                                  className="w-full bg-white dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900/50 rounded-xl p-3 text-sm focus:border-amber-300 outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                    </div>
                 </div>
               )}
 
               {activeTab === 'academic' && (
                 <div className="lg:col-span-3">
-                   <EmptyState 
-                      icon={<GraduationCap className="w-12 h-12" />}
-                      title="מודול הישגים לימודיים"
-                      description="כאן תוכלו לראות גרפים ומגמות על ציוני התלמיד לאורך שנת הלימודים. מודול זה יהיה זמין בעדכון התוכנה הבא."
-                   />
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-6">
+                           <div className="p-5 bg-sky-50 dark:bg-sky-900/20 rounded-[2.5rem]">
+                              <GraduationCap className="w-10 h-10 text-sky-600" />
+                           </div>
+                           <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">ציונים והישגים</h3>
+                        </div>
+                        <div className="flex gap-2">
+                           <button
+                             onClick={() => {
+                               const printContent = `
+                                  <div style="direction: rtl; font-family: system-ui, sans-serif; padding: 20px;">
+                                     <h2>גיליון ציונים - ${student.name}</h2>
+                                     <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                                        <thead>
+                                           <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                                              <th style="padding: 10px; text-align: right;">מקצוע</th>
+                                              <th style="padding: 10px; text-align: right;">שם המבחן/מטלה</th>
+                                              <th style="padding: 10px; text-align: right;">הציון</th>
+                                              <th style="padding: 10px; text-align: right;">תאריך</th>
+                                           </tr>
+                                        </thead>
+                                        <tbody>
+                                           ${(student.grades || []).map((g: any) => `
+                                              <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                 <td style="padding: 10px;">${g.subject}</td>
+                                                 <td style="padding: 10px;">${g.testName || '-'}</td>
+                                                 <td style="padding: 10px; font-weight: bold;">${g.grade}</td>
+                                                 <td style="padding: 10px;">${new Date(g.date).toLocaleDateString('he-IL')}</td>
+                                              </tr>
+                                           `).join('')}
+                                        </tbody>
+                                     </table>
+                                     <div style="margin-top: 20px; text-align:left;">
+                                       <strong>ממוצע כללי: </strong>
+                                       ${student.grades?.length ? Math.round(student.grades.reduce((a:number, b:any)=>a+b.grade,0) / student.grades.length) : '-'}
+                                     </div>
+                                  </div>
+                               `;
+                               const w = window.open('', '_blank');
+                               w?.document.write(printContent);
+                               w?.document.close();
+                               w?.print();
+                             }}
+                             disabled={!(student.grades && student.grades.length > 0)}
+                             className="px-6 py-3 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-2xl hover:bg-slate-200 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm disabled:opacity-50"
+                           >
+                             <Printer className="w-4 h-4" />
+                             הדפס תעודה
+                           </button>
+                           <button
+                             onClick={() => {
+                               const subject = prompt('מקצוע:');
+                               if(!subject) return;
+                               const testName = prompt('שם המבחן/מטלה:');
+                               if(!testName) return;
+                               const gradeStr = prompt('ציון (0-100):');
+                               if(!gradeStr) return;
+                               const grade = parseInt(gradeStr, 10);
+                               const grades = student.grades || [];
+                               updateStudent('grades', [{ id: Date.now(), subject, testName, grade, date: new Date().toISOString() }, ...grades]);
+                             }}
+                             className="px-6 py-3 bg-sky-600 text-white rounded-2xl hover:bg-sky-700 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
+                           >
+                             <Plus className="w-4 h-4" />
+                             הזן ציון חדש
+                           </button>
+                        </div>
+                     </div>
+
+                     <div className="space-y-8">
+                       {(student.grades || []).length === 0 ? (
+                          <div className="p-10 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-700">
+                             טרם הוזנו ציונים לתלמיד זה.
+                          </div>
+                       ) : (
+                         <div className="space-y-10">
+                           {/* Quick Stats */}
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm">
+                                <div>
+                                   <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">ממוצע כללי</p>
+                                   <p className="text-4xl font-black text-slate-800 dark:text-white">
+                                     {Math.round((student.grades || []).reduce((acc: number, g: any) => acc + g.grade, 0) / Math.max(1, (student.grades || []).length))}
+                                   </p>
+                                </div>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl">
+                                  <GraduationCap className="w-6 h-6 text-slate-400" />
+                                </div>
+                              </div>
+                              <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm">
+                                <div>
+                                   <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">מספר ההערכות</p>
+                                   <p className="text-4xl font-black text-slate-800 dark:text-white">{(student.grades || []).length}</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl">
+                                  <FileText className="w-6 h-6 text-slate-400" />
+                                </div>
+                              </div>
+                           </div>
+
+                           {/* Subject Breakdown */}
+                           <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-700 space-y-6">
+                               <h4 className="text-xl font-black text-slate-800 dark:text-white opacity-80">ממוצעים לפי מקצוע</h4>
+                               <div className="space-y-5">
+                                 {Object.entries((student.grades || []).reduce((acc: any, g: any) => {
+                                   if (!acc[g.subject]) acc[g.subject] = { sum: 0, count: 0 };
+                                   acc[g.subject].sum += g.grade;
+                                   acc[g.subject].count++;
+                                   return acc;
+                                 }, {})).map(([subject, data]: [string, any]) => {
+                                   const avg = Math.round(data.sum / data.count);
+                                   return (
+                                     <div key={subject} className="space-y-2">
+                                       <div className="flex items-center justify-between text-sm font-bold">
+                                         <span className="text-slate-700 dark:text-slate-300">{subject}</span>
+                                         <span className={cn(avg >= 90 ? "text-emerald-500" : avg >= 70 ? "text-amber-500" : "text-rose-500")}>{avg}</span>
+                                       </div>
+                                       <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                         <div 
+                                           className={cn("h-full rounded-full transition-all", avg >= 90 ? "bg-emerald-400" : avg >= 70 ? "bg-amber-400" : "bg-rose-400")} 
+                                           style={{ width: `${avg}%` }} 
+                                         />
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                           </div>
+
+                           {/* Recent Grades List */}
+                           <h4 className="text-xl font-black text-slate-800 dark:text-white pt-4">הערכות אחרונות</h4>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {(student.grades || []).map((g: any) => (
+                               <div key={g.id} className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                                 <div>
+                                   <div className="flex items-center gap-2">
+                                     <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-black">{g.subject}</span>
+                                     <span className="text-xs text-slate-400">{new Date(g.date).toLocaleDateString('he-IL')}</span>
+                                   </div>
+                                   <p className="font-bold text-slate-800 dark:text-white mt-3 text-lg leading-tight">{g.testName}</p>
+                                 </div>
+                                 <div className="text-right flex flex-col items-end">
+                                   <div className={cn("text-4xl font-black tracking-tighter", g.grade >= 90 ? "text-emerald-500" : g.grade >= 70 ? "text-amber-500" : "text-rose-500")}>
+                                     {g.grade}
+                                   </div>
+                                   <button onClick={()=>updateStudent('grades', student.grades.filter((x:any)=>x.id!==g.id))} className="text-[10px] text-slate-400 font-bold hover:text-rose-500 uppercase mt-1 transition-colors">מחק ציון</button>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'lessons' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-6">
+                         <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2.5rem]">
+                            <BookOpen className="w-10 h-10 text-indigo-600" />
+                         </div>
+                         <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">שיעורים ומערכת שעות אישית</h3>
+                       </div>
+                       <button 
+                         onClick={() => setIsAddingLesson(!isAddingLesson)}
+                         className="px-5 py-3 bg-indigo-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                       >
+                         {isAddingLesson ? <X className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}
+                         {isAddingLesson ? 'ביטול' : 'הוספת שיעור'}
+                       </button>
+                    </div>
+
+                    {isAddingLesson && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6"
+                      >
+                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <h4 className="text-xl font-black text-slate-800 dark:text-white">שיבוץ לשיעור או הקבצה</h4>
+                            <div className="flex gap-2">
+                               {availableLessons.length > 0 && (
+                                  <select 
+                                    onChange={(e) => {
+                                       const selectedId = e.target.value;
+                                       if (!selectedId) return;
+                                       const lesson = availableLessons.find((l: any) => l.id === selectedId);
+                                       if (lesson) {
+                                          setNewLesson({ 
+                                             name: lesson.name, 
+                                             day: lesson.day, 
+                                             time: lesson.time, 
+                                             room: lesson.room || '', 
+                                             category: lesson.category || 'regular' 
+                                          });
+                                       }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border-2 border-indigo-100 dark:border-indigo-800 font-bold text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                  >
+                                    <option value="">בחירה משיעורי המערכת...</option>
+                                    {availableLessons.map((l: any) => <option key={l.id} value={l.id}>{l.name} (יום {l.day}, {l.time})</option>)}
+                                  </select>
+                               )}
+                            </div>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שם השיעור / הקבצה</label>
+                               <input 
+                                 value={newLesson.name}
+                                 onChange={e => setNewLesson(prev => ({...prev, name: e.target.value}))}
+                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
+                                 placeholder="למשל: תגבור מתמטיקה"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">יום בשבוע</label>
+                               <select 
+                                 value={newLesson.day}
+                                 onChange={e => setNewLesson(prev => ({...prev, day: e.target.value}))}
+                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
+                               >
+                                 {['א', 'ב', 'ג', 'ד', 'ה', 'ו'].map(d => <option key={d} value={d}>יום {d}</option>)}
+                               </select>
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שעה</label>
+                               <input 
+                                 type="time"
+                                 value={newLesson.time}
+                                 onChange={e => setNewLesson(prev => ({...prev, time: e.target.value}))}
+                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">קטגוריה</label>
+                               <select 
+                                 value={newLesson.category}
+                                 onChange={e => setNewLesson(prev => ({...prev, category: e.target.value as any}))}
+                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
+                               >
+                                 {lessonCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                               </select>
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">חדר / מיקום (אופציונלי)</label>
+                               <input 
+                                 value={newLesson.room}
+                                 onChange={e => setNewLesson(prev => ({...prev, room: e.target.value}))}
+                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
+                                 placeholder="למשל: ספריה"
+                               />
+                            </div>
+                         </div>
+                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <button 
+                              onClick={() => {
+                                if (!newLesson.name) return;
+                                const existsGlobally = availableLessons.some((l: any) => l.name === newLesson.name && l.day === newLesson.day && l.time === newLesson.time);
+                                 if (!existsGlobally) {
+                                    if (confirm("האם ברצונך לשמור את השיעור הזה כשיעור זמין לכלל התלמידים במערכת?")) {
+                                       updateCurrentConfig((prev: any) => ({
+                                          ...prev,
+                                          availableLessons: [...(prev.availableLessons || []), { ...newLesson, id: Date.now().toString() }]
+                                       }));
+                                    }
+                                 }
+                                 const lessonToSave = { ...newLesson, id: Date.now().toString() };
+                                updateStudent('lessons', [...(student.lessons || []), lessonToSave]);
+                                setIsAddingLesson(false);
+                                setNewLesson({ name: '', day: 'א', time: '08:00', room: '', category: 'regular' });
+                              }}
+                              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-indigo-700 transition-all"
+                            >
+                              שמירת שיעור ושיבוץ
+                            </button>
+                         </div>
+                      </motion.div>
+                    )}
+
+                    {(!student.lessons || student.lessons.length === 0) ? (
+                      <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                        התלמיד עדיין לא משובץ לשיעורים או הקבצות ספציפיות.
+                      </div>
+                    ) : (
+                      <div className="space-y-12">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {student.lessons.map((lesson: any) => {
+                             const category = lessonCategories.find(c => c.id === (lesson.category || 'regular'));
+                             return (
+                               <div key={lesson.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm relative group overflow-hidden transition-all hover:shadow-md">
+                                 <div className={cn("absolute top-0 right-0 w-16 h-1", category?.color || "bg-indigo-500")} />
+                                 <div className="flex items-start justify-between mb-4">
+                                   <h4 className="font-black text-lg text-slate-800 dark:text-white leading-tight">{lesson.name}</h4>
+                                   {category && (
+                                     <span className={cn("px-2 py-1 rounded-lg text-[8px] font-black uppercase", category.bgColor, category.textColor)}>
+                                       {category.label}
+                                     </span>
+                                   )}
+                                 </div>
+                                 <div className="flex items-center gap-4 text-sm text-slate-500 font-bold">
+                                   <div className="flex items-center gap-1.5">
+                                     <CalendarDays className="w-4 h-4 text-slate-400" />
+                                     יום {lesson.day}
+                                   </div>
+                                   <div className="flex items-center gap-1.5">
+                                     <Clock className="w-4 h-4 text-slate-400" />
+                                     {lesson.time}
+                                   </div>
+                                    {lesson.room && (
+                                       <div className="flex items-center gap-1.5">
+                                         <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                         <span className="text-slate-400">{lesson.room}</span>
+                                       </div>
+                                    )}
+                                 </div>
+                                 <button 
+                                   onClick={() => updateStudent('lessons', student.lessons.filter((l: any) => l.id !== lesson.id))}
+                                   className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </button>
+                               </div>
+                             );
+                          })}
+                        </div>
+
+                        {/* Visual Schedule Grid */}
+                        <div className="space-y-6">
+                           <h4 className="text-xl font-black text-slate-800 dark:text-white opacity-80 flex items-center gap-3">
+                              <Calendar className="w-6 h-6 text-indigo-500" />
+                              מבט שבועי
+                           </h4>
+                           <div className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-x-auto">
+                              <div className="min-w-[600px] grid grid-cols-6 gap-4">
+                                 <div className="col-span-1" /> {/* Spacer for time column */}
+                                 {['א', 'ב', 'ג', 'ד', 'ה'].map(day => (
+                                    <div key={day} className="text-center font-black text-slate-400 uppercase tracking-widest text-xs py-2">
+                                       יום {day}
+                                    </div>
+                                 ))}
+
+                                 {/* Example Time Slots */}
+                                 {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00'].map(time => (
+                                    <React.Fragment key={time}>
+                                       <div className="flex flex-col justify-center text-[10px] font-black text-slate-400 border-r border-slate-200 dark:border-slate-800 pr-4">
+                                          {time}
+                                       </div>
+                                       {['א', 'ב', 'ג', 'ד', 'ה'].map(day => {
+                                          const lessonAtTime = student.lessons?.find((l: any) => l.day === day && l.time.startsWith(time.split(':')[0]));
+                                          const category = lessonAtTime ? lessonCategories.find(c => c.id === (lessonAtTime.category || 'regular')) : null;
+                                          
+                                          return (
+                                             <div key={day} className="min-h-[60px] bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 p-2 flex items-center justify-center relative group">
+                                                {lessonAtTime ? (
+                                                   <motion.div 
+                                                      initial={{ scale: 0.9, opacity: 0 }}
+                                                      animate={{ scale: 1, opacity: 1 }}
+                                                      className={cn(
+                                                         "w-full h-full rounded-xl flex flex-col items-center justify-center text-center p-1.5 shadow-sm border",
+                                                         category?.bgColor || "bg-indigo-50",
+                                                         category?.textColor || "text-indigo-700",
+                                                         "border-white/50 dark:border-slate-800/50"
+                                                      )}
+                                                   >
+                                                      <span className="text-[10px] font-black leading-tight mb-0.5">{lessonAtTime.name}</span>
+                                                      <span className="text-[8px] font-bold opacity-60 leading-none">{lessonAtTime.time}</span>
+                                                   </motion.div>
+                                                ) : (
+                                                   <button 
+                                                      onClick={() => {
+                                                         setIsAddingLesson(true);
+                                                         setNewLesson({ name: '', day, time, category: 'regular' });
+                                                      }}
+                                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-300 hover:text-indigo-500"
+                                                   >
+                                                      <Plus className="w-4 h-4" />
+                                                   </button>
+                                                )}
+                                             </div>
+                                          );
+                                       })}
+                                    </React.Fragment>
+                                 ))}
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'tasks' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-6">
+                         <div className="p-5 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem]">
+                            <ClipboardList className="w-10 h-10 text-brand-600" />
+                         </div>
+                         <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">מטלות ותזכורות אישיות</h3>
+                       </div>
+                       <button 
+                         onClick={() => {
+                           const title = prompt("כותרת המשימה:");
+                           if (!title) return;
+                           const dueDate = new Date().toISOString().split('T')[0];
+                           const newTask = { id: Date.now().toString(), title, status: 'pending', dueDate, priority: 'medium' };
+                           updateStudent('tasks', [...(student.tasks || []), newTask]);
+                         }}
+                         className="px-5 py-3 bg-brand-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-700 transition-colors"
+                       >
+                         <Plus className="w-5 h-5"/>
+                         משימה חדשה
+                       </button>
+                    </div>
+
+                    {(!student.tasks || student.tasks.length === 0) ? (
+                      <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                        אין משימות פתוחות לתלמיד זה.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {student.tasks.map((task: any) => (
+                           <div key={task.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group">
+                             <div className="flex items-center gap-4">
+                               <button 
+                                 onClick={() => updateStudent('tasks', student.tasks.map((t: any) => t.id === task.id ? { ...t, status: t.status === 'pending' ? 'completed' : 'pending' } : t))}
+                                 className={cn(
+                                   "w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all",
+                                   task.status === 'completed' ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 hover:border-brand-500"
+                                 )}
+                               >
+                                 {task.status === 'completed' && <Check className="w-5 h-5" />}
+                               </button>
+                               <div>
+                                 <h4 className={cn("font-black text-lg text-slate-800 dark:text-white", task.status === 'completed' && "line-through opacity-50")}>{task.title}</h4>
+                                 <p className="text-xs font-bold text-slate-400">יעד: {new Date(task.dueDate).toLocaleDateString('he-IL')}</p>
+                               </div>
+                             </div>
+                             <div className="flex items-center gap-4">
+                               <span className={cn(
+                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase",
+                                 task.priority === 'high' ? "bg-rose-100 text-rose-600" : task.priority === 'medium' ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
+                               )}>
+                                 {task.priority === 'high' ? 'דחוף' : task.priority === 'medium' ? 'בינוני' : 'נמוך'}
+                               </span>
+                               <button 
+                                 onClick={() => updateStudent('tasks', student.tasks.filter((t: any) => t.id !== task.id))}
+                                 className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </button>
+                             </div>
+                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {activeTab === 'attendance' && (
                 <div className="lg:col-span-3">
-                   <div className="glass-card p-12 rounded-[4rem] space-y-10">
-                      <div className="flex items-center gap-6">
-                         <div className="p-5 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem]">
-                            <Calendar className="w-10 h-10 text-brand-600" />
+                   <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                           <div className="p-5 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem]">
+                              <Calendar className="w-10 h-10 text-brand-600" />
+                           </div>
+                           <h3 className="text-3xl font-black text-slate-900 dark:text-white">רישום נוכחות (היום)</h3>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700">
+                         <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4">נוכחות מוזנת ישירות למערכת מכאן או מרשימת התלמידים.</p>
+                         <div className="flex items-center gap-4">
+                            <button
+                              onClick={() => {
+                                const newHistory = [{ date: new Date().toISOString(), status: 'present' }, ...(student.attendanceHistory || [])];
+                                updateStudent('status', 'present');
+                                updateStudent('attendanceHistory', newHistory);
+                              }}
+                              className={cn("flex-1 py-4 rounded-2xl font-black text-sm flex flex-col items-center gap-2 transition-all border-2", student.status === 'present' || !student.status ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 border-emerald-500 shadow-sm" : "bg-white dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-200")}
+                            >
+                               <CheckCircle2 className="w-6 h-6" />
+                               נוכח
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newHistory = [{ date: new Date().toISOString(), status: 'late' }, ...(student.attendanceHistory || [])];
+                                updateStudent('status', 'late');
+                                updateStudent('attendanceHistory', newHistory);
+                              }}
+                              className={cn("flex-1 py-4 rounded-2xl font-black text-sm flex flex-col items-center gap-2 transition-all border-2", student.status === 'late' ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 border-amber-500 shadow-sm" : "bg-white dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700 hover:border-amber-200")}
+                            >
+                               <Clock className="w-6 h-6" />
+                               באיחור
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newHistory = [{ date: new Date().toISOString(), status: 'absent' }, ...(student.attendanceHistory || [])];
+                                updateStudent('status', 'absent');
+                                updateStudent('attendanceHistory', newHistory);
+                              }}
+                              className={cn("flex-1 py-4 rounded-2xl font-black text-sm flex flex-col items-center gap-2 transition-all border-2", student.status === 'absent' ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 border-rose-500 shadow-sm" : "bg-white dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700 hover:border-rose-200")}
+                            >
+                               <XCircle className="w-6 h-6" />
+                               חסר
+                            </button>
                          </div>
-                         <h3 className="text-3xl font-black text-slate-900 dark:text-white">יומן נוכחות (Monthly)</h3>
                       </div>
 
-                      <div className="grid grid-cols-7 gap-4">
-                        {Array.from({ length: 35 }).map((_, i) => {
-                          const isWeekend = i % 7 >= 5;
-                          const isAbsent = i === 14 || i === 22;
-                          return (
-                            <div 
-                              key={i} 
-                              className={cn(
-                                "aspect-square rounded-[1.5rem] flex items-center justify-center text-sm font-black transition-all",
-                                isWeekend ? "bg-slate-50 dark:bg-slate-900 text-slate-300 dark:text-slate-700" :
-                                isAbsent ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-2 border-rose-100 dark:border-rose-800 shadow-sm" : 
-                                "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-800"
-                              )}
-                            >
-                              {i + 1}
-                            </div>
-                          );
-                        })}
+                      <div className="mt-10">
+                        <h4 className="text-xl font-black text-slate-800 dark:text-white mb-6">היסטוריית נוכחות</h4>
+                        {(!student.attendanceHistory || student.attendanceHistory.length === 0) ? (
+                          <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                             אין רישומי נוכחות קודמים. סמן נוכחות מעלה כדי להתחיל.
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {student.attendanceHistory.slice(0, 5).map((record: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                <span className="font-bold text-slate-700 dark:text-slate-300">
+                                  {new Date(record.date).toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                </span>
+                                <span className={cn(
+                                  "px-3 py-1 rounded-xl text-xs font-black",
+                                  record.status === 'present' ? "bg-emerald-100 text-emerald-700" :
+                                  record.status === 'late' ? "bg-amber-100 text-amber-700" :
+                                  "bg-rose-100 text-rose-700"
+                                )}>
+                                  {record.status === 'present' ? 'נוכח' : record.status === 'late' ? 'איחור' : 'חסר'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                   </div>
+                </div>
+              )}
+
+              {activeTab === 'diagnostics' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-6">
+                         <div className="p-5 bg-teal-50 dark:bg-teal-900/20 rounded-[2.5rem]">
+                            <Stethoscope className="w-10 h-10 text-teal-600" />
+                         </div>
+                         <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">אבחונים והתאמות</h3>
+                       </div>
+                       <button onClick={() => setIsAddingDiag(!isAddingDiag)} className="px-5 py-3 bg-teal-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-teal-700 transition-colors">
+                         {isAddingDiag ? 'ביטול' : (
+                           <>
+                             <Plus className="w-5 h-5"/>
+                             הוספת תיעוד
+                           </>
+                         )}
+                       </button>
+                    </div>
+
+                    {isAddingDiag && (
+                      <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">סוג האבחון/התאמה <span className="text-rose-500">*</span></label>
+                            <input 
+                              type="text" 
+                              value={newDiag.type} 
+                              onChange={(e) => setNewDiag(prev => ({...prev, type: e.target.value}))} 
+                              className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none" 
+                              placeholder="לדוגמה: אבחון דידקטי"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">תאריך האבחון</label>
+                            <input 
+                              type="date" 
+                              value={newDiag.date} 
+                              onChange={(e) => setNewDiag(prev => ({...prev, date: e.target.value}))} 
+                              className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none" 
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">תיאור ופרטים נוספים</label>
+                          <textarea 
+                            value={newDiag.description} 
+                            onChange={(e) => setNewDiag(prev => ({...prev, description: e.target.value}))} 
+                            className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none min-h-[100px]" 
+                            placeholder="תיאור האבחון..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">התאמות שניתנו (מופרדות בפסיקים)</label>
+                          <input 
+                            type="text" 
+                            value={newDiag.accommodations} 
+                            onChange={(e) => setNewDiag(prev => ({...prev, accommodations: e.target.value}))} 
+                            className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none" 
+                            placeholder="לדוגמה: תוספת זמן, הקראת שאלון"
+                          />
+                        </div>
+                        <div className="flex justify-end pt-2">
+                          <button 
+                            disabled={!newDiag.type.trim()}
+                            onClick={() => {
+                              const diagnosticEntry = {
+                                type: newDiag.type,
+                                date: newDiag.date || new Date().toISOString().split('T')[0],
+                                description: newDiag.description,
+                                accommodations: newDiag.accommodations.split(',').map(s => s.trim()).filter(s => s)
+                              };
+                              updateStudent('diagnostics', [...(student.diagnostics || []), diagnosticEntry]);
+                              setNewDiag({ type: '', date: '', description: '', accommodations: '' });
+                              setIsAddingDiag(false);
+                            }}
+                            className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            שמירת תיעוד
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {(!student.diagnostics || student.diagnostics.length === 0) ? (
+                      <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                        אין אבחונים מתועדים לתלמיד זה.
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {student.diagnostics.map((diag: any, idx: number) => (
+                           <div key={idx} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm relative group">
+                             <div className="flex justify-between items-start mb-2">
+                               <h4 className="font-bold text-lg text-slate-800 dark:text-white">{diag.type}</h4>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-xs text-slate-400">{new Date(diag.date).toLocaleDateString('he-IL')}</span>
+                                 <button 
+                                   onClick={() => {
+                                      if (confirm('האם אתה בטוח שברצונך למחוק תיעוד זה?')) {
+                                        updateStudent('diagnostics', student.diagnostics.filter((_:any, i:number) => i !== idx));
+                                      }
+                                   }}
+                                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-rose-500 hover:bg-rose-50 rounded"
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </button>
+                               </div>
+                             </div>
+                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{diag.description}</p>
+                             {diag.accommodations?.length > 0 && (
+                               <div className="flex flex-wrap gap-2 mt-4">
+                                 {diag.accommodations.map((acc:string, i:number) => (
+                                   <Badge key={i} variant="outline" className="text-xs border-teal-200 text-teal-700 bg-teal-50">{acc}</Badge>
+                                 ))}
+                               </div>
+                             )}
+                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'communications' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-6 mb-8">
+                       <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[2.5rem]">
+                          <PhoneCall className="w-10 h-10 text-purple-600" />
+                       </div>
+                       <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">תקשורת עם הורים</h3>
+                    </div>
+                    {(!student.communications || student.communications.length === 0) ? (
+                      <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+                        אין תיעוד תקשורת לתלמיד זה. (אפשר לבקש מהסייעת להוסיף רשומה)
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {student.communications.map((comm: any, idx: number) => (
+                           <div key={idx} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                             <div className="flex justify-between items-start mb-2">
+                               <div className="flex gap-2 items-center">
+                                 <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-none">{comm.type}</Badge>
+                                 <h4 className="font-bold text-slate-800 dark:text-white">{comm.toParent ? 'נשלח להורה' : 'התקבל מהורה'}</h4>
+                               </div>
+                               <span className="text-xs text-slate-400">{new Date(comm.date).toLocaleDateString('he-IL')}</span>
+                             </div>
+                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 whitespace-pre-wrap">{comm.summary}</p>
+                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+               {activeTab === 'documents' && (
+                 <div className="lg:col-span-3 space-y-8">
+                    <div className="glass-card p-12 rounded-[4rem] text-center bg-slate-50 dark:bg-slate-900/50 border-dashed border-2 border-slate-300 dark:border-slate-800 transition-all hover:border-brand-300 relative group overflow-hidden">
+                       <div className="absolute inset-0 bg-brand-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                       <FolderOpen className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-6 group-hover:scale-110 transition-transform" />
+                       <h4 className="text-2xl font-black text-slate-800 dark:text-white mb-2">מרכז מסמכים וחומרים</h4>
+                       <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto">כאן תוכלו לנהל את כל הקבצים הרלוונטיים לתלמיד - אבחונים, אישורים רפואיים, עבודות נבחרות או תעודות.</p>
+                       
+                       <label className="inline-flex items-center gap-3 px-8 py-4 bg-brand-600 text-white rounded-[2rem] font-black text-sm shadow-xl hover:bg-brand-700 transition-all cursor-pointer">
+                          <Upload className="w-5 h-5" />
+                          העלאת קובץ חדש
+                          <input 
+                             type="file" 
+                             className="hidden" 
+                             onChange={(e) => {
+                               const file = e.target.files?.[0];
+                               if (!file) return;
+                               const reader = new FileReader();
+                               reader.onload = (ev) => {
+                                 const data = ev.target?.result as string;
+                                 const newDoc = {
+                                   id: Date.now().toString(),
+                                   name: file.name,
+                                   type: file.type,
+                                   size: Math.round(file.size / 1024),
+                                   date: new Date().toISOString(),
+                                   data: data
+                                 };
+                                 updateStudent('documents', [...(student.documents || []), newDoc]);
+                               };
+                               reader.readAsDataURL(file);
+                             }}
+                          />
+                       </label>
+                    </div>
+
+                    {student.documents && student.documents.length > 0 ? (
+                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                          {student.documents.map((doc: any) => (
+                             <motion.div 
+                                key={doc.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-6 group hover:shadow-md transition-all"
+                             >
+                                <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">
+                                   {doc.type.includes('pdf') ? <FileText className="w-7 h-7" /> : <File className="w-7 h-7" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                   <h5 className="font-black text-slate-800 dark:text-white truncate text-base mb-1" title={doc.name}>{doc.name}</h5>
+                                   <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                      <span>{doc.size} KB</span>
+                                      <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                      <span>{new Date(doc.date).toLocaleDateString('he-IL')}</span>
+                                   </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                   <button 
+                                      onClick={() => {
+                                         const link = document.createElement('a');
+                                         link.href = doc.data;
+                                         link.download = doc.name;
+                                         link.click();
+                                      }}
+                                      className="p-3 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-xl transition-all"
+                                   >
+                                      <Download className="w-5 h-5" />
+                                   </button>
+                                   <button 
+                                      onClick={() => {
+                                         if (confirm('האם אתה בטוח שברצונך למחוק מסמך זה?')) {
+                                            updateStudent('documents', student.documents.filter((d: any) => d.id !== doc.id));
+                                         }
+                                      }}
+                                      className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                                   >
+                                      <Trash2 className="w-5 h-5" />
+                                   </button>
+                                </div>
+                             </motion.div>
+                          ))}
+                       </div>
+                    ) : null}
+                 </div>
+               )}
+
+              {activeTab === 'history' && (
+                <div className="lg:col-span-3">
+                   <div className="glass-card p-12 rounded-[4rem] text-center bg-slate-50 border border-slate-200">
+                      <Clock className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                      <h4 className="text-xl font-bold text-slate-700 mb-2">היסטוריה משנים קודמות</h4>
+                      <p className="text-sm text-slate-500 mb-4">ייבוא נתונים אוטומטי ממשוב או ממערכות בית ספריות אחרות (בפיתוח)</p>
                    </div>
                 </div>
               )}
@@ -1559,58 +3225,255 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   );
 };
 
-const DashboardView = ({ stats, onBack }: any) => (
-  <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
-    <div className="flex items-center gap-6">
-      <button 
-        onClick={onBack}
-        className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
-      >
-        <ChevronLeft className="w-7 h-7" />
-      </button>
-      <div className="flex items-center justify-between flex-1">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight">סיכום מערכת</h2>
-        <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">דוא"ט ניהולי</Badge>
-      </div>
-    </div>
-    
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      {[
-        { label: 'תלמידים רשומים', value: stats.studentCount, icon: <Users />, color: 'brand' },
-        { label: 'שביעות רצון', value: `${stats.satisfaction}%`, icon: <Sparkles />, color: 'amber', badge: '98% נוכחות' },
-        { label: 'שיבוץ נוכחי', value: `${stats.placedCount} / ${stats.studentCount}`, icon: <LayoutGrid />, color: 'indigo', badge: 'מעודכן' },
-        { label: 'אילוצים לא פתורים', value: stats.conflicts, icon: <AlertCircle />, color: 'rose', badge: stats.conflicts > 0 ? "נדרש טיפול" : "תקין" },
-      ].map((card, i) => (
-        <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          <div className={cn(
-            "absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-10",
-            `bg-${card.color}-500`
-          )} />
-          <div className="relative flex items-center justify-between">
-            <div className={cn(
-              "p-4 rounded-2xl border shadow-inner",
-              `bg-${card.color}-100 dark:bg-${card.color}-900/20 border-${card.color}-200 dark:border-${card.color}-800`
-            )}>
-              {React.cloneElement(card.icon as React.ReactElement, { className: `w-8 h-8 text-${card.color}-700 dark:text-${card.color}-400` })}
-            </div>
-            {card.badge && (
-              <Badge className={cn(
-                "px-2 py-1 rounded-lg text-[10px] font-bold uppercase",
-                card.color === 'rose' && card.value > 0 ? "bg-rose-50 dark:bg-rose-900/40 text-rose-600 border border-rose-100 dark:border-rose-800" : "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800"
-              )}>
-                {card.badge}
-              </Badge>
-            )}
+const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode }: any) => {
+  const today = new Date();
+  const options = {
+    start: today,
+    end: today,
+    isHebrewYear: false,
+    candlelighting: true,
+    location: Location.lookup('Jerusalem'),
+    sedrot: true,
+    omer: true,
+  };
+  const events = HebrewCalendar.calendar(options);
+  const eventsToday = events.map(ev => ev.render('he'));
+
+  const overdueTasks = (students || []).flatMap((s: any) => 
+    (s.tasks || []).filter((t: any) => t.status !== 'done' && new Date(t.dueDate).getTime() < Date.now())
+    .map((t: any) => ({ ...t, studentName: s.name, studentId: s.id }))
+  );
+
+  const presentCount = (students || []).filter((s:any) => s.status === 'present' || !s.status).length;
+  const lateCount = (students || []).filter((s:any) => s.status === 'late').length;
+  const absentCount = (students || []).filter((s:any) => s.status === 'absent').length;
+  const totalAttendance = (students || []).length || 1;
+  const attendancePercentage = Math.round(((presentCount + lateCount) / totalAttendance) * 100);
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between flex-1">
+          <div className="space-y-1">
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">ברוכים הבאים ל-ClassManager Pro</h2>
+            <p className="text-slate-500 font-medium">המערכת ההוליסטית לניהול פדגוגי והתאמת כיתה.</p>
           </div>
-          <div className="relative">
-            <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{card.label}</h3>
-            <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{card.value}</p>
+          <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">פרופיל מנהל/ת כיתה</Badge>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {[
+          { label: 'תלמידים רשומים', value: stats.studentCount, icon: <Users />, color: 'brand' },
+          { label: 'שביעות רצון', value: `${stats.satisfaction}%`, icon: <Sparkles />, color: 'amber', badge: `${attendancePercentage}% נוכחות` },
+          { label: 'שיבוץ נוכחי', value: `${stats.placedCount} / ${stats.studentCount}`, icon: <LayoutGrid />, color: 'indigo', badge: 'מעודכן' },
+          { label: 'אילוצים לא פתורים', value: stats.conflicts, icon: <AlertCircle />, color: 'rose', badge: stats.conflicts > 0 ? "נדרש טיפול" : "תקין" },
+        ].map((card, i) => (
+          <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-[3rem] space-y-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+            <div className={cn(
+              "absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-10",
+              `bg-${card.color}-500`
+            )} />
+            <div className="relative flex items-center justify-between">
+              <div className={cn(
+                "p-4 rounded-2xl border shadow-inner",
+                `bg-${card.color}-100 dark:bg-${card.color}-900/20 border-${card.color}-200 dark:border-${card.color}-800`
+              )}>
+                {React.cloneElement(card.icon as React.ReactElement, { className: `w-8 h-8 text-${card.color}-700 dark:text-${card.color}-400` })}
+              </div>
+              {card.badge && (
+                <Badge className={cn(
+                  "px-2 py-1 rounded-lg text-[10px] font-bold uppercase",
+                  card.color === 'rose' && card.value > 0 ? "bg-rose-50 dark:bg-rose-900/40 text-rose-600 border border-rose-100 dark:border-rose-800" : "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800"
+                )}>
+                  {card.badge}
+                </Badge>
+              )}
+            </div>
+            <div className="relative">
+              <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{card.label}</h3>
+              <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{card.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 glass-card p-10 rounded-[3rem] bg-indigo-50 border-2 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden group shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <h3 className="text-2xl font-black text-indigo-900 dark:text-indigo-100">לוח יומן עברי</h3>
+          <p className="text-xl font-medium text-indigo-700 dark:text-indigo-300">היום: {new HDate(today).renderGematriya()}</p>
+          {eventsToday.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {eventsToday.map((ev, i) => (
+                 <Badge key={i} className="bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100 px-3 py-1.5 text-sm">
+                   {ev}
+                 </Badge>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 p-4 bg-white/50 dark:bg-indigo-900/40 rounded-2xl w-full text-center border-2 border-indigo-50/50 dark:border-indigo-800/50 backdrop-blur-sm">
+             <p className="text-indigo-600 dark:text-indigo-400 font-bold opacity-80">מועדים, שבתות וחגים יסונכרנו למערכת השעות והנוכחות שלך באופן אוטומטי.</p>
           </div>
         </div>
-      ))}
+
+        <div className="glass-card p-10 rounded-[3rem] bg-white border-2 border-slate-200 dark:bg-slate-900 dark:border-slate-800 flex flex-col items-center justify-center text-center space-y-4 shadow-sm relative overflow-hidden group">
+          <div className="w-16 h-16 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 rounded-2xl flex items-center justify-center mb-2 transform -rotate-6 group-hover:rotate-0 transition-transform">
+            <LayoutGrid className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">בקרת סידור מרחב</h3>
+          <button onClick={onBack} className="mt-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-md hover:bg-brand-700 hover:-translate-y-1 transition-all">
+            מעבר למפה
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 flex flex-col items-center justify-center relative overflow-hidden">
+           <h3 className="text-xl font-black text-slate-800 dark:text-white mb-8 self-start w-full">סטטוס נוכחות כיתתי (היום)</h3>
+           <div className="relative w-48 h-48 mb-6">
+              <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
+                 <circle strokeDasharray="100, 100" className="text-emerald-500 stroke-current opacity-20" strokeWidth="4" fill="none" cx="18" cy="18" r="16" />
+                 <circle strokeDasharray={`${attendancePercentage}, 100`} className="text-emerald-500 stroke-current animate-[dash_1s_ease-out_forwards]" strokeWidth="4" fill="none" cx="18" cy="18" r="16" strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                 <span className="text-5xl font-black text-slate-800 dark:text-white">{attendancePercentage}%</span>
+                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">נוכחות</span>
+              </div>
+           </div>
+           <div className="flex gap-4 w-full">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
+                 <p className="text-xs font-bold text-slate-500 uppercase">נוכחים</p>
+                 <p className="text-2xl font-black text-emerald-600 mt-1">{presentCount}</p>
+              </div>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
+                 <p className="text-xs font-bold text-slate-500 uppercase">באיחור</p>
+                 <p className="text-2xl font-black text-amber-600 mt-1">{lateCount}</p>
+              </div>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
+                 <p className="text-xs font-bold text-slate-500 uppercase">חסרים</p>
+                 <p className="text-2xl font-black text-rose-600 mt-1">{absentCount}</p>
+              </div>
+           </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 flex flex-col">
+           <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                 <AlertCircle className="w-6 h-6 text-rose-500" />
+                 משימות באיחור
+                 <Badge className="bg-rose-100 text-rose-600 border-none">{overdueTasks.length}</Badge>
+              </h3>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+              {overdueTasks.length === 0 ? (
+                 <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-4" />
+                    <p className="font-bold text-slate-500">אין משימות באיחור</p>
+                    <p className="text-sm font-medium text-slate-400">כל התלמידים עומדים ביעדים.</p>
+                 </div>
+              ) : (
+                 overdueTasks.map((t: any, i: number) => (
+                    <div key={i} className="p-5 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex items-center justify-between">
+                       <div>
+                          <p className="font-bold text-slate-800 dark:text-slate-200 text-lg">{t.title}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                             <span className="text-xs font-black text-rose-500 bg-rose-100 dark:bg-rose-900/40 px-2 py-0.5 rounded-md">{t.studentName}</span>
+                             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">יעד: {new Date(t.dueDate).toLocaleDateString('he-IL')}</span>
+                          </div>
+                       </div>
+                    </div>
+                 ))
+              )}
+           </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+              <BarChart3 className="w-8 h-8 text-indigo-500" />
+              חמשת המקצועות הנפוצים ביותר
+            </h3>
+            <p className="text-sm font-medium text-slate-500">התפלגות כמות המבחנים והערכות לפי מקצוע</p>
+          </div>
+        </div>
+
+        <div className="h-[400px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={Object.entries((students || []).flatMap((s: any) => s.grades || [])
+                .reduce((acc: any, g: any) => {
+                  if (g.subject) {
+                    acc[g.subject] = (acc[g.subject] || 0) + 1;
+                  }
+                  return acc;
+                }, {}))
+                .map(([subject, count]) => ({ subject, count }))
+                .sort((a: any, b: any) => b.count - a.count)
+                .slice(0, 5)
+              }
+              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? '#334155' : '#e2e8f0'} />
+              <XAxis 
+                dataKey="subject" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 13, fontWeight: 900 }}
+                angle={-45}
+                textAnchor="end"
+                interval={0}
+              />
+              <YAxis 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: 700 }}
+              />
+              <Tooltip 
+                cursor={{ fill: isDarkMode ? '#1e293b' : '#f8fafc', radius: 16 }}
+                contentStyle={{ 
+                  borderRadius: '20px', 
+                  border: 'none', 
+                  boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                  backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+                  padding: '16px'
+                }}
+                itemStyle={{ color: '#6366f1', fontWeight: 900 }}
+                labelStyle={{ fontWeight: 900, marginBottom: '4px', color: isDarkMode ? '#f8fafc' : '#0f172a' }}
+                formatter={(value: any) => [`${value} הערכות`, 'כמות']}
+              />
+              <Bar 
+                dataKey="count" 
+                radius={[12, 12, 0, 0]}
+                animationDuration={1500}
+                animationEasing="ease-out"
+              >
+                {
+                  Object.entries((students || []).flatMap((s: any) => s.grades || [])
+                    .reduce((acc: any, g: any) => {
+                      if (g.subject) {
+                        acc[g.subject] = (acc[g.subject] || 0) + 1;
+                      }
+                      return acc;
+                    }, {}))
+                    .map(([subject, count]) => ({ subject, count }))
+                    .sort((a: any, b: any) => b.count - a.count)
+                    .slice(0, 5)
+                    .map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#f59e0b'][index % 5]} />
+                    ))
+                }
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const LoadingSkeleton = ({ count = 3 }: { count?: number }) => (
   <div className="space-y-4 w-full">
@@ -1627,6 +3490,8 @@ const LoadingSkeleton = ({ count = 3 }: { count?: number }) => (
 );
 
 const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: any) => {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const addGroup = () => {
     const name = prompt("שם הקבוצה החדשה:");
     if (!name) return;
@@ -1639,11 +3504,12 @@ const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: an
   };
 
   const removeGroup = (id: string) => {
-    if (!confirm("האם למחוק קבוצה זו? (שיוכי תלמידים יישמרו אך לא ישפיעו על ה-AI)")) return;
     updateCurrentConfig((prev: any) => ({
       ...prev,
       groups: prev.groups.filter((g: any) => g.id !== id)
     }));
+    setConfirmDeleteId(null);
+    setNotifications((prev: any) => [{ id: Date.now(), text: `הקבוצה נמחקה בהצלחה`, type: 'info' }, ...prev]);
   };
 
   const updateGroup = (id: string, field: string, value: any) => {
@@ -1671,7 +3537,18 @@ const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: an
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {groups.map((group: any) => (
-          <div key={group.id} className="p-6 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[2rem] space-y-4 hover:shadow-lg transition-all group overflow-hidden">
+          <div key={group.id} className="p-6 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[2rem] space-y-4 hover:shadow-lg transition-all group relative overflow-hidden">
+            {confirmDeleteId === group.id ? (
+              <div className="absolute inset-0 bg-rose-600 z-10 flex flex-col items-center justify-center p-4 text-center">
+                <AlertCircle className="w-8 h-8 text-white mb-2" />
+                <p className="text-white font-black text-sm mb-4">למחוק את קבוצת {group.name}?</p>
+                <div className="flex gap-2">
+                  <button onClick={() => removeGroup(group.id)} className="px-5 py-2 bg-white text-rose-600 rounded-xl font-black text-xs">מחק</button>
+                  <button onClick={() => setConfirmDeleteId(null)} className="px-5 py-2 bg-rose-700 text-white rounded-xl font-black text-xs">ביטול</button>
+                </div>
+                <p className="text-rose-200 text-[9px] mt-4 font-bold">שימו לב: שיוכי תלמידים לקבוצה זו יוסרו</p>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between">
               <input 
                 value={group.name}
@@ -1679,7 +3556,7 @@ const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: an
                 className="bg-transparent font-black text-slate-800 dark:text-slate-100 focus:ring-0 border-0 p-0 text-base flex-1"
               />
               <button 
-                onClick={() => removeGroup(group.id)}
+                onClick={() => setConfirmDeleteId(group.id)}
                 className="p-2 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1746,7 +3623,7 @@ const EmptyState = ({ icon, title, description, action }: any) => (
   </motion.div>
 );
 
-const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotifications, isSelected, onClick }: any) => {
+const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotifications, isSelected, onClick, onEdit, onDelete }: any) => {
   const [localName, setLocalName] = useState(student.name);
 
   useEffect(() => {
@@ -1806,16 +3683,23 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
              )}>
                 {student.height === 'short' ? 'קדמי' : student.height === 'tall' ? 'אחורי' : 'בינוני'}
              </Badge>
-             {student.groups?.map((gId: string) => {
-                const group = currentConfig.groups?.find((g: any) => g.id === gId);
-                const groupIndex = (currentConfig.groups || []).findIndex((g: any) => g.id === gId);
-                const colors = ['bg-brand-50 text-brand-700 border-brand-100', 'bg-amber-50 text-amber-700 border-amber-100', 'bg-emerald-50 text-emerald-700 border-emerald-100', 'bg-indigo-50 text-indigo-700 border-indigo-100', 'bg-rose-50 text-rose-700 border-rose-100'];
-                return (
-                  <Badge key={gId} className={cn("text-[9px] px-2 py-0.5 rounded-md border", colors[groupIndex % colors.length] || 'bg-slate-50 text-slate-500 border-slate-100')}>
-                     {group?.name || `קבוצה ${gId}`}
-                  </Badge>
-                );
-             })}
+             <div className="flex -space-x-1 rtl:space-x-reverse ml-auto">
+              {student.groups?.map((gId: string) => {
+                 const group = currentConfig.groups?.find((g: any) => g.id === gId);
+                 const groupIndex = (currentConfig.groups || []).findIndex((g: any) => g.id === gId);
+                 const colors = ['bg-brand-500', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-rose-500', 'bg-sky-500', 'bg-purple-500'];
+                 return (
+                   <div 
+                     key={gId} 
+                     title={group?.name || `קבוצה ${gId}`}
+                     className={cn(
+                       "w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm transition-transform hover:scale-125 cursor-help",
+                       colors[groupIndex % colors.length] || 'bg-slate-400'
+                     )}
+                   />
+                 );
+              })}
+             </div>
           </div>
         </div>
 
@@ -1823,13 +3707,27 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
            <button 
              onClick={(e) => {
                e.stopPropagation();
-               if (confirm(`האם למחוק את ${student.name}?`)) {
-                 updateCurrentConfig((prev: any) => ({ 
-                   ...prev, 
-                   students: prev.students.filter((s:any) => s.id !== student.id),
-                   grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
-                 }));
-                 setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
+               if (onEdit) onEdit();
+             }}
+             title="פרופיל מלא"
+             className="p-2.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/20 rounded-xl transition-all"
+           >
+             <Settings2 className="w-4 h-4" />
+           </button>
+           <button 
+             onClick={(e) => {
+               e.stopPropagation();
+               if (onDelete) {
+                 onDelete();
+               } else {
+                 if (confirm(`האם למחוק את ${student.name}?`)) {
+                   updateCurrentConfig((prev: any) => ({ 
+                     ...prev, 
+                     students: prev.students.filter((s:any) => s.id !== student.id),
+                     grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+                   }));
+                   setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
+                 }
                }
              }}
              className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
@@ -1922,10 +3820,45 @@ const SettingsView = ({
   setSelectedStudentId,
   setViewType,
   exportToPDF,
-  exportToJSON
+  exportToJSON,
+  isAddStudentOpen,
+  setIsAddStudentOpen,
+  newStudent,
+  setNewStudent
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterHeight, setFilterHeight] = useState<string>("all");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
+  const [studentToDelete, setStudentToDelete] = useState<any>(null);
   
+  const filteredStudents = useMemo(() => {
+    let result = currentConfig.students.filter((s: any) => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    if (filterHeight !== 'all') {
+      result = result.filter((s: any) => s.height === filterHeight);
+    }
+    
+    if (filterGroup !== 'all') {
+      if (filterGroup === 'none') {
+        result = result.filter((s: any) => !s.groups || s.groups.length === 0);
+      } else {
+        result = result.filter((s: any) => s.groups?.includes(filterGroup));
+      }
+    }
+    
+    if (sortBy === 'newest') {
+      result = [...result].reverse();
+    } else if (sortBy === 'name') {
+      result = [...result].sort((a: any, b: any) => a.name.localeCompare(b.name, 'he'));
+    }
+    
+    return result;
+  }, [currentConfig.students, searchQuery, filterHeight, filterGroup, sortBy]);
+
   const loadExampleData = () => {
     if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה מהסימולציה. האם להמשיך?")) {
       const demoStudents = [
@@ -2096,8 +4029,8 @@ const SettingsView = ({
             <h3 className="text-lg font-black text-slate-800">פרמטרים AI</h3>
           </div>
           <div className="space-y-6">
-            {Object.entries(aiWeights).map(([key, val]: [string, any]) => (
-              <div key={key} className="space-y-2">
+            {Object.entries(aiWeights).filter(([k]) => ['preferred', 'forbidden', 'separateFrom'].includes(k)).map(([key, val]: [string, any]) => (
+              <div key={key} className="space-y-2 mb-4">
                 <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
                   <span>{key === 'preferred' ? 'עדיפות חברים' : key === 'forbidden' ? 'מניעת חיכוך' : 'מרחק פיזי'}</span>
                   <span className="text-brand-600">{val}/10</span>
@@ -2105,10 +4038,56 @@ const SettingsView = ({
                 <input 
                   type="range" min="0" max="10" value={val} 
                   onChange={(e) => setAiWeights((prev: any) => ({ ...prev, [key]: parseInt(e.target.value) }))}
-                  className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-brand-500"
+                  className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-brand-500"
                 />
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {key === 'preferred' && 'ככל שהערך גבוה יותר, ה-AI ייתן עדיפות עליונה לישיבה של חברים יחד.'}
+                  {key === 'forbidden' && 'ככל שהערך גבוה יותר, ה-AI ישקיע מאמץ רב יותר להפריד בין תלמידים שאמורים לשבת בנפרד.'}
+                  {key === 'separateFrom' && 'קובע את עוצמת ההנחיה להרחיק פיזית תלמידים הזקוקים למרחב אישי רב יותר.'}
+                </p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Advanced AI */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Brain className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800">הגדרות AI מתקדמות</h3>
+          </div>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <div className="flex justify-between text-xs font-black text-slate-500 uppercase">
+                <span>תעדוף: חברתי vs מרחבי</span>
+                <span className="text-brand-600">
+                  {aiWeights.socialWeight > 5 ? 'יותר חברתי' : aiWeights.socialWeight < 5 ? 'יותר מרחבי' : 'מאוזן'}
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-bold text-slate-400">מרחבי</span>
+                <input 
+                  type="range" min="0" max="10" value={aiWeights.socialWeight} 
+                  onChange={(e) => {
+                    const social = parseInt(e.target.value);
+                    setAiWeights((prev: any) => ({ ...prev, socialWeight: social, spatialWeight: 10 - social }));
+                  }}
+                  className="flex-1 h-3 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-brand-500"
+                />
+                <span className="text-[10px] font-bold text-slate-400">חברתי</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium">כוונון המשקל היחסי בין צרכים מרחביים (מיקום בכיתה, שורות קדמיות לתלמידים נמוכים) לבין צרכים חברתיים (קרבה לחברים והתרחקות מחיכוכים).</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block">פרומפט מערכת (AI System Prompt)</label>
+              <textarea 
+                value={aiWeights.customSystemPrompt}
+                onChange={(e) => setAiWeights((prev: any) => ({ ...prev, customSystemPrompt: e.target.value }))}
+                placeholder="הזן הוראות מיוחדות ל-AI..."
+                className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-medium text-slate-800 dark:text-slate-200 focus:border-brand-300 outline-none transition-all min-h-[100px] resize-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -2179,15 +4158,7 @@ const SettingsView = ({
               <div className="w-px h-10 bg-slate-200 mx-2 hidden md:block" />
 
               <button 
-                onClick={() => {
-                  const name = prompt("שם התלמיד החדש:");
-                  if (name) {
-                    updateCurrentConfig((prev: any) => ({
-                      ...prev,
-                      students: [...prev.students, { id: Date.now().toString(), name, preferred: [], forbidden: [], height: 'medium', groups: [] }]
-                    }));
-                  }
-                }}
+                onClick={() => setIsAddStudentOpen(true)}
                 className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-3xl text-base font-bold shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
               >
                 <UserPlus className="w-6 h-6" />
@@ -2196,9 +4167,124 @@ const SettingsView = ({
             </div>
           </div>
 
+          {isAddStudentOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl w-full max-w-md space-y-6">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">הוספת תלמיד חדש</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">שם מלא</label>
+                    <input 
+                      type="text" 
+                      value={newStudent.name}
+                      onChange={e => setNewStudent({...newStudent, name: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-brand-500"
+                      placeholder="הזן שם..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">גובה תלמיד</label>
+                    <select 
+                      value={newStudent.height}
+                      onChange={e => setNewStudent({...newStudent, height: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-brand-500"
+                    >
+                      <option value="short">נמוך - קדמת הכיתה</option>
+                      <option value="average">ממוצע - כל מקום</option>
+                      <option value="tall">גבוה - אחורי הכיתה</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => {
+                      if (newStudent.name.trim()) {
+                        updateCurrentConfig((prev: any) => ({
+                          ...prev,
+                          students: [...prev.students, { id: Date.now().toString(), name: newStudent.name.trim(), preferred: [], forbidden: [], height: newStudent.height, groups: [] }]
+                        }));
+                        setNotifications((prev: any) => [{id: Date.now(), text: 'התלמיד נוסף בהצלחה', type: 'success'}, ...prev]);
+                        setNewStudent({ name: '', height: 'average' });
+                        setIsAddStudentOpen(false);
+                      }
+                    }}
+                    className="flex-1 py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors"
+                  >
+                    הוסף תלמיד
+                  </button>
+                  <button 
+                    onClick={() => setIsAddStudentOpen(false)}
+                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentConfig.students.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <Search className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                   type="text"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   placeholder="חיפוש תלמידים לפי שם..."
+                   className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl py-4 pr-12 pl-4 font-bold text-slate-800 dark:text-slate-200 focus:border-brand-500 outline-none transition-all shadow-sm"
+                />
+              </div>
+              <div className="flex flex-wrap gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-black text-slate-500 uppercase">מיון לפי:</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={e => setSortBy(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="newest">תאריך הוספה (חדש קודם)</option>
+                    <option value="oldest">תאריך הוספה (ישן קודם)</option>
+                    <option value="name">א"ב</option>
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-500 uppercase">קבוצה:</span>
+                  <select 
+                    value={filterGroup} 
+                    onChange={e => setFilterGroup(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="all">כל הקבוצות</option>
+                    {currentConfig.groups?.map((g: any) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                    <option value="none">ללא קבוצה</option>
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-500 uppercase">העדפת ישיבה:</span>
+                  <select 
+                    value={filterHeight} 
+                    onChange={e => setFilterHeight(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="all">הכל</option>
+                    <option value="short">קדמי</option>
+                    <option value="medium">בינוני</option>
+                    <option value="tall">אחורי</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
               <div className={cn(
                 "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
-                currentConfig.students.length === 0 && "md:col-span-1 md:flex md:justify-center"
+                (currentConfig.students.length === 0 || filteredStudents.length === 0) && "md:col-span-1 md:flex md:justify-center"
               )}>
                 {currentConfig.students.length === 0 ? (
                   <div className="md:col-span-2 lg:col-span-3 w-full">
@@ -2217,8 +4303,16 @@ const SettingsView = ({
                       }
                     />
                   </div>
+                ) : filteredStudents.length === 0 ? (
+                   <div className="md:col-span-2 lg:col-span-3 w-full mt-8">
+                     <EmptyState 
+                       icon={<Search className="w-12 h-12" />}
+                       title="לא נמצאו תלמידים"
+                       description="לא נמצאו תלמידים התואמים את אפשרויות הסינון והחיפוש."
+                     />
+                   </div>
                 ) : (
-                  currentConfig.students.map((student: any, idx: number) => (
+                  filteredStudents.map((student: any, idx: number) => (
                     <StudentCard 
                       key={`${student.id}-${idx}`}
                       student={student}
@@ -2230,6 +4324,11 @@ const SettingsView = ({
                         setSelectedStudentId(student.id);
                         setViewType('studentDetail');
                       }}
+                      onEdit={() => {
+                        setSelectedStudentId(student.id);
+                        setViewType('studentDetail');
+                      }}
+                      onDelete={() => setStudentToDelete(student)}
                     />
                   ))
                 )}
@@ -2308,6 +4407,53 @@ const SettingsView = ({
           </div>
         </div>
 
+        {/* Save & Load Configurations */}
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-6 bg-white/40 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3 mb-4">
+             <Save className="w-8 h-8 text-brand-500" />
+             <h3 className="text-2xl font-black text-slate-800">שמירה וטעינה לדפדפן (Local Storage)</h3>
+          </div>
+          <p className="text-slate-500 font-medium mb-6">שמרו מספר גרסאות של הכיתה וטענו אותן מאוחר יותר ישירות מהדפדפן.</p>
+          <div className="flex flex-wrap gap-4">
+             <button
+               onClick={() => {
+                 const name = prompt("הזן שם עבור שמירת תצורה זו:");
+                 if(name) {
+                    const saved = JSON.parse(localStorage.getItem('classManager_savedConfigs') || '{}');
+                    saved[name] = currentConfig;
+                    localStorage.setItem('classManager_savedConfigs', JSON.stringify(saved));
+                    setNotifications((prev:any) => [{id: Date.now(), text: `התצורה "${name}" נשמרה בהצלחה`, type: 'success'}, ...prev]);
+                 }
+               }}
+               className="flex items-center gap-2 px-6 py-4 bg-brand-50 hover:bg-brand-100 text-brand-700 font-black rounded-2xl transition-colors border border-brand-200"
+             >
+               <Save className="w-5 h-5" />
+               שמור תצורה נוכחית
+             </button>
+             <button
+               onClick={() => {
+                 const saved = JSON.parse(localStorage.getItem('classManager_savedConfigs') || '{}');
+                 const names = Object.keys(saved);
+                 if(names.length === 0) {
+                    alert('אין תצורות שמורות בזיכרון הדפדפן.');
+                    return;
+                 }
+                 const name = prompt("הזן שם תצורה לטעינה:\n" + names.join("\n"));
+                 if(name && saved[name]) {
+                    updateCurrentConfig(() => saved[name]);
+                    setNotifications((prev:any) => [{id: Date.now(), text: `התצורה "${name}" נטענה בהצלחה`, type: 'success'}, ...prev]);
+                 } else if (name) {
+                    alert('לא נמצאה תצורה בשם זה.');
+                 }
+               }}
+               className="flex items-center gap-2 px-6 py-4 bg-white hover:bg-slate-50 text-slate-700 font-black rounded-2xl transition-colors border border-slate-200 shadow-sm"
+             >
+               <Download className="w-5 h-5" />
+               טען תצורה שמורה
+             </button>
+          </div>
+        </div>
+
         {/* Danger Zone */}
         <div className="md:col-span-2 glass-card p-10 rounded-[3rem] border-2 border-rose-100 bg-rose-50/20 space-y-8">
           <div className="flex items-center gap-4">
@@ -2368,12 +4514,295 @@ const SettingsView = ({
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {studentToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setStudentToDelete(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 10 }} 
+              className="relative bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-800 mx-4"
+            >
+              <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-black text-center text-slate-900 dark:text-white mb-2">מחיקת תלמיד</h3>
+              <p className="text-center text-slate-500 mb-8 font-medium">האם אתם בטוחים שברצונכם למחוק את {studentToDelete.name}? פעולה זו תוציא את התלמיד גם ממפת ההושבה ולא ניתנת לביטול.</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setStudentToDelete(null)}
+                  className="flex-1 px-6 py-3 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  ביטול
+                </button>
+                <button 
+                  onClick={() => {
+                    updateCurrentConfig((prev: any) => ({ 
+                      ...prev, 
+                      students: prev.students.filter((s:any) => s.id !== studentToDelete.id),
+                      grid: prev.grid.map((id: string | null) => id === studentToDelete.id ? null : id)
+                    }));
+                    setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${studentToDelete.name} נמחק`, type: 'info' }, ...prev]);
+                    setStudentToDelete(null);
+                  }}
+                  className="flex-1 px-6 py-3 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-lg shadow-rose-200"
+                >
+                  כן, מחק
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 
 // --- Main App Component ---
+
+const ExamsView = ({ onBack }: { onBack: () => void }) => {
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div className="flex items-center justify-between flex-1">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">מבחנים אינטראקטיביים</h2>
+          <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">חדש!</Badge>
+        </div>
+      </div>
+      
+      <div className="glass-card p-12 rounded-[4rem] text-center bg-white border border-slate-200 max-w-4xl mx-auto dark:bg-slate-900 dark:border-slate-800 shadow-xl">
+        <FileText className="w-20 h-20 text-brand-500 mx-auto mb-6" />
+        <h3 className="text-3xl font-black mb-4 dark:text-white">בניית מבחנים חכמה</h3>
+        <p className="text-lg text-slate-500 dark:text-slate-400 mb-8 max-w-2xl mx-auto">
+          מערכת חדשנית המאפשרת יצירת מבחנים באמצעות בינה מלאכותית, בדיקה אוטומטית של תשובות, והזנה ישירה של ציונים לכרטיסי התלמידים.
+        </p>
+        <div className="flex justify-center gap-4">
+           <button className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:bg-brand-700 hover:-translate-y-1 transition-all">
+             צור מבחן חדש באמצעות AI
+           </button>
+           <button className="px-8 py-4 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 hover:-translate-y-1 transition-all">
+             מאגר מבחנים (בקרוב)
+           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FloatingAIAssistant = ({ onCommand }: { onCommand: (text: string) => Promise<string> }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputText, setInputText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [history, setHistory] = useState<{role: 'user' | 'assistant', text: string}[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'he-IL';
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText(transcript);
+        handleSend(transcript);
+      };
+
+      recognition.onerror = () => {
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+    } else {
+      setIsOpen(true);
+      recognitionRef.current?.start();
+      setIsRecording(true);
+    }
+  };
+
+  const handleSend = async (text: string = inputText) => {
+    if (!text.trim()) return;
+    setHistory(prev => [...prev, { role: 'user', text }]);
+    setInputText("");
+    setIsProcessing(true);
+    
+    try {
+      const response = await onCommand(text);
+      setHistory(prev => [...prev, { role: 'assistant', text: response }]);
+    } catch (err: any) {
+      setHistory(prev => [...prev, { role: 'assistant', text: "מצטער, הייתה שגיאה: " + err.message }]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col items-end gap-4">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="bg-white dark:bg-slate-900 w-80 sm:w-96 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col"
+            style={{ maxHeight: '60vh' }}
+          >
+            <div className="bg-brand-600 text-white p-4 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                <span className="font-black">עוזר אישי AI</span>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-50 dark:bg-slate-950">
+              {history.length === 0 ? (
+                <div className="text-center text-slate-400 font-medium text-sm mt-8">
+                  אני כאן כדי לעזור! אפשר לבקש ממני להכניס ציונים, לתעד שיחות מפי הורים, או לעזור בניתוח נתונים.
+                </div>
+              ) : (
+                history.map((msg, idx) => (
+                  <div key={idx} className={cn(
+                    "max-w-[85%] rounded-2xl p-3 text-sm font-medium",
+                    msg.role === 'user' ? "bg-brand-500 text-white mr-auto rounded-br-sm" : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 ml-auto rounded-bl-sm shadow-sm"
+                  )}>
+                    {msg.text}
+                  </div>
+                ))
+              )}
+              {isProcessing && (
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm p-3 w-fit shadow-sm ml-auto flex gap-1">
+                   <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                   <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                   <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" />
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
+              <button 
+                onClick={toggleRecording}
+                className={cn("p-2.5 rounded-full transition-all", isRecording ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-200" : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600")}
+              >
+                {isRecording ? <div className="w-4 h-4 bg-white rounded-sm" /> : <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
+              </button>
+              <input 
+                type="text" 
+                value={inputText}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                placeholder="הקלד כאן בקשות חופשיות..."
+                className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-brand-500/50"
+              />
+              <button 
+                onClick={() => handleSend()}
+                disabled={!inputText.trim()}
+                className="p-2.5 bg-brand-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-700 transition-colors"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-14 h-14 bg-brand-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all ring-4 ring-brand-100 dark:ring-brand-900"
+      >
+        <Sparkles className="w-6 h-6" />
+      </button>
+    </div>
+  );
+};
+
+const ToolsView = ({ onBack }: { onBack: () => void }) => {
+  const tools = [
+    { title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'בקרוב' },
+    { title: 'גלגל שמות למורה', icon: <UserPlus className="w-8 h-8 text-brand-500" />, desc: 'בחירה אקראית של תלמיד לתשובה או משימה', status: 'פעיל' },
+    { title: 'תבניות סידור מוכנות', icon: <LayoutGrid className="w-8 h-8 text-emerald-500" />, desc: 'שמירה וטעינה של תבניות למבנה פיזי (ח, קבוצות, מבחן)', status: 'פעיל' },
+    { title: 'טיימר משימות לכיתה', icon: <Activity className="w-8 h-8 text-amber-500" />, desc: 'שעון עצר מוגדל כולל התראות קוליות למשימות בכתה', status: 'בקרוב' },
+    { title: 'יומן אירועים ונוכחות', icon: <Calendar className="w-8 h-8 text-rose-500" />, desc: 'מעקב היעדרויות, איחורים וחיסורים', status: 'פעיל' },
+    { title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'בקרוב' },
+    { title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'בקרוב' },
+    { title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
+    { title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'בקרוב' },
+    { title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'בקרוב' }
+  ];
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button 
+          onClick={onBack}
+          className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <div className="flex items-center justify-between flex-1">
+          <div className="space-y-1">
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">כלי עזר פדגוגיים</h2>
+            <p className="text-slate-500 font-medium">עריכה ופעולות זריזות המסייעות בניהול כיתה יעיל ותקין ברציפות.</p>
+          </div>
+          <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">ארגז כלים</Badge>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tools.map((tool, i) => (
+          <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-3xl space-y-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer hover:border-brand-500 w-full flex flex-col h-full">
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
+                {tool.icon}
+              </div>
+              {tool.status === 'בקרוב' ? (
+                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-black rounded-lg">בקרוב</div>
+              ) : (
+                <div className="px-3 py-1 bg-brand-50 dark:bg-brand-900/40 text-brand-600 text-xs font-black rounded-lg border border-brand-100 dark:border-brand-800">פעיל</div>
+              )}
+            </div>
+            <div className="pt-2 flex-grow">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white">{tool.title}</h3>
+              <p className="text-sm font-medium text-slate-500 mt-2 leading-relaxed">{tool.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   const [currentConfig, setCurrentConfig] = useState({
@@ -2396,17 +4825,30 @@ export default function App() {
       { id: 'ב', name: 'קבוצה ב', constraint: 'none' },
       { id: 'ג', name: 'קבוצה ג', constraint: 'none' },
     ] as any[],
+    availableLessons: [
+      { id: 'math-adv', name: 'מתמטיקה מתקדם', day: 'א', time: '08:00', category: 'regular' },
+      { id: 'english-ext', name: 'אנגלית מורחב', day: 'ב', time: '10:00', category: 'enrichment' },
+      { id: 'science-lab', name: 'מעבדת מדעים', day: 'ד', time: '12:00', category: 'enrichment' },
+    ] as any[],
     updatedAt: Date.now(),
     columnGapSize: 32,
     rowGapSize: 32,
     obstructions: [] as number[]
   });
 
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail'>('grid');
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
+  const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
+
+  const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
+
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools'>('dashboard');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState({ name: '', height: 'average' as any });
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -2416,7 +4858,7 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  const conflicts = useMemo(() => calculateConflicts(currentConfig), [currentConfig]);
+  const conflicts = useMemo(() => calculateConflicts(activeConfig), [activeConfig]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -2459,22 +4901,22 @@ export default function App() {
   const gridRef = useRef<HTMLDivElement>(null);
 
   const dashboardStats = useMemo(() => {
-    const studentCount = currentConfig.students.length;
-    const placedCount = currentConfig.grid.filter(s => s !== null).length;
+    const studentCount = activeConfig.students.length;
+    const placedCount = activeConfig.grid.filter(s => s !== null).length;
     
     // Conflict calculation
     let conflictCount = 0;
-    currentConfig.grid.forEach((sid, idx) => {
+    activeConfig.grid.forEach((sid, idx) => {
       if (!sid) return;
-      const student = currentConfig.students.find(s => s.id === sid);
+      const student = activeConfig.students.find(s => s.id === sid);
       if (!student || !student.forbidden) return;
-      const r = Math.floor(idx / currentConfig.cols);
-      const c = idx % currentConfig.cols;
+      const r = Math.floor(idx / activeConfig.cols);
+      const c = idx % activeConfig.cols;
       [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
         const nr = r + dr;
         const nc = c + dc;
-        if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
-          const neighborId = currentConfig.grid[nr * currentConfig.cols + nc];
+        if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+          const neighborId = activeConfig.grid[nr * activeConfig.cols + nc];
           if (neighborId && student.forbidden.includes(neighborId)) conflictCount++;
         }
       });
@@ -2482,14 +4924,14 @@ export default function App() {
 
     // Satisfaction calculation (simplified normalization of scoring)
     let totalScore = 0;
-    const activeStudents = currentConfig.grid.filter(s => s !== null);
+    const activeStudents = activeConfig.grid.filter(s => s !== null);
     if (activeStudents.length > 0) {
-      currentConfig.grid.forEach((sid, idx) => {
+      activeConfig.grid.forEach((sid, idx) => {
         if (!sid) return;
-        const student = currentConfig.students.find(s => s.id === sid);
+        const student = activeConfig.students.find(s => s.id === sid);
         if (!student) return;
-        const r = Math.floor(idx / currentConfig.cols);
-        const c = idx % currentConfig.cols;
+        const r = Math.floor(idx / activeConfig.cols);
+        const c = idx % activeConfig.cols;
         
         let sScore = 100; // Base score
         // Height check
@@ -2498,8 +4940,8 @@ export default function App() {
         const neighbors = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dr, dc]) => {
           const nr = r + dr;
           const nc = c + dc;
-          if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
-            return currentConfig.grid[nr * currentConfig.cols + nc];
+          if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+            return activeConfig.grid[nr * activeConfig.cols + nc];
           }
           return null;
         });
@@ -2518,13 +4960,12 @@ export default function App() {
       satisfaction,
       attendance: 98 // Static/Mock for now as requested
     };
-  }, [currentConfig]);
+  }, [activeConfig]);
 
   const aiInsights = useMemo(() => {
-    if (!currentConfig.grid) return [];
+    if (!activeConfig.grid) return [];
     const insights = [];
-    const studentCount = currentConfig.grid.filter((s: any) => s !== null).length;
-    const placedCount = currentConfig.grid.filter((s: any) => s !== null).length;
+    const studentCount = activeConfig.grid.filter((s: any) => s !== null).length;
     
     if (studentCount > 0) {
       insights.push({ 
@@ -2533,11 +4974,11 @@ export default function App() {
       });
     }
 
-    const shortCount = currentConfig.students.filter(s => s.height === 'short').length;
-    const shortInFront = currentConfig.grid.filter((sid: any, idx: number) => {
+    const shortCount = activeConfig.students.filter(s => s.height === 'short').length;
+    const shortInFront = activeConfig.grid.filter((sid: any, idx: number) => {
       if (!sid) return false;
-      const s = currentConfig.students.find(st => st.id === sid);
-      return s?.height === 'short' && Math.floor(idx / currentConfig.cols) < 2;
+      const s = activeConfig.students.find(st => st.id === sid);
+      return s?.height === 'short' && Math.floor(idx / activeConfig.cols) < 2;
     }).length;
 
     if (shortCount > 0) {
@@ -2550,19 +4991,19 @@ export default function App() {
 
     // Social Conflict Check
     let conflicts = 0;
-    currentConfig.grid.forEach((sid: any, idx: number) => {
+    activeConfig.grid.forEach((sid: any, idx: number) => {
       if (!sid) return;
-      const student = currentConfig.students.find(s => s.id === sid);
+      const student = activeConfig.students.find(s => s.id === sid);
       if (!student || !student.forbidden) return;
 
-      const r = Math.floor(idx / currentConfig.cols);
-      const c = idx % currentConfig.cols;
+      const r = Math.floor(idx / activeConfig.cols);
+      const c = idx % activeConfig.cols;
       
       [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
         const nr = r + dr;
         const nc = c + dc;
-        if (nr >= 0 && nr < currentConfig.rows && nc >= 0 && nc < currentConfig.cols) {
-          const neighborId = currentConfig.grid[nr * currentConfig.cols + nc];
+        if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+          const neighborId = activeConfig.grid[nr * activeConfig.cols + nc];
           if (neighborId && student.forbidden.includes(neighborId)) {
             conflicts++;
           }
@@ -2578,7 +5019,7 @@ export default function App() {
     }
 
     return insights;
-  }, [currentConfig]);
+  }, [activeConfig]);
 
   const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
   const [isIssuesPanelOpen, setIsIssuesPanelOpen] = useState(false);
@@ -2604,28 +5045,144 @@ export default function App() {
   const [history, setHistory] = useState<any[]>([]);
   const [undoHistory, setUndoHistory] = useState<any[]>([]);
   const [aiResponse, setAiResponse] = useState("");
-  const [aiWeights, setAiWeights] = useState({ preferred: 8, forbidden: 10, separateFrom: 6 });
+  const [aiWeights, setAiWeights] = useState({ 
+    preferred: 8, 
+    forbidden: 10, 
+    separateFrom: 6,
+    socialWeight: 5,
+    spatialWeight: 5,
+    customSystemPrompt: "אתה יועץ פדגוגי מומחה. השב בעברית בלבד."
+  });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+  const [hoveredColGap, setHoveredColGap] = useState<number | null>(null);
+  const [hoveredRowGap, setHoveredRowGap] = useState<number | null>(null);
   const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+
+  const handleAICommand = async (text: string) => {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const prompt = `
+אתה עוזר וירטואלי חכם למורה בבית הספר. קרא את הפקודה של המורה הבאה:
+"${text}"
+
+רשימת התלמידים בכיתה:
+${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
+
+פלט רק JSON מערך של פעולות לביצוע לפי הפקודה. יש להשתמש ב-ID של התלמיד.
+פורמט מותר:
+[
+  { "action": "recordGrade", "studentId": "...", "subject": "...", "grade": 90, "testName": "..." },
+  { "action": "recordAttendance", "studentId": "...", "status": "present|absent|late" },
+  { "action": "addNote", "studentId": "...", "note": "..." },
+  { "action": "recordDiagnostic", "studentId": "...", "type": "...", "description": "...", "accommodations": ["..."] },
+  { "action": "recordCommunication", "studentId": "...", "type": "phone|email|letter|meeting", "summary": "...", "toParent": true },
+  { "action": "showToast", "message": "...", "type": "success|info|error" }
+]
+אם הפקודה לא מובנת, החזר מערך ריק והוסף showToast עם שגיאה שיאמר למורה שלא הבנת.
+הקפד להחזיר JSON תקין בלבד (ללא ציטוט סוג).`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+      });
+
+      let responseText = response.text || "[]";
+      responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const commands = JSON.parse(responseText);
+      let acted = false;
+      let replyMessage = "הפעולות בוצעו בהצלחה!";
+
+      updateCurrentConfig(prev => {
+        let updatedStudents = [...prev.students];
+        commands.forEach((cmd: any) => {
+          if (cmd.action === 'recordGrade') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              const currentGrades = updatedStudents[studentIdx].grades || [];
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                grades: [{ id: Date.now(), subject: cmd.subject || 'כללי', grade: cmd.grade || 0, testName: cmd.testName || '', date: new Date().toISOString() }, ...currentGrades]
+              };
+              acted = true;
+            }
+          }
+          if (cmd.action === 'recordAttendance') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                status: cmd.status
+              };
+              acted = true;
+            }
+          }
+          if (cmd.action === 'addNote') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              const currentNotes = updatedStudents[studentIdx].notes || "";
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                notes: currentNotes + '\\n' + cmd.note
+              };
+              acted = true;
+            }
+          }
+          if (cmd.action === 'recordDiagnostic') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              const diags = updatedStudents[studentIdx].diagnostics || [];
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                diagnostics: [{ id: String(Date.now()), type: cmd.type, description: cmd.description, date: new Date().toISOString(), accommodations: cmd.accommodations || [] }, ...diags]
+              };
+              acted = true;
+            }
+          }
+          if (cmd.action === 'recordCommunication') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              const comms = updatedStudents[studentIdx].communications || [];
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                communications: [{ id: String(Date.now()), type: cmd.type, summary: cmd.summary, date: new Date().toISOString(), toParent: cmd.toParent }, ...comms]
+              };
+              acted = true;
+            }
+          }
+          if (cmd.action === 'showToast') {
+             setNotifications(prevNotif => [{ id: Date.now(), text: cmd.message, type: cmd.type || 'info' }, ...prevNotif]);
+             if (cmd.type === 'error') replyMessage = cmd.message;
+          }
+        });
+        return { ...prev, students: updatedStudents };
+      });
+
+      return acted ? "הפקודה נרשמה בהצלחה. איך אפשר לעזור עוד?" : replyMessage;
+    } catch (error: any) {
+      console.error(error);
+      return "מצטער, הייתה בעיה לעבד את הבקשה. תוכל לנסח שוב?";
+    }
+  };
 
   const runAIShuffle = () => {
     setIsLoadingAI(true);
     
     // Convert current config to valid seats list like the Python script
-    const rows = currentConfig.rows;
-    const cols = currentConfig.cols;
+    const rows = activeConfig.rows;
+    const cols = activeConfig.cols;
     const validSeats: number[] = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c;
-        if (!currentConfig.hiddenDesks.includes(idx)) {
+        if (!activeConfig.hiddenDesks.includes(idx)) {
           validSeats.push(idx);
         }
       }
     }
 
-    const students = [...currentConfig.students];
+    const students = [...activeConfig.students];
     const weights = aiWeights;
 
     // Helper: Getting neighbors
@@ -2647,6 +5204,8 @@ export default function App() {
     // Scoring function
     const scoreAssignment = (assignment: (string | null)[]) => {
       let score = 0;
+      const socialMultiplier = (weights.socialWeight ?? 5) / 5;
+      const spatialMultiplier = (weights.spatialWeight ?? 5) / 5;
       
       assignment.forEach((sid, idx) => {
         if (!sid) return;
@@ -2658,6 +5217,7 @@ export default function App() {
         const c = idx % cols;
 
         // 1. Social Score (Personal + Groups)
+        let socialScore = 0;
         neighbors.forEach(nIdx => {
           const neighborId = assignment[nIdx];
           if (!neighborId) return;
@@ -2665,25 +5225,25 @@ export default function App() {
           if (!neighbor) return;
 
           // Personal prefs
-          if (student.preferred?.includes(neighborId)) score += weights.preferred;
-          if (student.forbidden?.includes(neighborId)) score -= weights.forbidden;
+          if (student.preferred?.includes(neighborId)) socialScore += weights.preferred;
+          if (student.forbidden?.includes(neighborId)) socialScore -= weights.forbidden;
 
           // Group constraints
           student.groups?.forEach((gId: string) => {
-            const group = (currentConfig as any).groups?.find((g: any) => g.id === gId);
+            const group = (activeConfig as any).groups?.find((g: any) => g.id === gId);
             if (!group) return;
 
             if (neighbor.groups?.includes(gId)) {
               // Same group
-              if (group.constraint === 'together') score += 15; // Positive weight for sitting together
-              if (group.constraint === 'separate') score -= 20; // Negative weight for sitting together when should separate
+              if (group.constraint === 'together') socialScore += 15; 
+              if (group.constraint === 'separate') socialScore -= 20;
             }
           });
         });
 
         // 1.5 Together isolation penalty
         student.groups?.forEach((gId: string) => {
-          const group = (currentConfig as any).groups?.find((g: any) => g.id === gId);
+          const group = (activeConfig as any).groups?.find((g: any) => g.id === gId);
           if (group?.constraint === 'together') {
             const hasGroupMemberAdjacent = neighbors.some(nIdx => {
                const neighborId = assignment[nIdx];
@@ -2692,34 +5252,15 @@ export default function App() {
                return neighbor?.groups?.includes(gId);
             });
             if (!hasGroupMemberAdjacent) {
-               // If there are other members of this group in the class, sitting alone is bad
                const otherMembers = students.filter(s => s.id !== sid && s.groups?.includes(gId));
-               if (otherMembers.length > 0) score -= 50;
+               if (otherMembers.length > 0) socialScore -= 50;
             }
           }
         });
 
-        // 2. Spatial / Area Prefs
-        const pref = (student as any).areaPref;
-        if (pref) {
-          if (pref.row !== undefined && r === pref.row) score += (pref.weight || 20);
-          if (pref.col !== undefined && c === pref.col) score += (pref.weight || 20);
-          if (pref.row_range && r >= pref.row_range[0] && r <= pref.row_range[1]) score += (pref.weight || 10);
-          if (pref.col_range && c >= pref.col_range[0] && c <= pref.col_range[1]) score += (pref.weight || 10);
-          
-          if (pref.special === "window_or_microwave" && (c === 0 || c === cols - 1)) score += 60;
-          
-          if (pref.isolated) {
-            const hasNeighbor = neighbors.some(nIdx => assignment[nIdx] !== null);
-            if (!hasNeighbor) score += (pref.weight || 300);
-            else score -= (pref.weight || 300);
-          }
-        }
-
-        // 3. Group Constraints
         if (student.groups && student.groups.length > 0) {
           student.groups.forEach((groupId: string) => {
-            const groupConfig = currentConfig.groups.find(g => g.id === groupId);
+            const groupConfig = activeConfig.groups.find(g => g.id === groupId);
             if (!groupConfig || groupConfig.constraint === 'none') return;
 
             neighbors.forEach(nIdx => {
@@ -2730,18 +5271,40 @@ export default function App() {
 
               const inSameGroup = neighbor.groups?.includes(groupId);
               if (inSameGroup) {
-                if (groupConfig.constraint === 'together') score += 100;
-                if (groupConfig.constraint === 'separate') score -= 200;
+                if (groupConfig.constraint === 'together') socialScore += 100;
+                if (groupConfig.constraint === 'separate') socialScore -= 200;
               }
             });
           });
         }
+        
+        score += socialScore * socialMultiplier;
+
+        // 2. Spatial / Area Prefs
+        let spatialScore = 0;
+        const pref = (student as any).areaPref;
+        if (pref) {
+          if (pref.row !== undefined && r === pref.row) spatialScore += (pref.weight || 20);
+          if (pref.col !== undefined && c === pref.col) spatialScore += (pref.weight || 20);
+          if (pref.row_range && r >= pref.row_range[0] && r <= pref.row_range[1]) spatialScore += (pref.weight || 10);
+          if (pref.col_range && c >= pref.col_range[0] && c <= pref.col_range[1]) spatialScore += (pref.weight || 10);
+          
+          if (pref.special === "window_or_microwave" && (c === 0 || c === cols - 1)) spatialScore += 60;
+          
+          if (pref.isolated) {
+            const hasNeighbor = neighbors.some(nIdx => assignment[nIdx] !== null);
+            if (!hasNeighbor) spatialScore += (pref.weight || 300);
+            else spatialScore -= (pref.weight || 300);
+          }
+        }
 
         // Height constraint
         if (student.height === 'short') {
-          if (r < 2) score += 50;
-          else score -= 100;
+          if (r < 2) spatialScore += 50;
+          else spatialScore -= 100;
         }
+
+        score += spatialScore * spatialMultiplier;
       });
       return score;
     };
@@ -2809,9 +5372,27 @@ export default function App() {
       updateCurrentConfig((prev: any) => ({ ...prev, grid: best }));
       setIsLoadingAI(false);
       setIsAIPanelOpen(false);
-      setNotifications(prev => [{ id: Date.now(), text: `ה-AI סיים סימולציה! ניקוד אופטימיזציה: ${Math.round(bestScore)}`, type: 'success' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now(), text: `ה-AI סיים אופטימיזציה לסדרי הישיבה!`, type: 'success' }, ...prev]);
+      
+      // Request Gemini explanation in background
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+        const prompt = `אתה יועץ פדגוגי. הכיתה הרגע סודרה מחדש באמצעות אלגוריתם (Simulated Annealing) בהתחשב באילוצים החברתיים והלימודיים.
+אנא כתוב משפט אחד קצרצר ומעודד בלבד שיקפוץ למורה ויאמר שהסידור בוצע בהצלחה ולקח בחשבון את העדפות התלמידים.`;
+        ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: prompt
+        }).then(res => {
+          if (res.text) {
+             setNotifications(prev => [{ id: Date.now() + 1, text: res.text as string, type: 'info' }, ...prev]);
+          }
+        }).catch(err => console.error(err));
+      } catch (e) {
+        console.error(e);
+      }
     }, 500);
   };
+
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
@@ -2846,7 +5427,7 @@ export default function App() {
   const handleDrop = (deskIdx: number) => {
     if (!draggedStudentId) return;
     
-    const student = currentConfig.students.find(s => s.id === draggedStudentId);
+    const student = activeConfig.students.find(s => s.id === draggedStudentId);
     if (student) {
       setDeskHistory(prev => ({
         ...prev,
@@ -3005,15 +5586,17 @@ export default function App() {
   }, [currentConfig.grid, checkViolations]);
 
   const updateCurrentConfig = useCallback((update: any) => {
-    setCurrentConfig(prev => {
-      let next = typeof update === 'function' ? update(prev) : update;
-      if (JSON.stringify(next) !== JSON.stringify(prev)) {
-        setUndoHistory(h => [prev, ...h].slice(0, 10));
+    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
+    setter((prev: any) => {
+      const actualPrev = prev || currentConfig;
+      let next = typeof update === 'function' ? update(actualPrev) : update;
+      if (JSON.stringify(next) !== JSON.stringify(actualPrev)) {
+        setUndoHistory(h => [actualPrev, ...h].slice(0, 10));
         next = { ...next, updatedAt: Date.now() };
       }
       return next;
     });
-  }, []);
+  }, [isPracticeMode, currentConfig]);
 
   const undo = () => {
     if (undoHistory.length === 0) return;
@@ -3063,10 +5646,13 @@ export default function App() {
     const onBack = () => setViewType('dashboard');
     const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={dashboardStats} onBack={onBackToGrid} />;
-      case 'attendance': return <AttendanceView students={currentConfig.students} onBack={onBack} />;
-      case 'grades': return <GradesView onBack={onBack} />;
+      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} />;
+      case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
+      case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
+      case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'progress': return <ProgressView onBack={onBack} />;
+      case 'exams': return <ExamsView onBack={onBackToGrid} />;
+      case 'tools': return <ToolsView onBack={onBackToGrid} />;
       case 'settings': return (
         <SettingsView 
           onBack={onBackToGrid}
@@ -3083,18 +5669,23 @@ export default function App() {
           selectedStudentId={selectedStudentId}
           setSelectedStudentId={setSelectedStudentId}
           setViewType={setViewType}
+          isAddStudentOpen={isAddStudentOpen}
+          setIsAddStudentOpen={setIsAddStudentOpen}
+          newStudent={newStudent}
+          setNewStudent={setNewStudent}
         />
       );
       case 'studentDetail': {
-        const student = currentConfig.students.find(s => s.id === selectedStudentId);
+        const student = activeConfig.students.find(s => s.id === selectedStudentId);
         return student ? (
           <StudentDetailView 
             student={student} 
-            currentConfig={currentConfig}
-            students={currentConfig.students}
+            currentConfig={activeConfig}
+            students={activeConfig.students}
             onBack={onBackToGrid} 
             updateCurrentConfig={updateCurrentConfig}
             onSelectStudent={setSelectedStudentId}
+            aiWeights={aiWeights}
           />
         ) : null;
       }
@@ -3105,125 +5696,141 @@ export default function App() {
   const exportToExcel = () => console.log("Exporting to Excel...");
 
 
-  const Header = () => (
-    <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-50 transition-colors">
+  const Header = () => {
+    const today = new Date();
+    const hd = new HDate(today);
+    const hebDateString = hd.renderGematriya();
+    
+    return (
+    <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-50 shadow-sm transition-colors">
       <div className="flex items-center gap-6">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all shadow-sm"
+          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all shadow-sm group"
           title={isSidebarOpen ? "סגור תפריט" : "פתח תפריט"}
         >
-          {isSidebarOpen ? <ChevronRight className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <Menu className={cn("w-6 h-6 transition-transform", isSidebarOpen && "rotate-90")} />
         </button>
+        
+        {/* Global Toolbar Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 via-brand-600 to-emerald-500 rounded-2xl flex items-center justify-center shadow-2xl scale-110 shadow-brand-200 dark:shadow-none -rotate-2 group hover:rotate-0 transition-all duration-500">
-            <Sparkles className="w-7 h-7 text-white animate-pulse" />
+          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-100 dark:shadow-none">
+            <Sparkles className="w-6 h-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">ClassManager <span className="text-brand-600">Pro</span></h1>
-            <div className="flex items-center gap-2 mt-1">
-               <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">v3.5 Enterprise</span>
-               <span className="w-1 h-1 bg-emerald-500 rounded-full animate-ping" />
-               <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">AI Core Ready</span>
-            </div>
+          <div className="hidden sm:block">
+            <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">CLASSFLOW<span className="text-brand-600 font-black ml-1">v3</span></h1>
           </div>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
-           {(['grid', 'dashboard', 'attendance', 'grades', 'progress', 'settings'] as const).map(nav => (
-             <button
-               key={nav}
-               onClick={() => setViewType(nav)}
-               className={cn(
-                 "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                 viewType === nav 
-                  ? "bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm" 
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-               )}
-             >
-               {nav === 'grid' && 'סידור הושבה'}
-               {nav === 'dashboard' && 'סקירה'}
-               {nav === 'attendance' && 'נוכחות'}
-               {nav === 'grades' && 'ציונים'}
-               {nav === 'progress' && 'התקדמות'}
-               {nav === 'settings' && 'הגדרות'}
-             </button>
-           ))}
-        </nav>
+        <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-2 hidden lg:block" />
 
-        {viewType === 'grid' && (
-          <div className="flex items-center gap-3 mr-4">
-            <button 
-              onClick={() => setIs3DView(!is3DView)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all",
-                is3DView 
-                  ? "bg-brand-600 text-white shadow-lg" 
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              )}
-            >
-              <Box className="w-4 h-4" />
-              תצוגת 3D
-            </button>
-            
-            {aiInsights.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 rounded-xl">
-                <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <p className="text-[10px] font-black text-indigo-800 dark:text-indigo-300">{aiInsights[0].text}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Global Search Bar */}
+        <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 gap-3 w-80 group focus-within:ring-2 ring-brand-100 transition-all">
+          <Search className="w-4 h-4 text-slate-400 group-focus-within:text-brand-500" />
+          <input 
+            type="text" 
+            placeholder="חפש תלמיד, ציון או משימה..." 
+            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-600 dark:text-slate-300 w-full placeholder:text-slate-300"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <kbd className="hidden lg:block px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-[10px] font-black text-slate-400 uppercase">CMD+K</kbd>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => setIsBulkUpdateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-2xl font-black text-xs hover:bg-brand-700 transition-all shadow-md active:scale-95"
-          title="עדכון קבוצתי"
-        >
-          <Edit3 className="w-4 h-4" />
-          עדכון מהיר
-        </button>
-        {undoHistory.length > 0 && (
+      <div className="flex items-center gap-3 lg:gap-6">
+        <div className="hidden xl:flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-xl text-emerald-700 dark:text-emerald-400">
+           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+           <span className="text-[10px] font-black uppercase tracking-widest">{hebDateString}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Action Buttons */}
           <button 
-            onClick={undo}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-2xl font-black text-xs hover:bg-brand-100 dark:hover:bg-brand-800 transition-all border border-brand-100 dark:border-brand-800 shadow-sm"
+            onClick={() => setNotifications([])}
+            className="relative p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
           >
-            <ArrowRightLeft className="w-4 h-4 rotate-180" />
-            ביטול פעולה
+            <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            {notifications.length > 0 && (
+              <span className="absolute top-2 right-2 w-4 h-4 bg-rose-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-[8px] font-black text-white">
+                {notifications.length}
+              </span>
+            )}
           </button>
-        )}
-        <button 
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
-          title={isDarkMode ? "מצב יום" : "מצב לילה"}
-        >
-          {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
-        <button 
-          onClick={() => setOnboardingStep(0)}
-          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
-          title="עזרה והדרכה"
-        >
-          <HelpCircle className="w-5 h-5" />
-        </button>
-        <button 
-          onClick={() => setViewType('settings')}
-          className={cn(
-            "p-3 rounded-2xl transition-all relative overflow-hidden",
-            viewType === 'settings' ? "bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400" : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+
+          <button 
+            onClick={() => {
+              if (isPracticeMode) {
+                if (confirm("האם ברצנך לשמור את השינויים שביצעת במצב אימון ולהחיל אותם על הכיתה החיה?")) {
+                  setCurrentConfig(practiceConfig || activeConfig);
+                  setPracticeConfig(null);
+                  setIsPracticeMode(false);
+                  setNotifications(prev => [{ id: Date.now(), text: "השינויים הוחלו בהצלחה!", type: 'success' }, ...prev]);
+                }
+              } else {
+                setPracticeConfig(JSON.parse(JSON.stringify(activeConfig)));
+                setIsPracticeMode(true);
+                setNotifications(prev => [{ id: Date.now(), text: "ברוכים הבאים למצב אימון! השינויים כאן לא ישפיעו על הכיתה החיה.", type: 'info' }, ...prev]);
+              }
+            }}
+            className={cn(
+              "p-3 rounded-2xl transition-all group",
+              isPracticeMode 
+              ? "bg-amber-500 text-white shadow-lg shadow-amber-200" 
+              : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+            )}
+            title={isPracticeMode ? "שמור וסיים מצב אימון" : "הכנס למצב אימון"}
+          >
+            <FlaskConical className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          </button>
+
+          {isPracticeMode && (
+            <button 
+              onClick={() => {
+                if (confirm("האם ברצנך לבטל את כל השינויים שביצעת במצב אימון?")) {
+                  setPracticeConfig(null);
+                  setIsPracticeMode(false);
+                  setNotifications(prev => [{ id: Date.now(), text: "שינויי האימון בוטלו.", type: 'info' }, ...prev]);
+                }
+              }}
+              className="p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-800 transition-all group"
+              title="בטל וצא ממצב אימון"
+            >
+              <XCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
           )}
-        >
-          <Settings className="w-5 h-5" />
-          {viewType === 'settings' && <motion.div layoutId="nav-active" className="absolute inset-0 bg-brand-200/20" />}
-        </button>
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center font-black text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 cursor-pointer hover:scale-105 transition-transform">
-          AD
+
+          <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-1" />
+
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+
+          <button 
+            onClick={() => setShowHelpModal(true)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
+            title="מדריך למשתמש"
+          >
+            <HelpCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+          <button 
+            onClick={() => setViewType('settings')}
+            className={cn(
+              "p-3 rounded-2xl transition-all group",
+              viewType === 'settings' ? "bg-brand-600 text-white shadow-lg" : "bg-slate-50 dark:bg-slate-800 text-slate-500"
+            )}
+          >
+            <Settings2 className="w-5 h-5 group-hover:rotate-45 transition-transform" />
+          </button>
         </div>
       </div>
     </header>
-  );
+    );
+  };
 
   const handleResetGrid = () => {
     updateCurrentConfig((prev: any) => ({
@@ -3293,34 +5900,81 @@ export default function App() {
   };
 
   const Sidebar = () => (
-    <AnimatePresence>
-      {isSidebarOpen && (
+    <AnimatePresence mode="wait">
+      {(isSidebarOpen || !isMobile) && (
         <>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-brand-900/5 backdrop-blur-sm z-30 lg:hidden"
-          />
+          {isMobile && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-brand-900/20 backdrop-blur-md z-[60]"
+            />
+          )}
           <motion.aside
-    initial={isMobile ? { y: '100%' } : { x: 300 }}
-    animate={isMobile ? { y: 0 } : { x: 0 }}
-    exit={isMobile ? { y: '100%' } : { x: 300 }}
-    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-    className={cn(
-      "absolute z-40 bg-white dark:bg-slate-900 shadow-2xl flex flex-col transition-colors",
-      isMobile 
-        ? "inset-x-0 bottom-0 h-[80vh] rounded-t-[3rem] border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]" 
-        : "right-0 lg:relative lg:right-auto w-[300px] h-full border-l border-slate-200 dark:border-slate-800"
-    )}
-  >
+            initial={isMobile ? { y: '100%' } : { x: 300 }}
+            animate={isMobile ? { y: 0 } : { x: 0 }}
+            exit={isMobile ? { y: '100%' } : { x: 300 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={cn(
+              "absolute z-[70] bg-white dark:bg-slate-900 shadow-2xl flex flex-col transition-colors h-full",
+              isMobile 
+                ? "inset-x-0 bottom-0 h-[80vh] rounded-t-[3rem] border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]" 
+                : "right-0 lg:relative lg:right-auto w-[300px] border-l border-slate-200 dark:border-slate-800"
+            )}
+          >
     {isMobile && (
       <div className="w-12 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
     )}
     <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
+      {/* Visual Navigation Menu */}
+      <div className="space-y-2">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">ניהול ראשי</h3>
+        {(['dashboard', 'grid', 'attendance', 'grades', 'tasks', 'progress', 'exams', 'tools'] as const).map(nav => (
+          <button
+            key={nav}
+            onClick={() => setViewType(nav)}
+            className={cn(
+              "w-full flex items-center gap-4 p-4 rounded-2xl font-black text-sm transition-all group relative overflow-hidden",
+              viewType === nav 
+                ? "bg-brand-600 text-white shadow-lg shadow-brand-200 dark:shadow-none" 
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            )}
+          >
+            <div className={cn(
+              "p-2 rounded-xl transition-colors",
+              viewType === nav ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20"
+            )}>
+              {nav === 'dashboard' && <PieChartIcon className="w-5 h-5" />}
+              {nav === 'grid' && <LayoutGrid className="w-5 h-5" />}
+              {nav === 'attendance' && <Calendar className="w-5 h-5" />}
+              {nav === 'grades' && <GraduationCap className="w-5 h-5" />}
+              {nav === 'tasks' && <Bell className="w-5 h-5" />}
+              {nav === 'progress' && <LineChart className="w-5 h-5" />}
+              {nav === 'exams' && <Bookmark className="w-5 h-5" />}
+              {nav === 'tools' && <Wrench className="w-5 h-5" />}
+            </div>
+            {nav === 'dashboard' && 'ראשי'}
+            {nav === 'grid' && 'מרחב כיתה'}
+            {nav === 'attendance' && 'נוכחות'}
+            {nav === 'grades' && 'ציונים'}
+            {nav === 'tasks' && 'משימות'}
+            {nav === 'progress' && 'התקדמות'}
+            {nav === 'exams' && 'מבחנים'}
+            {nav === 'tools' && 'ארגז כלים'}
+            
+            {viewType === nav && (
+              <motion.div layoutId="sidebar-active" className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-200 rounded-r-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2" />
+
       {/* Classroom Header */}
-      <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-6 rounded-3xl flex flex-col gap-4 shadow-sm transition-colors">
+      <div className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-3xl flex flex-col gap-4 border border-slate-100 dark:border-slate-800">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">כיתה פעילה</h3>
@@ -3356,112 +6010,182 @@ export default function App() {
                         second: '2-digit',
                         day: '2-digit',
                         month: '2-digit'
-                      }).format(new Date(currentConfig.updatedAt))}
+                      }).format(new Date(activeConfig.updatedAt))}
                     </span>
                   </div>
                 </div>
               </div>
 
-      {/* Group Constraints Section */}
-      <div className="flex flex-col gap-4">
-         <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest px-1">אילוצי קבוצות</h3>
-          <div className="grid grid-cols-1 gap-3">
-            {currentConfig.groups.map((group: any) => (
-              <div key={group.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white",
-                    group.id === 'א' ? "bg-brand-500" : group.id === 'ב' ? "bg-amber-500" : "bg-emerald-500"
-                  )}>
-                    {group.id}
+      {viewType === 'grid' ? (
+        <>
+          {/* Group Constraints Section */}
+          <div className="flex flex-col gap-4">
+             <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest px-1">אילוצי קבוצות</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {activeConfig.groups.map((group: any) => (
+                  <div key={group.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white",
+                        group.id === 'א' ? "bg-brand-500" : group.id === 'ב' ? "bg-amber-500" : "bg-emerald-500"
+                      )}>
+                        {group.id}
+                      </div>
+                      <span className="text-sm font-black text-slate-700 dark:text-slate-200">{group.name}</span>
+                    </div>
+                    <select 
+                      value={group.constraint}
+                      onChange={(e) => updateCurrentConfig((prev: any) => ({
+                        ...prev,
+                        groups: prev.groups.map((g: any) => g.id === group.id ? { ...g, constraint: e.target.value } : g)
+                      }))}
+                      className="bg-slate-50 dark:bg-slate-900 border-0 text-[10px] font-black rounded-lg focus:ring-1 focus:ring-brand-200 py-1 px-2 text-slate-700 dark:text-slate-300 transition-colors"
+                    >
+                      <option value="none">ללא אילוץ</option>
+                      <option value="together">יחד (שכנים)</option>
+                      <option value="separate">בנפרד</option>
+                    </select>
                   </div>
-                  <span className="text-sm font-black text-slate-700 dark:text-slate-200">{group.name}</span>
-                </div>
-                <select 
-                  value={group.constraint}
-                  onChange={(e) => updateCurrentConfig((prev: any) => ({
-                    ...prev,
-                    groups: prev.groups.map((g: any) => g.id === group.id ? { ...g, constraint: e.target.value } : g)
-                  }))}
-                  className="bg-slate-50 dark:bg-slate-900 border-0 text-[10px] font-black rounded-lg focus:ring-1 focus:ring-brand-200 py-1 px-2 text-slate-700 dark:text-slate-300 transition-colors"
-                >
-                  <option value="none">ללא אילוץ</option>
-                  <option value="together">יחד (שכנים)</option>
-                  <option value="separate">בנפרד</option>
-                </select>
+                ))}
               </div>
-            ))}
           </div>
-      </div>
 
-              {/* Student Pool */}
-              <div className="flex flex-col gap-4 min-h-[200px]">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
-                  <button className="p-2 hover:bg-slate-100 rounded-xl bg-slate-50 border border-slate-200 transition-colors"><Plus className="w-5 h-5 text-slate-600" /></button>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {studentsInPool.length === 0 ? (
-                    <EmptyState 
-                      icon={<CheckCircle2 className="w-10 h-10" />}
-                      title="הכל מוכן!"
-                      description="כל התלמידים משולבים בכיתה בהצלחה."
-                    />
-                  ) : (
-                    studentsInPool.map((student, idx) => (
-                      <motion.div
-                        key={`${student.id}-${idx}`}
-                        draggable
-                        onDragStart={() => setDraggedStudentId(student.id)}
-                        onDragEnd={() => setDraggedStudentId(null)}
-                        className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-brand-500 hover:shadow-lg transition-all group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-slate-600 dark:text-slate-400 text-base">
-                            {student.name[0]}
-                          </div>
-                          <span className="text-base font-black text-slate-900 dark:text-slate-100">{student.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                             onClick={() => {
-                               setSelectedStudentId(student.id);
-                               setViewType('studentDetail');
-                             }}
-                             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-brand-600 transition-colors"
-                          >
-                             <Eye className="w-5 h-5" />
-                          </button>
-                          <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Conflict Analysis Section */}
-              <div className="glass-card p-6 bg-rose-50/10 border border-rose-100 dark:border-rose-900/20 rounded-[2.5rem]">
-                <ConflictPanel 
-                  conflicts={conflicts} 
-                  students={currentConfig.students}
-                  onResolve={(conflict: any) => {
-                    setNotifications(prev => [{ id: Date.now(), text: `הצעה: העבר את ${currentConfig.students.find((s:any)=>s.id===conflict.studentId1)?.name} למקום פנוי בשורה 1`, type: 'info' }, ...prev]);
-                  }}
+          {/* Student Pool */}
+          <div className="flex flex-col gap-4 min-h-[200px]">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
+              <button 
+                onClick={() => setIsAddStudentOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-brand-50 hover:text-brand-600 text-slate-500 rounded-xl bg-slate-50 border border-slate-200 transition-colors font-bold text-xs"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף תלמיד
+              </button>
+            </div>
+            <div 
+              className={cn("grid grid-cols-1 gap-3 p-2 rounded-2xl transition-all min-h-[100px]", draggedStudentId && editMode === 'placement' && "bg-slate-50 border-2 border-slate-300 border-dashed ring-4 ring-slate-100 shadow-inner")}
+              onDragOver={(e) => { e.preventDefault(); }}
+              onDrop={(e) => {
+                 e.preventDefault();
+                 if (draggedStudentId && editMode === 'placement') {
+                   updateCurrentConfig((prev: any) => {
+                      const idx = prev.grid.indexOf(draggedStudentId);
+                      if (idx !== -1) {
+                         const newGrid = [...prev.grid];
+                         newGrid[idx] = null;
+                         return { ...prev, grid: newGrid };
+                      }
+                      return prev;
+                   });
+                   setDraggedStudentId(null);
+                 }
+              }}
+            >
+              {studentsInPool.length === 0 ? (
+                <EmptyState 
+                  icon={<CheckCircle2 className="w-10 h-10" />}
+                  title="הכל מוכן!"
+                  description="כל התלמידים משולבים בכיתה בהצלחה."
                 />
-              </div>
-
-      {/* View Satisfaction Indicator */}
-      <div className="glass-card p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ממוצע שביעות רצון</h3>
-          <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500">
-            <Sparkles className="w-3 h-3" />
-             +15%
+              ) : (
+                studentsInPool.map((student, idx) => (
+                  <motion.div
+                    key={`${student.id}-${idx}`}
+                    draggable
+                    animate={draggedStudentId === student.id ? { scale: 0.95, opacity: 0.5 } : { scale: 1, opacity: 1 }}
+                    whileHover={{ scale: 1.02, x: 5, backgroundColor: isDarkMode ? "rgba(30, 41, 59, 1)" : "rgba(248, 250, 252, 1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    onDragStart={(e: any) => {
+                      setDraggedStudentId(student.id);
+                    }}
+                    onDragEnd={() => setDraggedStudentId(null)}
+                    className={cn(
+                      "p-4 border-2 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing transition-all group",
+                      isDarkMode ? "bg-slate-900" : "bg-white",
+                      draggedStudentId === student.id 
+                        ? "border-brand-500 shadow-2xl z-50 ring-4 ring-brand-500/20" 
+                        : "border-slate-200 dark:border-slate-800 hover:border-brand-500"
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-slate-600 dark:text-slate-400 text-base">
+                        {student.name[0]}
+                      </div>
+                      <span className="text-base font-black text-slate-900 dark:text-slate-100">{student.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                         onClick={() => {
+                           setSelectedStudentId(student.id);
+                           setViewType('studentDetail');
+                         }}
+                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-brand-600 transition-colors"
+                      >
+                         <Eye className="w-5 h-5" />
+                      </button>
+                      <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
           </div>
+
+          {/* Conflict Analysis Section */}
+          <div className="glass-card p-6 bg-rose-50/10 border border-rose-100 dark:border-rose-900/20 rounded-[2.5rem]">
+            <ConflictPanel 
+              conflicts={conflicts} 
+              students={activeConfig.students}
+              onResolve={(conflict: any) => {
+                setNotifications(prev => [{ id: Date.now(), text: `הצעה: העבר את ${activeConfig.students.find((s:any)=>s.id===conflict.studentId1)?.name} למקום פנוי בשורה 1`, type: 'info' }, ...prev]);
+              }}
+            />
+          </div>
+
+          {/* View Satisfaction Indicator */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ממוצע שביעות רצון</h3>
+              <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500">
+                <Sparkles className="w-3 h-3" />
+                 +15%
+              </div>
+            </div>
+            <SatisfactionGauge score={80} />
+          </div>
+        </>
+      ) : (
+        /* Generic Sidebar View */
+        <div className="flex flex-col gap-4 min-h-[400px]">
+             <div className="flex items-center justify-between px-1">
+               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">מאגר תלמידים מלא ({currentConfig.students.length})</h3>
+               <button 
+                 onClick={() => setIsAddStudentOpen(true)}
+                 className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-brand-50 hover:text-brand-600 text-slate-500 rounded-xl bg-slate-50 border border-slate-200 transition-colors font-bold text-xs"
+               >
+                 <Plus className="w-4 h-4" />
+                 הוסף
+               </button>
+             </div>
+             <div className="grid grid-cols-1 gap-2">
+                 {currentConfig.students.map((student: any) => (
+                   <div key={student.id} 
+                        className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl flex items-center justify-between hover:border-brand-500 hover:shadow-sm transition-all cursor-pointer group" 
+                        onClick={() => { setSelectedStudentId(student.id); setViewType('studentDetail'); }}
+                   >
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
+                         {student.name[0]}
+                       </div>
+                       <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-brand-600">{student.name}</span>
+                     </div>
+                     <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-brand-500" />
+                   </div>
+                 ))}
+             </div>
         </div>
-        <SatisfactionGauge score={80} />
-      </div>
+      )}
 
               {/* Main Actions */}
               <div className="flex flex-col gap-2">
@@ -3556,6 +6280,35 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const Breadcrumbs = () => {
+    const labels: Record<string, string> = {
+      'dashboard': 'ראשי',
+      'grid': 'מרחב כיתה',
+      'attendance': 'נוכחות',
+      'grades': 'ציונים',
+      'tasks': 'משימות ורשימות',
+      'progress': 'התקבלות וניתוח',
+      'exams': 'מבחנים',
+      'tools': 'ארגז כלים',
+      'settings': 'הגדרות',
+      'studentDetail': 'פרופיל תלמיד'
+    };
+
+    return (
+      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-8 pt-6">
+        <button onClick={() => setViewType('dashboard')} className="hover:text-brand-600 transition-colors uppercase">CLASSFLOW</button>
+        <ChevronLeft className="w-4 h-4 opacity-50" />
+        <span className="text-slate-900 dark:text-white">{labels[viewType] || viewType}</span>
+        {viewType === 'studentDetail' && selectedStudentId && (
+          <>
+            <ChevronLeft className="w-4 h-4 opacity-50" />
+            <span className="text-brand-600 font-bold">{activeConfig.students.find(s => s.id === selectedStudentId)?.name}</span>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -3620,6 +6373,7 @@ export default function App() {
         {Sidebar()}
 
         <main className="flex-1 overflow-hidden relative flex flex-col">
+          {viewType !== 'dashboard' && viewType !== 'grid' && <Breadcrumbs />}
           <AnimatePresence mode="wait">
              <motion.div
                key={viewType}
@@ -3627,18 +6381,16 @@ export default function App() {
                animate={{ opacity: 1, x: 0 }}
                exit={{ opacity: 0, x: -15 }}
                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-               className="flex-1 flex flex-col overflow-hidden"
+               className="flex-1 flex flex-col overflow-hidden max-w-full"
              >
                {viewType === 'grid' ? (
                  <div 
                    className={cn(
-                     "flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top",
-                     is3DView && "bg-slate-200/50"
+                     "flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top relative overflow-x-hidden",
+                     is3DView && "bg-slate-900 dark:bg-black perspective-[2000px] shadow-[inset_0_20px_100px_rgba(0,0,0,0.5)] !overflow-hidden"
                    )}
                    style={is3DView ? { 
-                     perspective: '1200px',
-                     transform: 'rotateX(25deg) scale(0.95)',
-                     transformStyle: 'preserve-3d'
+                     perspective: '2000px',
                    } : {}}
                  >
                    {/* Grid Toolbar */}
@@ -3669,10 +6421,10 @@ export default function App() {
                      <div className="flex items-center gap-2">
                        <Filter className="w-4 h-4 text-slate-400" />
                        <div className="flex gap-1 overflow-x-auto max-w-[200px] scrollbar-hide py-1">
-                          {(currentConfig.groups || []).map(group => (
+                          {(activeConfig.groups || []).map((group: any) => (
                             <button
                                key={group.id}
-                               onClick={() => setSelectedGroups(prev => prev.includes(group.id) ? prev.filter(pg => pg !== group.id) : [...prev, group.id])}
+                               onClick={() => setSelectedGroups((prev: string[]) => prev.includes(group.id) ? prev.filter((pg: string) => pg !== group.id) : [...prev, group.id])}
                                className={cn(
                                  "px-4 py-2 rounded-lg text-xs font-black transition-all whitespace-nowrap",
                                  selectedGroups.includes(group.id) ? "bg-brand-600 text-white shadow-md shadow-brand-100" : "bg-slate-50 text-slate-500 border border-slate-100"
@@ -3681,7 +6433,7 @@ export default function App() {
                               קבוצה {group.name}
                             </button>
                           ))}
-                          {(currentConfig.groups || []).length === 0 && <span className="text-[10px] text-slate-400 italic">לא הוגדרו קבוצות</span>}
+                          {(activeConfig.groups || []).length === 0 && <span className="text-[10px] text-slate-400 italic">לא הוגדרו קבוצות</span>}
                        </div>
                      </div>
 
@@ -3692,13 +6444,13 @@ export default function App() {
                          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
                            <span className="text-xs font-black text-slate-500 uppercase px-2">שורות</span>
                            <button onClick={() => handleGridResize('rows', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
-                           <span className="w-6 text-center font-black text-xs">{currentConfig.rows}</span>
+                           <span className="w-6 text-center font-black text-xs">{activeConfig.rows}</span>
                            <button onClick={() => handleGridResize('rows', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
                          </div>
                          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
                            <span className="text-xs font-black text-slate-500 uppercase px-2">טורים</span>
                            <button onClick={() => handleGridResize('cols', -1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Minus className="w-3 h-3" /></button>
-                           <span className="w-6 text-center font-black text-xs">{currentConfig.cols}</span>
+                           <span className="w-6 text-center font-black text-xs">{activeConfig.cols}</span>
                            <button onClick={() => handleGridResize('cols', 1)} className="p-1.5 hover:bg-white rounded-lg text-slate-500"><Plus className="w-3 h-3" /></button>
                          </div>
 
@@ -3708,7 +6460,7 @@ export default function App() {
                               <span className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 whitespace-nowrap">מרווח רוחב</span>
                               <div className="flex items-center gap-1">
                                 <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.max(8, prev.columnGapSize - 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Minus className="w-3 h-3" /></button>
-                                <span className="min-w-[16px] text-center font-black text-[9px]">{currentConfig.columnGapSize}</span>
+                                <span className="min-w-[16px] text-center font-black text-[9px]">{activeConfig.columnGapSize}</span>
                                 <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.min(120, prev.columnGapSize + 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Plus className="w-3 h-3" /></button>
                               </div>
                             </div>
@@ -3717,7 +6469,7 @@ export default function App() {
                               <span className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 whitespace-nowrap">מרווח גובה</span>
                               <div className="flex items-center gap-1">
                                 <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.max(8, (prev.rowGapSize || 32) - 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Minus className="w-3 h-3" /></button>
-                                <span className="min-w-[16px] text-center font-black text-[9px]">{currentConfig.rowGapSize || 32}</span>
+                                <span className="min-w-[16px] text-center font-black text-[9px]">{activeConfig.rowGapSize || 32}</span>
                                 <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.min(120, (prev.rowGapSize || 32) + 4) }))} className="p-0.5 hover:bg-white rounded text-slate-500"><Plus className="w-3 h-3" /></button>
                               </div>
                             </div>
@@ -3755,20 +6507,20 @@ export default function App() {
                    </div>
 
                    {/* Grid Content */}
-                   <div ref={gridRef} className="relative w-full max-w-6xl flex flex-col items-center" id="classroom-grid-container">
+                   <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
                         {/* Print Header only for PDF */}
                         {isPrinting && (
                           <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100">
-                             <h1 className="text-4xl font-black text-slate-900">מפת הושבה: {currentConfig.name}</h1>
+                             <h1 className="text-4xl font-black text-slate-900">מפת הושבה: {activeConfig.name}</h1>
                              <div className="flex items-center justify-center gap-6 mt-4">
-                                <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">סה"כ תלמידים: {currentConfig.students.length}</span>
+                                <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">סה"כ תלמידים: {activeConfig.students.length}</span>
                                 <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">תאריך: {new Date().toLocaleDateString('he-IL')}</span>
                              </div>
                              <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות ClassManager Pro AI</p>
                           </div>
                         )}
                        {/* Floating Teacher Desk Toggle (Structure Mode Only) */}
-                       {editMode === 'structure' && currentConfig.teacherDesk.index === -1 && (
+                       {editMode === 'structure' && activeConfig.teacherDesk.index === -1 && (
                          <button 
                            onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: 0 } }))}
                            className="mb-8 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-xl hover:bg-brand-700 transition-all flex items-center gap-3 animate-bounce"
@@ -3780,30 +6532,48 @@ export default function App() {
 
                     <div 
                       className={cn(
-                        "grid p-20 transition-all duration-500 relative",
+                        "grid p-20 transition-all duration-1000 relative",
                         editMode === 'structure' 
                          ? "bg-white dark:bg-slate-900 ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 dark:ring-offset-slate-950 rounded-[5rem] shadow-bento" 
-                         : "bg-white dark:bg-slate-900 rounded-[5rem] border-4 border-slate-200 dark:border-slate-800 shadow-2xl"
+                         : "bg-white dark:bg-slate-900 rounded-[5rem] border-4 border-slate-200 dark:border-slate-800 shadow-2xl",
+                        is3DView && "!bg-[#e2e8f0] dark:!bg-[#0f172a] shadow-[0_100px_100px_-50px_rgba(0,0,0,0.5)] border-0 rounded-none ring-0"
                       )}
                      style={{ 
-                       display: 'grid',
-                       gridTemplateColumns: Array.from({ length: currentConfig.cols }).map((_, i) => 
-                         `${currentConfig.columnGaps.includes(i) ? `70px ${currentConfig.columnGapSize}px` : '70px'}`
+                       display: 'grid', width: '1200px', height: '700px', padding: '60px',
+                       gap: '24px',
+                       placeContent: 'center',
+                       gridTemplateColumns: Array.from({ length: activeConfig.cols }).map((_, i) => 
+                         `${activeConfig.columnGaps.includes(i) ? `80px ${activeConfig.columnGapSize || 40}px` : '80px'}`
                        ).join(' '),
-                       gridTemplateRows: Array.from({ length: currentConfig.rows }).map((_, i) => 
-                         `${currentConfig.rowGapSize ? (currentConfig.rowGaps.includes(i) ? `48px ${currentConfig.rowGapSize}px` : '48px') : (currentConfig.rowGaps.includes(i) ? '48px 32px' : '48px')}`
+                       gridTemplateRows: Array.from({ length: activeConfig.rows }).map((_, i) => 
+                         `${activeConfig.rowGapSize ? (activeConfig.rowGaps.includes(i) ? `56px ${activeConfig.rowGapSize}px` : '56px') : (activeConfig.rowGaps.includes(i) ? '56px 32px' : '56px')}`
                        ).join(' '),
-                       perspective: '1000px',
+                       transformStyle: 'preserve-3d',
+                       ...(is3DView ? {
+                         transform: 'rotateX(55deg) translateZ(-100px) translateY(-50px) scale(0.9)',
+                         backgroundImage: 'linear-gradient(#cbd5e1 2px, transparent 2px), linear-gradient(90deg, #cbd5e1 2px, transparent 2px)',
+                         backgroundSize: '40px 40px',
+                       } : { perspective: '1200px' })
                      }}
-                   >
+                    >
+                      {/* Chalkboard (Only in 3D View) */}
+                      {is3DView && (
+                        <div 
+                           className="absolute -top-[300px] left-1/2 -translate-x-1/2 w-[800px] h-[200px] bg-slate-800 border-[12px] border-[#8b5a2b] shadow-2xl flex items-center justify-center rounded-sm"
+                           style={{ transform: 'translateZ(150px) rotateX(-90deg)', transformOrigin: 'bottom' }}
+                        >
+                           <span className="text-white/80 font-mono text-3xl opacity-50 select-none pointer-events-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>ClassManager Pro</span>
+                        </div>
+                      )}
                     {/* Teacher Desk Injection */}
-                    {currentConfig.teacherDesk && currentConfig.teacherDesk.index !== -1 && (
+                    {activeConfig.teacherDesk && activeConfig.teacherDesk.index !== -1 && (
                       <TeacherDesk 
-                        {...currentConfig.teacherDesk}
-                        colPos={(currentConfig.teacherDesk.index % currentConfig.cols) + 1 + currentConfig.columnGaps.filter(g => g < (currentConfig.teacherDesk.index % currentConfig.cols)).length}
-                        rowPos={Math.floor(currentConfig.teacherDesk.index / currentConfig.cols) + 1 + currentConfig.rowGaps.filter(g => g < Math.floor(currentConfig.teacherDesk.index / currentConfig.cols)).length}
+                        {...activeConfig.teacherDesk}
+                        colPos={(activeConfig.teacherDesk.index % activeConfig.cols) + 1 + activeConfig.columnGaps.filter(g => g < (activeConfig.teacherDesk.index % activeConfig.cols)).length}
+                        rowPos={Math.floor(activeConfig.teacherDesk.index / activeConfig.cols) + 1 + activeConfig.rowGaps.filter(g => g < Math.floor(activeConfig.teacherDesk.index / activeConfig.cols)).length}
                         editMode={editMode}
                         updateCurrentConfig={updateCurrentConfig}
+                        is3DView={is3DView}
                       />
                     )}
 
@@ -3811,60 +6581,77 @@ export default function App() {
                     {editMode === 'structure' && (
                       <>
                          {/* Column Gap Handles */}
-                         {Array.from({ length: currentConfig.cols - 1 }).map((_, i) => {
+                         {Array.from({ length: activeConfig.cols - 1 }).map((_, i) => {
                            const colPos = (i + 1) + currentConfig.columnGaps.filter(g => g <= i).length;
                            const hasGap = currentConfig.columnGaps.includes(i);
+                           const isHovered = hoveredColGap === i;
+                           
                            return (
                              <div 
                                key={`col-gap-${i}`}
+                               onMouseEnter={() => setHoveredColGap(i)}
+                               onMouseLeave={() => setHoveredColGap(null)}
                                style={{ 
                                  gridColumn: hasGap ? colPos + 1 : colPos, 
-                                 gridRow: `1 / span ${currentConfig.rows + (currentConfig.rowGaps?.length || 0)}`,
-                                 width: hasGap ? `${currentConfig.columnGapSize}px` : '16px',
-                                 marginRight: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-8px',
-                                 marginLeft: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-8px',
-                                 justifySelf: 'center'
+                                 gridRow: `1 / span ${activeConfig.rows + (activeConfig.rowGaps?.length || 0) + 1}`,
+                                 width: hasGap ? `${currentConfig.columnGapSize}px` : '20px',
+                                 marginRight: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-10px',
+                                 marginLeft: hasGap ? `-${currentConfig.columnGapSize / 2}px` : '-10px',
+                                 justifySelf: 'center',
+                                 zIndex: isHovered || hasGap ? 40 : 10
                                }}
                                className={cn(
-                                 "h-full relative flex items-center justify-center group",
-                                 hasGap ? "bg-brand-500/5" : "bg-transparent"
+                                 "h-full relative flex items-center justify-center transition-colors duration-300",
+                                 hasGap ? "bg-brand-500/5 shadow-[inset_0_0_10px_rgba(37,99,235,0.05)]" : "hover:bg-brand-50/30"
                                )}
                              >
+                                {(isHovered || hasGap) && (
+                                  <div className={cn(
+                                    "absolute inset-y-0 border-x border-dashed pointer-events-none transition-opacity",
+                                    hasGap ? "border-brand-200/40 w-full" : "border-brand-300/60 w-px",
+                                    isHovered ? "opacity-100" : "opacity-40"
+                                  )} />
+                                )}
+
                                 <div 
                                   onClick={() => updateCurrentConfig((prev: any) => ({
                                     ...prev,
                                     columnGaps: prev.columnGaps.includes(i) ? prev.columnGaps.filter((g: number) => g !== i) : [...prev.columnGaps, i]
                                   }))}
                                   className={cn(
-                                    "w-1 h-full cursor-pointer transition-all rounded-full",
-                                    hasGap ? "bg-brand-400 group-hover:scale-x-[3]" : "bg-slate-200 group-hover:bg-brand-300 group-hover:scale-x-[4]"
+                                    "w-1 h-12 cursor-pointer transition-all rounded-full z-10",
+                                    hasGap ? "bg-brand-500 scale-y-125 shadow-lg" : "bg-slate-300 hover:bg-brand-400 hover:h-20"
                                   )} 
                                 />
                                 
-                                {hasGap && (
+                                {(hasGap || isHovered) && (
                                   <motion.div 
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="absolute top-4 flex flex-col items-center pointer-events-none z-50"
                                   >
-                                    <div className="bg-white shadow-lg border border-brand-100 rounded-full px-2 py-4 flex flex-col items-center gap-1.5 pointer-events-auto">
+                                    <div className={cn(
+                                      "bg-white shadow-xl border rounded-[1.5rem] px-2 py-3 flex flex-col items-center gap-1.5 pointer-events-auto transition-colors",
+                                      hasGap ? "border-brand-200" : "border-slate-200 opacity-60 hover:opacity-100"
+                                    )}>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.min(prev.columnGapSize + 4, 120) })); }}
-                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                        className="p-1 hover:bg-brand-50 text-brand-600 rounded-full transition-colors"
                                       >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-3.5 h-3.5" />
                                       </button>
                                       <div className="flex flex-col items-center -space-y-0.5">
-                                        <Ruler className="w-2.5 h-2.5 text-slate-300" />
-                                        <span className="text-[9px] font-black text-brand-700">{currentConfig.columnGapSize}</span>
+                                        <Ruler className="w-3 h-3 text-slate-300" />
+                                        <span className="text-[10px] font-black text-brand-700">{hasGap ? activeConfig.columnGapSize : (activeConfig.columnGapSize || 40)}px</span>
                                       </div>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Math.max(prev.columnGapSize - 4, 8) })); }}
-                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                        className="p-1 hover:bg-brand-50 text-brand-600 rounded-full transition-colors"
                                       >
-                                        <Minus className="w-3 h-3" />
+                                        <Minus className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
+                                    {!hasGap && <div className="mt-2 text-[8px] font-black text-brand-500 bg-brand-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">לחץ להוספת מרווח</div>}
                                   </motion.div>
                                 )}
                              </div>
@@ -3872,60 +6659,78 @@ export default function App() {
                          })}
 
                          {/* Row Gap Handles */}
-                         {Array.from({ length: currentConfig.rows - 1 }).map((_, i) => {
+                         {Array.from({ length: activeConfig.rows - 1 }).map((_, i) => {
                            const rowPos = (i + 1) + currentConfig.rowGaps.filter(g => g <= i).length;
                            const hasGap = currentConfig.rowGaps.includes(i);
+                           const isHovered = hoveredRowGap === i;
+                           
                            return (
                              <div 
                                key={`row-gap-${i}`}
+                               onMouseEnter={() => setHoveredRowGap(i)}
+                               onMouseLeave={() => setHoveredRowGap(null)}
                                style={{ 
                                  gridRow: hasGap ? rowPos + 1 : rowPos, 
-                                 gridColumn: `1 / span ${currentConfig.cols + (currentConfig.columnGaps?.length || 0)}`,
-                                 height: hasGap ? `${currentConfig.rowGapSize}px` : '16px',
-                                 marginTop: hasGap ? `-${currentConfig.rowGapSize / 2}px` : '-8px',
-                                 marginBottom: hasGap ? `-${currentConfig.rowGapSize / 2}px` : '-8px',
-                                 alignSelf: 'center'
+                                 gridColumn: `1 / span ${activeConfig.cols + (activeConfig.columnGaps?.length || 0) + 1}`,
+                                 height: hasGap ? `${currentConfig.rowGapSize || 32}px` : '20px',
+                                 marginTop: hasGap ? `-${(currentConfig.rowGapSize || 32) / 2}px` : '-10px',
+                                 marginBottom: hasGap ? `-${(currentConfig.rowGapSize || 32) / 2}px` : '-10px',
+                                 alignSelf: 'center',
+                                 zIndex: isHovered || hasGap ? 40 : 10
                                }}
                                className={cn(
-                                 "w-full relative flex items-center justify-center group",
-                                 hasGap ? "bg-brand-500/5" : "bg-transparent"
+                                 "w-full relative flex items-center justify-center transition-colors duration-300",
+                                 hasGap ? "bg-amber-500/5 shadow-[inset_0_0_10px_rgba(245,158,11,0.05)]" : "hover:bg-amber-50/30"
                                )}
                              >
+                                {/* Horizontal Dashed Line Indicator */}
+                                {(isHovered || hasGap) && (
+                                  <div className={cn(
+                                    "absolute inset-x-0 border-y border-dashed pointer-events-none transition-opacity",
+                                    hasGap ? "border-amber-200/40 h-full" : "border-amber-300/60 h-px",
+                                    isHovered ? "opacity-100" : "opacity-40"
+                                  )} />
+                                )}
+
                                 <div 
                                   onClick={() => updateCurrentConfig((prev: any) => ({
                                     ...prev,
                                     rowGaps: prev.rowGaps.includes(i) ? prev.rowGaps.filter((g: number) => g !== i) : [...prev.rowGaps, i]
                                   }))}
                                   className={cn(
-                                    "h-1 w-full cursor-pointer transition-all rounded-full",
-                                    hasGap ? "bg-brand-400 group-hover:scale-y-[3]" : "bg-slate-200 group-hover:bg-brand-300 group-hover:scale-y-[4]"
+                                    "h-1 w-12 cursor-pointer transition-all rounded-full z-10",
+                                    hasGap ? "bg-amber-500 scale-x-125 shadow-lg" : "bg-slate-300 hover:bg-amber-400 hover:w-20"
                                   )} 
                                 />
 
-                                {hasGap && (
+                                {(hasGap || isHovered) && (
                                   <motion.div 
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="absolute left-4 flex items-center pointer-events-none z-50"
                                   >
-                                    <div className="bg-white shadow-lg border border-brand-100 rounded-full px-4 py-2 flex items-center gap-1.5 pointer-events-auto">
+                                    <div className={cn(
+                                      "bg-white shadow-xl border rounded-[1.5rem] px-3 py-2 flex items-center gap-2 pointer-events-auto transition-colors",
+                                      hasGap ? "border-amber-200" : "border-slate-200 opacity-60 hover:opacity-100"
+                                    )}>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.max((prev.rowGapSize || 32) - 4, 8) })); }}
-                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                        className="p-1 hover:bg-amber-50 text-amber-600 rounded-full transition-colors"
                                       >
-                                        <Minus className="w-3 h-3" />
+                                        <Minus className="w-3.5 h-3.5" />
                                       </button>
                                       <div className="flex items-center gap-1.5">
-                                        <Ruler className="w-2.5 h-2.5 text-slate-300" />
-                                        <span className="text-[9px] font-black text-brand-700">{currentConfig.rowGapSize || 32}</span>
+                                        <Ruler className="w-3 h-3 text-slate-300" />
+                                        <span className="text-[10px] font-black text-amber-700">{hasGap ? (activeConfig.rowGapSize || 32) : 32}px</span>
                                       </div>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, rowGapSize: Math.min((prev.rowGapSize || 32) + 4, 120) })); }}
-                                        className="p-1 hover:bg-slate-50 text-brand-600 rounded-full"
+                                        className="p-1 hover:bg-amber-50 text-amber-600 rounded-full transition-colors"
                                       >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
+                                    {!hasGap && <div className="mr-2 text-[8px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">לחץ להוספת מרווח</div>}
                                   </motion.div>
                                 )}
                              </div>
@@ -3934,16 +6739,16 @@ export default function App() {
                       </>
                     )}
 
-                    {Array.from({ length: currentConfig.rows }).map((_, r) => (
-                      Array.from({ length: currentConfig.cols }).map((_, c) => {
-                        const idx = r * currentConfig.cols + c;
-                        const studentId = currentConfig.grid[idx];
-                        const student = currentConfig.students.find(s => s.id === studentId);
-                        const isHidden = currentConfig.hiddenDesks.includes(idx);
+                    {Array.from({ length: activeConfig.rows }).map((_, r) => (
+                      Array.from({ length: activeConfig.cols }).map((_, c) => {
+                        const idx = r * activeConfig.cols + c;
+                        const studentId = activeConfig.grid[idx];
+                        const student = activeConfig.students.find(s => s.id === studentId);
+                        const isHidden = activeConfig.hiddenDesks.includes(idx);
                         
                         // Calculate grid position accounting for gaps
-                        const colPos = c + 1 + currentConfig.columnGaps.filter(g => g < c).length;
-                        const rowPos = r + 1 + currentConfig.rowGaps.filter(g => g < r).length;
+                        const colPos = c + 1 + activeConfig.columnGaps.filter(g => g < c).length;
+                        const rowPos = r + 1 + activeConfig.rowGaps.filter(g => g < r).length;
 
                         return (
                           <DeskCell
@@ -3960,7 +6765,7 @@ export default function App() {
                             selectedStudentId={selectedStudentId}
                             onDrop={handleDrop}
                             updateCurrentConfig={updateCurrentConfig}
-                            currentConfig={currentConfig}
+                            currentConfig={activeConfig}
                             is3DView={is3DView}
                             activeDeskIdx={activeDeskIdx}
                             onShowHistory={(i: number) => {
@@ -3973,6 +6778,8 @@ export default function App() {
                                 setViewType('studentDetail');
                               }
                             }}
+                            setNewStudent={setNewStudent}
+                            setIsAddStudentOpen={setIsAddStudentOpen}
                             setNotifications={setNotifications}
                             conflicts={conflicts}
                           />
@@ -4095,14 +6902,14 @@ export default function App() {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                           {currentConfig.students
+                           {activeConfig.students
                              .slice()
                              .sort((a: any, b: any) => a.name.localeCompare(b.name, 'he'))
                              .map((s: any, idx: number) => {
-                               const deskIdx = currentConfig.grid.indexOf(s.id);
-                               const sRow = deskIdx !== -1 ? Math.floor(deskIdx / currentConfig.cols) + 1 : null;
-                               const sCol = deskIdx !== -1 ? (deskIdx % currentConfig.cols) + 1 : null;
-                               const group = s.groups && s.groups.length > 0 ? currentConfig.groups.find((g: any) => g.id === s.groups[0]) : null;
+                               const deskIdx = activeConfig.grid.indexOf(s.id);
+                               const sRow = deskIdx !== -1 ? Math.floor(deskIdx / activeConfig.cols) + 1 : null;
+                               const sCol = deskIdx !== -1 ? (deskIdx % activeConfig.cols) + 1 : null;
+                               const group = s.groups && s.groups.length > 0 ? activeConfig.groups.find((g: any) => g.id === s.groups[0]) : null;
 
                                return (
                                  <div key={s.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
@@ -4153,11 +6960,156 @@ export default function App() {
         )}
       </AnimatePresence>
       
+      <AnimatePresence>
+        {showHelpModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-md"
+            onClick={() => setShowHelpModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-[3rem] shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800"
+            >
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-brand-50 dark:bg-brand-900/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <HelpCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">מדריך למשתמש - ClassFlow v3</h2>
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">כל מה שצריך לדעת כדי לנהל את הכיתה בצורה חכמה</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-3 hover:bg-white dark:hover:bg-slate-800 rounded-2xl transition-all text-slate-400 hover:text-slate-600 shadow-sm"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar" dir="rtl">
+                {/* Section 1: Dashboard */}
+                <section>
+                  <h3 className="text-xl font-black text-brand-600 dark:text-brand-400 mb-6 flex items-center gap-3">
+                    <Layout className="w-6 h-6" /> 1. ניהול סביבת העבודה (Dashboard)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-right">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mb-2 underline underline-offset-4 decoration-brand-200">סידור הכיתה:</p>
+                      <ul className="list-disc list-inside space-y-2 pr-2">
+                        <li>גררו תלמידים מהרשימה הימנית אל הגריד המרכזי.</li>
+                        <li>לשינוי מקום: פשוט גררו תלמיד קיים למשבצת חדשה.</li>
+                        <li>המערכת שומרת את מיקומי התלמידים בכל תצורה.</li>
+                      </ul>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mb-2 underline underline-offset-4 decoration-brand-200">תצורות (Configurations):</p>
+                      <ul className="list-disc list-inside space-y-2 pr-2">
+                        <li>צרו תצורות שונות (למשל: "מבחן", "עבודה בקבוצות").</li>
+                        <li>השתמשו בלחצן ה-AI (המטה הקסום) לסידור אוטומטי חכם.</li>
+                        <li>ניתן לעבור למצב "אימון" כדי לנסות סידורים בלי לשנות את הכיתה החיה.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 2: Student Detail */}
+                <section>
+                  <h3 className="text-xl font-black text-amber-600 dark:text-amber-400 mb-6 flex items-center gap-3">
+                    <User className="w-6 h-6" /> 2. תיק תלמיד דיגיטלי
+                  </h3>
+                  <div className="space-y-4 text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-right">
+                    <p>בלחיצה על תלמיד נפתח מסך הפרטים המלא, המכיל:</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.02]">
+                        <FileText className="w-5 h-5 text-amber-500 mb-2" />
+                        <p className="font-black text-slate-800 dark:text-slate-200 text-sm">הערות פדגוגיות:</p>
+                        <p className="text-xs leading-relaxed mt-1">תיעוד חופשי עם חותמת זמן "עודכן לאחרונה", תגיות לסינון ושליטה על גובה תיבת הטקסט.</p>
+                      </div>
+                      <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.02]">
+                        <FolderOpen className="w-5 h-5 text-brand-500 mb-2" />
+                        <p className="font-black text-slate-800 dark:text-slate-200 text-sm">מרכז מסמכים:</p>
+                        <p className="text-xs leading-relaxed mt-1">העלאה ושמירה של אבחונים, מכתבים רפואיים ותעודות שנשמרים בענן עבור כל תלמיד.</p>
+                      </div>
+                      <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.02]">
+                        <Brain className="w-5 h-5 text-purple-500 mb-2" />
+                        <p className="font-black text-slate-800 dark:text-slate-200 text-sm">המלצות AI:</p>
+                        <p className="text-xs leading-relaxed mt-1">שימוש ב-Gemini AI לניתוח ביצועי התלמיד והפקת טיפים פדגוגיים ישימים.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 3: Professional Tools */}
+                <section>
+                  <h3 className="text-xl font-black text-purple-600 dark:text-purple-400 mb-6 flex items-center gap-3">
+                    <Zap className="w-6 h-6" /> 3. כלים מקצועיים נוספים
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-600 dark:text-slate-400 text-right">
+                    <div className="flex gap-4 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <BarChart3 className="w-8 h-8 text-rose-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-black text-slate-800 dark:text-white">ניתוח נתונים (Analytics)</p>
+                        <p className="text-sm font-medium leading-relaxed">מעקב אחר מגמות כיתתיות, רמות מעורבות ושביעות רצון באמצעות גרפים אינטראקטיביים.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <Download className="w-8 h-8 text-emerald-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-black text-slate-800 dark:text-white">ייצוא והדפסה</p>
+                        <p className="text-sm font-medium leading-relaxed">ייצוא סידורי כיתה ל-PDF מעוצב להדפסה, או שמירת נתונים כקובץ JSON לגיבוי.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="p-8 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem] border border-brand-100 dark:border-brand-800/50 text-center shadow-inner">
+                  <p className="text-brand-800 dark:text-brand-200 font-bold mb-3 italic">"הכלי הזה נבנה כדי להוריד ממך את העומס הבירוקרטי ולתת לך מקום לפדגוגיה אמיתית."</p>
+                  <p className="text-brand-600 dark:text-brand-400 text-sm font-black uppercase tracking-widest">— צוות ClassFlow Israel</p>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+                <button 
+                  onClick={() => setShowHelpModal(false)}
+                  className="px-12 py-4 bg-brand-600 text-white rounded-[2rem] font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 transition-all hover:scale-105 active:scale-95"
+                >
+                  הבנתי, בואו נתחיל!
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Notifications & Overlays */}
+      {isIssuesPanelOpen && (
+        <IssuesPanelModal
+          conflicts={conflicts}
+          students={activeConfig.students}
+          updateCurrentConfig={updateCurrentConfig}
+          onClose={() => setIsIssuesPanelOpen(false)}
+        />
+      )}
+      {isGroupsPanelOpen && (
+        <GroupsPanelModal
+          groups={activeConfig.groups}
+          updateCurrentConfig={updateCurrentConfig}
+          setNotifications={setNotifications}
+          onClose={() => setIsGroupsPanelOpen(false)}
+        />
+      )}
       {isBulkUpdateOpen && (
         <BulkUpdateModal 
-          students={currentConfig.students}
-          groups={currentConfig.groups}
+          students={activeConfig.students}
+          groups={activeConfig.groups}
           onClose={() => setIsBulkUpdateOpen(false)}
           onUpdate={(updates: any[]) => {
             updateCurrentConfig((prev: any) => ({
@@ -4169,7 +7121,8 @@ export default function App() {
       )}
 
       {/* Floating Notifications */}
-      <div className="fixed bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
+      <FloatingAIAssistant onCommand={handleAICommand} />
+      <div className="fixed bottom-[80px] lg:bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
         <AnimatePresence>
           {notifications.map((n) => (
             <motion.div
@@ -4194,12 +7147,44 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <footer className="h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
+      {/* Mobile Bottom Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-2 py-3 z-[100] pb-[calc(12px+env(safe-area-inset-bottom))]">
+        {([
+          { id: 'dashboard', icon: <PieChartIcon className="w-5 h-5" />, label: 'ראשי' },
+          { id: 'attendance', icon: <Calendar className="w-5 h-5" />, label: 'נוכחות' },
+          { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
+          { id: 'progress', icon: <LineChart className="w-5 h-5" />, label: 'התקדמות' },
+          { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
+          { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'כיתה' }
+        ] as const).map(nav => (
+          <button
+            key={nav.id}
+            onClick={() => {
+              setViewType(nav.id);
+              setIsSidebarOpen(false);
+            }}
+            className={cn(
+              "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative flex-1",
+              viewType === nav.id 
+                ? "text-brand-600 dark:text-brand-400" 
+                : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            )}
+          >
+            {nav.icon}
+            <span className="text-[10px] font-black">{nav.label}</span>
+            {viewType === nav.id && (
+              <motion.div layoutId="mobile-nav-active" className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-1 bg-brand-600 rounded-b-lg" />
+            )}
+          </button>
+        ))}
+      </nav>
+
+      <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
         <div>ClassManager Pro v3.0 // Ready</div>
         <div className="flex gap-4">
-          <span>{currentConfig.students.length} תלמידים</span>
+          <span>{activeConfig.students.length} תלמידים</span>
           <span>•</span>
-          <span>{currentConfig.grid.filter(id => id).length} משובצים</span>
+          <span>{activeConfig.grid.filter(id => id).length} משובצים</span>
         </div>
       </footer>
     </div>

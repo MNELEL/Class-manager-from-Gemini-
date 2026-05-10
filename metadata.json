@@ -1,6 +1,6 @@
 {
   "name": "ClassManager Pro",
-  "description": "מערכת ניהול הושבה חכמה ופדגוגית לכיתה עם בינה מלאכותית",
+  "description": "מערכת פדגוגית חכמה הכוללת ניהול תלמידים מקיף, נוכחות, ציונים, אבחונים וסידור ישיבה מבוסס AI",
   "requestFramePermissions": [],
   "majorCapabilities": ["AI-powered sorting", "Excel import/export", "PWA support"]
 }
