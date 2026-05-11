@@ -75,6 +75,7 @@ import {
   Lightbulb,
   LineChart,
   Lock,
+  LockOpen,
   Maximize2,
   Menu,
   Minus,
@@ -97,6 +98,7 @@ import {
   Share2,
   Shield,
   ShieldAlert,
+  Sliders,
   Smartphone,
   Smile,
   Sparkles,
@@ -444,7 +446,7 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 
 // --- Helper Components ---
 
-const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView }: any) => {
+const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView, isLocked = false }: any) => {
   return (
     <motion.div
       layoutId="teacher-desk"
@@ -458,33 +460,67 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
           transformStyle: 'preserve-3d',
         } : {})
       }}
-      draggable={editMode === 'structure'}
+      draggable={editMode === 'structure' && !isLocked}
       onDragStart={(e) => {
-        if (editMode === 'structure') {
+        if (editMode === 'structure' && !isLocked) {
           e.dataTransfer.setData('type', 'teacher-desk');
           e.dataTransfer.setData('index', index.toString());
         }
       }}
       className={cn(
-        "bg-brand-700 text-white rounded-3xl border-b-[12px] border-brand-900 shadow-2xl flex flex-col items-center justify-center gap-2 z-40 transition-all",
-        editMode === 'structure' ? "ring-4 ring-amber-400 cursor-move" : "cursor-default"
+        "bg-brand-700 text-white rounded-3xl border-b-[12px] border-brand-900 shadow-2xl flex flex-col items-center justify-center gap-2 z-40 transition-all relative group",
+        editMode === 'structure' ? (isLocked ? "ring-2 ring-slate-400 cursor-not-allowed" : "ring-4 ring-amber-400 cursor-move") : "cursor-default"
       )}
     >
-      <div className="w-12 h-1 bg-white/20 rounded-full" />
+      <div className="w-12 h-1 bg-white/20 rounded-full mb-1" />
       <div className="flex items-center gap-3">
         <School className="w-8 h-8 text-brand-200" />
-        <span className="text-xl font-black uppercase tracking-widest">שולחן מורה</span>
+        <span className="text-xl font-black uppercase tracking-widest leading-none">שולחן מורה</span>
       </div>
+      
       {editMode === 'structure' && (
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: -1 } }));
-          }}
-          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-rose-600 rounded-full flex items-center justify-center shadow-lg border border-slate-100 hover:bg-rose-600 hover:text-white transition-all scale-75 hover:scale-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="absolute inset-x-0 bottom-2 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+          <div className="flex gap-2">
+            <div className="flex bg-white/20 rounded-lg p-1 gap-1 shadow-sm backdrop-blur-sm">
+              <span className="text-[10px] font-black mr-1 text-white/80 uppercase pt-0.5">רוחב</span>
+              <button onClick={() => width > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width - 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">-</button>
+              <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width + 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">+</button>
+            </div>
+            <div className="flex bg-white/20 rounded-lg p-1 gap-1 shadow-sm backdrop-blur-sm">
+              <span className="text-[10px] font-black mr-1 text-white/80 uppercase pt-0.5">גובה</span>
+              <button onClick={() => height > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height - 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">-</button>
+              <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height + 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">+</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editMode === 'structure' && (
+        <>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, isLocked: !isLocked } }));
+            }}
+            className={cn(
+              "absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg border transition-all hover:scale-110",
+              isLocked ? "bg-amber-500 text-white border-amber-600 z-50" : "bg-white text-slate-400 border-slate-200 hover:bg-amber-50"
+            )}
+          >
+            {isLocked ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
+          </button>
+
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isLocked) return;
+              updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: -1 } }));
+            }}
+            className={cn("absolute -top-3 -right-3 w-8 h-8 bg-white text-rose-600 rounded-full flex items-center justify-center shadow-lg border border-slate-100 transition-all", isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-rose-600 hover:text-white scale-75 hover:scale-100")}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </>
       )}
     </motion.div>
   );
@@ -532,6 +568,17 @@ const DeskCell = ({
 
   const isSelected = studentId && selectedStudentId === studentId;
   
+  const selectedStudentObj = selectedStudentId ? currentConfig.students.find((s: any) => s.id === selectedStudentId) : null;
+  const isFriendOfSelected = studentId && selectedStudentObj?.preferred?.includes(studentId);
+  const isAvoidedBySelected = studentId && selectedStudentObj?.forbidden?.includes(studentId);
+  const hasCommonGroup = studentId && selectedStudentObj?.groups && student?.groups && selectedStudentObj.groups.some((g: string) => student.groups.includes(g));
+
+  const relationalClass = !isSelected && selectedStudentId && studentId ? (
+    isFriendOfSelected ? "ring-4 ring-emerald-300 border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-lg z-40" :
+    isAvoidedBySelected ? "ring-4 ring-rose-300 border-rose-400 bg-rose-50 dark:bg-rose-900/20 shadow-lg z-40" :
+    hasCommonGroup ? "ring-4 ring-indigo-300 border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 shadow-lg z-30" : ""
+  ) : "";
+
   // Find conflicts for this specific desk
   const deskConflicts = conflicts.filter((c: any) => c.deskIdx1 === idx || c.deskIdx2 === idx);
   const hasConflict = deskConflicts.length > 0;
@@ -653,9 +700,10 @@ const DeskCell = ({
         isPrinting ? "bg-white border-slate-100" : (
           isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 opacity-80" :
           isHidden ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
-          !student ? "bg-slate-50/30 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950"
+          !student ? "bg-slate-50/30 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
         ),
         compatibilityClass,
+        relationalClass,
         (isSelected && !isPrinting) && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
         (hasConflict && !isPrinting) && "ring-4 ring-rose-400/30 border-rose-200 dark:border-rose-900",
         (editMode === 'structure' && !isHidden && !isObstruction && !isPrinting) && "cursor-move hover:ring-2 hover:ring-amber-300"
@@ -724,6 +772,15 @@ const DeskCell = ({
             if (setDraggedStudentId) setDraggedStudentId(null);
           }}
         >
+           {/* Relational Highlight Badges */}
+           {(relationalClass && !isPrinting) && (
+              <div className="absolute top-1 right-1 flex gap-1 z-50">
+                {isFriendOfSelected && <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-600 shadow-md"><Heart className="w-3 h-3 fill-emerald-600" /></div>}
+                {isAvoidedBySelected && <div className="p-1.5 bg-rose-100 rounded-full text-rose-600 shadow-md"><X className="w-3 h-3" /></div>}
+                {(!isFriendOfSelected && !isAvoidedBySelected && hasCommonGroup) && <div className="p-1.5 bg-indigo-100 rounded-full text-indigo-600 shadow-md"><Users className="w-3 h-3" /></div>}
+              </div>
+           )}
+
            {/* Chair Backrest Icon */}
            <div className="w-10 h-7 bg-slate-200 dark:bg-slate-700 rounded-t-lg -mb-2 z-0 border border-slate-300 dark:border-slate-600 shadow-inner flex items-center justify-center">
              <div className="w-5 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
@@ -737,25 +794,40 @@ const DeskCell = ({
              <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
              
              {/* Indicators for constraints */}
-             <div className="flex gap-1.5 mt-2">
-               {student.height === 'short' && (
-                 <div title="ראייה/קדמי" className="p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800 shadow-sm">
+             <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5">
+               {(student.height === 'short' || student.frontPrefer || student.isAlwaysFront || student.preferredRow === 'front') && (
+                 <div title="מעדיף שורות ראשונות / גובה נמוך" className="p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800 shadow-sm shrink-0">
                    <Eye className="w-3.5 h-3.5 text-amber-600" />
                  </div>
                )}
-               {student.preferred?.length > 0 && (
-                 <div title="חברים" className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800 shadow-sm">
-                   <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+               {(student.cornerPrefer) && (
+                 <div title="מעדיף מושב בפינה" className="p-1.5 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-100 dark:border-sky-800 shadow-sm shrink-0">
+                   <Maximize2 className="w-3.5 h-3.5 text-sky-600" />
                  </div>
                )}
-               {student.forbidden?.length > 0 && (
-                 <div title="הפרדות" className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                   <Ban className="w-3.5 h-3.5 text-slate-600" />
+               {(student.preferred && student.preferred.length > 0) && (
+                 <div title={`מעדיף לשבת ליד: ${student.preferred.length} חברים`} className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800 shadow-sm shrink-0">
+                   <Heart className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600/10" />
+                 </div>
+               )}
+               {( (student.forbidden && student.forbidden.length > 0) || (student.separateFrom && student.separateFrom.length > 0) ) && (
+                 <div title="יש תלמידים שצריך להתרחק מהם" className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg border border-rose-100 dark:border-rose-800 shadow-sm shrink-0">
+                   <Ban className="w-3.5 h-3.5 text-rose-600" />
+                 </div>
+               )}
+               {(student.backPrefer || student.isAlwaysBack || student.preferredRow === 'back') && (
+                 <div title="מעדיף שורות אחרונות" className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm shrink-0">
+                   <ChevronDown className="w-3.5 h-3.5 text-slate-600" />
                  </div>
                )}
                {(student.groups && student.groups.length > 0) && (
-                 <div title="שייך לקבוצה" className="p-1.5 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-100 dark:border-brand-800 shadow-sm">
+                 <div title="שייך לקבוצה" className="p-1.5 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-100 dark:border-brand-800 shadow-sm shrink-0">
                    <Layers className="w-3.5 h-3.5 text-brand-600" />
+                 </div>
+               )}
+               {student.notes && student.notes.length > 0 && (
+                 <div title="קיימות הערות מורה" className="p-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 shadow-sm shrink-0">
+                   <FileText className="w-3.5 h-3.5 text-indigo-600" />
                  </div>
                )}
              </div>
@@ -1739,7 +1811,140 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent, aiWeights }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void, aiWeights: any }) => {
+const StudentQuickPrefsModal = ({ 
+  studentId, 
+  currentConfig, 
+  updateCurrentConfig, 
+  onClose,
+  isDarkMode 
+}: { 
+  studentId: string, 
+  currentConfig: any, 
+  updateCurrentConfig: any, 
+  onClose: () => void,
+  isDarkMode?: boolean
+}) => {
+  const student = currentConfig.students.find((s: any) => s.id === studentId);
+  const [localStudent, setLocalStudent] = useState<any>(student ? { ...student } : null);
+
+  if (!student) return null;
+
+  const toggleArrayItem = (field: string, val: string) => {
+    setLocalStudent((prev: any) => {
+      const arr = prev[field] || [];
+      return {
+        ...prev,
+        [field]: arr.includes(val) ? arr.filter((x: string) => x !== val) : [...arr, val]
+      };
+    });
+  };
+
+  const handleSave = () => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => s.id === studentId ? localStudent : s)
+    }));
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl border-2 border-slate-100 dark:border-slate-800"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-2xl bg-brand-100 dark:bg-brand-900/30 text-brand-600 flex items-center justify-center font-black text-xl">
+               {student.name[0]}
+             </div>
+             <div>
+                <h2 className="text-xl font-black text-slate-800 dark:text-white leading-tight">העדפות מהירות</h2>
+                <p className="text-slate-500 font-medium text-sm">{student.name} • התאמת רקע פיזי וחברתי</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
+           <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700 dark:text-slate-300 flex items-center gap-2"><Heart className="w-4 h-4 text-emerald-500"/> תלמידים מועדפים (לשבת ליד)</label>
+              <div className="flex flex-wrap gap-2">
+                {currentConfig.students.filter((s:any) => s.id !== student.id).map((s:any) => {
+                  const isSelected = localStudent.preferred?.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => toggleArrayItem('preferred', s.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-sm font-bold transition-all border",
+                        isSelected 
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400" 
+                          : "bg-white border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 dark:bg-slate-900 dark:border-slate-700"
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+           </div>
+
+           <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700 dark:text-slate-300 flex items-center gap-2"><X className="w-4 h-4 text-rose-500"/> תלמידים להרחקה (לא קרוב)</label>
+              <div className="flex flex-wrap gap-2">
+                {currentConfig.students.filter((s:any) => s.id !== student.id).map((s:any) => {
+                  const isSelected = localStudent.forbidden?.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => toggleArrayItem('forbidden', s.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-sm font-bold transition-all border",
+                        isSelected 
+                          ? "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-400" 
+                          : "bg-white border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600 dark:bg-slate-900 dark:border-slate-700"
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+           </div>
+           
+           <div className="space-y-2">
+             <label className="text-sm font-black text-slate-700 dark:text-slate-300">מיקום מועדף בכתה</label>
+             <select 
+               value={localStudent.height || 'medium'} 
+               onChange={(e) => setLocalStudent((prev: any) => ({ ...prev, height: e.target.value }))}
+               className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-brand-500 text-slate-800 dark:text-white font-medium"
+             >
+               <option value="short">קרוב ללוח / שורה ראשונה (פיזי/קשבי)</option>
+               <option value="medium">אמצע הכיתה (סטנדרטי)</option>
+               <option value="tall">מאחור (גבוה)</option>
+             </select>
+           </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+           <button onClick={onClose} className="px-6 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition-colors">
+             ביטול
+           </button>
+           <button onClick={handleSave} className="px-6 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white shadow-lg font-black transition-all">
+             שמור שינויים
+           </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent, aiWeights, setQuickPrefsStudentId }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void, aiWeights: any, setQuickPrefsStudentId?: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isAddingDiag, setIsAddingDiag] = useState(false);
@@ -1814,8 +2019,40 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-slate-950 transition-colors">
-      {/* Upper Navigation Bar */}
+    <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors">
+      {/* Right Sidebar: All Students List */}
+      <div className="w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 hidden md:flex">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+           <h3 className="font-black text-slate-800 dark:text-white text-lg">כל התלמידים</h3>
+           <p className="text-xs text-slate-500 font-bold tracking-widest uppercase mt-1">{students.length} תלמידים רשומים</p>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
+           {students.slice().sort((a: any, b: any)=>a.name.localeCompare(b.name,'he')).map(s => (
+             <button
+               key={s.id}
+               onClick={() => onSelectStudent(s.id)}
+               className={cn(
+                 "w-full text-right p-3 rounded-2xl flex items-center gap-3 transition-colors group",
+                 s.id === student.id ? "bg-brand-50 dark:bg-brand-900/20 shadow-sm border border-brand-100 dark:border-brand-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent"
+               )}
+             >
+               <div className={cn(
+                 "w-10 h-10 flex items-center justify-center rounded-xl font-black transition-colors shrink-0", 
+                 s.id === student.id ? "bg-brand-600 text-white shadow-md shadow-brand-200 dark:shadow-none" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700"
+               )}>
+                 {s.name[0]}
+               </div>
+               <div className="flex flex-col">
+                 <span className={cn("font-bold text-sm leading-tight", s.id === student.id ? "text-brand-800 dark:text-brand-300" : "text-slate-700 dark:text-slate-300")}>{s.name}</span>
+                 {s.groups && s.groups.length > 0 && <span className="text-[10px] text-slate-400 font-bold mt-0.5">{currentConfig.groups?.find((g:any)=>g.id===s.groups[0])?.name || 'ללא קבוצה'}</span>}
+               </div>
+             </button>
+           ))}
+        </div>
+      </div>
+      
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Upper Navigation Bar */}
       <div className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-10 transition-colors">
         <div className="flex items-center gap-6">
           <button 
@@ -1844,6 +2081,15 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
         </div>
 
         <div className="flex items-center gap-4">
+           {setQuickPrefsStudentId && (
+              <button 
+                onClick={() => setQuickPrefsStudentId(student.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold rounded-2xl hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 dark:border-indigo-800"
+              >
+                <Sliders className="w-5 h-5" />
+                <span className="hidden sm:inline">העדפות זריזות</span>
+              </button>
+           )}
            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
               <button 
                 disabled={!prevStudent}
@@ -2285,6 +2531,82 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                           </div>
                         )}
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                          <div className="space-y-4 p-8 bg-sky-50 dark:bg-sky-900/10 rounded-[3rem] border border-sky-100 dark:border-sky-900/30">
+                            <label className="text-sm font-black text-sky-700 dark:text-sky-300 uppercase tracking-widest block mb-4">רמת עניין ומעורבות</label>
+                            <div className="flex bg-white dark:bg-slate-800 rounded-2xl border border-sky-200 dark:border-sky-800 p-1">
+                               {['low', 'medium', 'high'].map(level => (
+                                 <button 
+                                   key={level}
+                                   onClick={() => updateStudent('interestLevel', level)}
+                                   className={cn(
+                                     "flex-1 py-3 text-sm font-bold rounded-xl transition-all",
+                                     student.interestLevel === level ? "bg-sky-500 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
+                                   )}
+                                 >
+                                    {level === 'low' ? 'נמוכה' : level === 'medium' ? 'בינונית' : 'גבוהה'}
+                                 </button>
+                               ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 p-8 bg-indigo-50 dark:bg-indigo-900/10 rounded-[3rem] border border-indigo-100 dark:border-indigo-900/30">
+                            <label className="text-sm font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-widest block mb-4">צורך בתמיכה לימודית</label>
+                            <div className="flex bg-white dark:bg-slate-800 rounded-2xl border border-indigo-200 dark:border-indigo-800 p-1">
+                               {['none', 'low', 'medium', 'high'].map(level => (
+                                 <button 
+                                   key={level}
+                                   onClick={() => updateStudent('supportNeeded', level)}
+                                   className={cn(
+                                     "flex-1 py-3 text-sm font-bold rounded-xl transition-all",
+                                     student.supportNeeded === level ? "bg-indigo-500 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
+                                   )}
+                                 >
+                                    {level === 'none' ? 'ללא' : level === 'low' ? 'מועטה' : level === 'medium' ? 'בינונית' : 'רבה'}
+                                 </button>
+                               ))}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-4 p-8 bg-rose-50 dark:bg-rose-900/10 rounded-[3rem] border border-rose-100 dark:border-rose-900/30 md:col-span-2">
+                            <label className="text-sm font-black text-rose-700 dark:text-rose-300 uppercase tracking-widest block mb-4">העדפות סביבת לימוד (לפי פסיק או Enter)</label>
+                            <div className="flex items-center flex-wrap gap-2 mb-4">
+                              {(student.environmentPreferences || []).map((pref: string, index: number) => (
+                                <div key={index} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm text-sm font-bold text-slate-700 dark:text-slate-300">
+                                  <span>{pref}</span>
+                                  <button
+                                    onClick={() => {
+                                      const newPrefs = student.environmentPreferences.filter((_: any, i: number) => i !== index);
+                                      updateStudent('environmentPreferences', newPrefs);
+                                    }}
+                                    className="text-slate-400 hover:text-rose-500 transition-colors"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <input 
+                              type="text" 
+                              placeholder="הוסף העדפה (לדוגמה: שקט, תאורה חזקה, קירבה ללוח...)"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ',') {
+                                  e.preventDefault();
+                                  const newPref = e.currentTarget.value.trim();
+                                  if (newPref) {
+                                    const currentPrefs = student.environmentPreferences || [];
+                                    if (!currentPrefs.includes(newPref)) {
+                                      updateStudent('environmentPreferences', [...currentPrefs, newPref]);
+                                    }
+                                    e.currentTarget.value = '';
+                                  }
+                                }
+                              }}
+                              className="w-full bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-medium text-slate-800 dark:text-slate-200 focus:border-rose-300 outline-none transition-all shadow-sm"
+                            />
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-3">
                             <label className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
@@ -2469,13 +2791,17 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                              onClick={() => {
                                const subject = prompt('מקצוע:');
                                if(!subject) return;
+                               const categoryRaw = prompt('קטגוריה (quiz / midterm / final / homework / other):', 'other');
+                               const category = ['quiz', 'midterm', 'final', 'homework', 'other'].includes(categoryRaw || '') ? categoryRaw : 'other';
                                const testName = prompt('שם המבחן/מטלה:');
                                if(!testName) return;
                                const gradeStr = prompt('ציון (0-100):');
                                if(!gradeStr) return;
                                const grade = parseInt(gradeStr, 10);
+                               const dateRaw = prompt('תאריך (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                               const date = dateRaw ? new Date(dateRaw).toISOString() : new Date().toISOString();
                                const grades = student.grades || [];
-                               updateStudent('grades', [{ id: Date.now(), subject, testName, grade, date: new Date().toISOString() }, ...grades]);
+                               updateStudent('grades', [{ id: Date.now(), subject, category, testName, grade, date }, ...grades]);
                              }}
                              className="px-6 py-3 bg-sky-600 text-white rounded-2xl hover:bg-sky-700 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
                            >
@@ -2553,6 +2879,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                                  <div>
                                    <div className="flex items-center gap-2">
                                      <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-black">{g.subject}</span>
+                                     {g.category && <span className="px-2 py-1 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-black uppercase">{g.category}</span>}
                                      <span className="text-xs text-slate-400">{new Date(g.date).toLocaleDateString('he-IL')}</span>
                                    </div>
                                    <p className="font-bold text-slate-800 dark:text-white mt-3 text-lg leading-tight">{g.testName}</p>
@@ -2827,8 +3154,11 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                          onClick={() => {
                            const title = prompt("כותרת המשימה:");
                            if (!title) return;
-                           const dueDate = new Date().toISOString().split('T')[0];
-                           const newTask = { id: Date.now().toString(), title, status: 'pending', dueDate, priority: 'medium' };
+                           let dueDateStr = prompt("תאריך יעד (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+                           if (!dueDateStr) dueDateStr = new Date().toISOString().split('T')[0];
+                           let priorityRaw = prompt("עדיפות (low / medium / high):", "medium");
+                           const priority = ['low', 'medium', 'high'].includes(priorityRaw || '') ? priorityRaw : 'medium';
+                           const newTask = { id: Date.now().toString(), title, status: 'pending', dueDate: dueDateStr, priority };
                            updateStudent('tasks', [...(student.tasks || []), newTask]);
                          }}
                          className="px-5 py-3 bg-brand-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-700 transition-colors"
@@ -2941,20 +3271,31 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                              אין רישומי נוכחות קודמים. סמן נוכחות מעלה כדי להתחיל.
                           </div>
                         ) : (
-                          <div className="space-y-4">
-                            {student.attendanceHistory.slice(0, 5).map((record: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-4 custom-scrollbar">
+                            {student.attendanceHistory.map((record: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm group">
                                 <span className="font-bold text-slate-700 dark:text-slate-300">
                                   {new Date(record.date).toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                 </span>
-                                <span className={cn(
-                                  "px-3 py-1 rounded-xl text-xs font-black",
-                                  record.status === 'present' ? "bg-emerald-100 text-emerald-700" :
-                                  record.status === 'late' ? "bg-amber-100 text-amber-700" :
-                                  "bg-rose-100 text-rose-700"
-                                )}>
-                                  {record.status === 'present' ? 'נוכח' : record.status === 'late' ? 'איחור' : 'חסר'}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                  <span className={cn(
+                                    "px-3 py-1 rounded-xl text-xs font-black",
+                                    record.status === 'present' ? "bg-emerald-100 text-emerald-700" :
+                                    record.status === 'late' ? "bg-amber-100 text-amber-700" :
+                                    "bg-rose-100 text-rose-700"
+                                  )}>
+                                    {record.status === 'present' ? 'נוכח' : record.status === 'late' ? 'איחור' : 'חסר'}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      const newHistory = student.attendanceHistory.filter((_: any, i: number) => i !== idx);
+                                      updateStudent('attendanceHistory', newHistory);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -3221,6 +3562,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
           </AnimatePresence>
         </div>
       </div>
+    </div>
     </div>
   );
 };
@@ -3999,7 +4341,7 @@ const SettingsView = ({
 
   return (
     <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
-      <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .json" onChange={handleFileImport} />
+      <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .csv, .json" onChange={handleFileImport} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button 
@@ -4748,26 +5090,376 @@ const FloatingAIAssistant = ({ onCommand }: { onCommand: (text: string) => Promi
   );
 };
 
-const ToolsView = ({ onBack }: { onBack: () => void }) => {
+const NameWheel = ({ students, isDarkMode }: { students: any[], isDarkMode: boolean }) => {
+  const [spinning, setSpinning] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [lastSelected, setLastSelected] = useState<any>(null);
+
+  const pickRandom = () => {
+    if (spinning) return;
+    if (!students || students.length === 0) return;
+    setSpinning(true);
+    setSelectedStudent(null);
+    
+    let count = 0;
+    const maxCycles = 20;
+    const interval = setInterval(() => {
+      const random = students[Math.floor(Math.random() * students.length)];
+      setLastSelected(random);
+      count++;
+      
+      if (count > maxCycles) {
+        clearInterval(interval);
+        setSpinning(false);
+        setSelectedStudent(random);
+      }
+    }, 100);
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-8 py-10 w-full">
+      <div className="relative w-64 h-64 flex items-center justify-center">
+        <motion.div 
+          animate={spinning ? { rotate: 360 * 5 } : { rotate: 0 }}
+          transition={spinning ? { duration: 2, ease: "easeInOut" } : { duration: 0 }}
+          className="absolute inset-0 rounded-full border-8 border-brand-500 border-t-transparent"
+        />
+        <div className="text-center z-10 px-4">
+          {lastSelected ? (
+            <motion.div
+              key={lastSelected.id}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-2xl font-black text-slate-800 dark:text-white"
+            >
+              {lastSelected.name}
+            </motion.div>
+          ) : (
+            <div className="text-slate-400 font-bold uppercase tracking-widest text-sm">מוכן להגרלה</div>
+          )}
+        </div>
+      </div>
+
+      <button 
+        onClick={pickRandom}
+        disabled={spinning}
+        className="px-12 py-4 bg-brand-600 text-white rounded-[2rem] font-black text-xl shadow-xl hover:bg-brand-700 transition-all active:scale-95 disabled:opacity-50"
+      >
+        {spinning ? 'מגריל...' : 'הגרל תלמיד!'}
+      </button>
+
+      <AnimatePresence>
+        {selectedStudent && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="p-8 bg-emerald-500 text-white rounded-[3rem] text-center shadow-2xl mt-4"
+          >
+            <h3 className="text-sm font-bold uppercase tracking-widest mb-1 opacity-80">הנבחר/ת הוא/היא:</h3>
+            <p className="text-5xl font-black">{selectedStudent.name}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const ClassroomTimer = () => {
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const [initialTime, setInitialTime] = useState(0);
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState('');
+  const [activityMode, setActivityMode] = useState<string>('');
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => time - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+      clearInterval(interval);
+      if (alertsEnabled) {
+        // Play a subtle sound
+        try {
+           const ctx = new window.AudioContext();
+           const osc = ctx.createOscillator();
+           const gainNode = ctx.createGain();
+           osc.connect(gainNode);
+           gainNode.connect(ctx.destination);
+           osc.frequency.value = 523.25; // C5
+           osc.type = "sine";
+           gainNode.gain.setValueAtTime(0, ctx.currentTime);
+           gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
+           gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+           osc.start(ctx.currentTime);
+           osc.stop(ctx.currentTime + 1.5);
+        } catch(e) {
+           console.error("Audio playback failed", e);
+        }
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, alertsEnabled]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startTimer = (mins: number, mode?: string) => {
+    setInitialTime(mins * 60);
+    setTimeLeft(mins * 60);
+    setIsActive(true);
+    if (mode) setActivityMode(mode);
+    setCustomMinutes('');
+  };
+
+  const handleCustomStart = () => {
+    const m = parseInt(customMinutes);
+    if (!isNaN(m) && m > 0) {
+      startTimer(m, 'התאמה אישית');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-10 py-10 w-full">
+      <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full absolute top-8 left-8">
+         <span className="text-sm font-bold text-slate-600 dark:text-slate-300">התראות קוליות</span>
+         <button 
+           onClick={() => setAlertsEnabled(!alertsEnabled)}
+           className={cn("w-12 h-6 rounded-full transition-colors relative shadow-inner", alertsEnabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")}
+         >
+           <div className={cn("w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow", alertsEnabled ? "left-1" : "left-7")} />
+         </button>
+      </div>
+
+      <div className="text-center space-y-4">
+        {activityMode && (
+          <div className="inline-block px-4 py-1.5 bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 rounded-xl font-bold text-sm tracking-wide">
+            {activityMode}
+          </div>
+        )}
+        <div className="text-[8rem] md:text-[12rem] font-black text-slate-800 dark:text-white leading-none tracking-tighter tabular-nums drop-shadow-sm">
+          {formatTime(timeLeft)}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6 w-full max-w-3xl px-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { m: 5, label: 'מעבר פעילות', mode: 'מעבר פעילות' },
+            { m: 15, label: 'זמן מיקוד', mode: 'זמן מיקוד' },
+            { m: 20, label: 'עבודה בקבוצות', mode: 'עבודה בקבוצות' },
+            { m: 45, label: 'שיעור (45)', mode: 'שיעור' },
+          ].map(preset => (
+            <button 
+              key={preset.mode}
+              onClick={() => startTimer(preset.m, preset.mode)}
+              className="px-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 hover:border-brand-500 hover:text-brand-600 active:scale-95 transition-all text-slate-700 dark:text-slate-300 shadow-sm"
+            >
+              <span className="font-bold text-sm">{preset.label}</span>
+              <span className="text-xs text-slate-400">{preset.m} דק׳</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 justify-center w-full max-w-sm mx-auto">
+          <input 
+            type="number"
+            min="1"
+            placeholder="דקות"
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            className="w-24 px-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-center outline-none focus:border-brand-500 text-slate-800 dark:text-white"
+          />
+          <button 
+            onClick={handleCustomStart}
+            disabled={!customMinutes || parseInt(customMinutes) <= 0}
+            className="px-6 py-3 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-2xl font-black transition-all active:scale-95 whitespace-nowrap"
+          >
+            התחל זמן מותאם
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 mt-4">
+        <button 
+          onClick={() => setIsActive(!isActive)}
+          className={cn(
+            "px-10 py-4 rounded-2xl font-black text-xl transition-all shadow-lg active:scale-95",
+            isActive ? "bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200 dark:shadow-none" : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200 dark:shadow-none"
+          )}
+        >
+          {isActive ? 'השהה' : (timeLeft > 0 ? 'המשך' : 'התחל')}
+        </button>
+        <button 
+          onClick={() => { setTimeLeft(0); setIsActive(false); setActivityMode(''); }}
+          className="p-4 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black hover:bg-slate-300 dark:hover:bg-slate-700 transition-all active:scale-95"
+          title="אפס טיימר"
+        >
+          <RotateCcw className="w-6 h-6" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) => {
+  const [newEvent, setNewEvent] = useState('');
+  const events = config.events || [];
+
+  const addEvent = () => {
+    if (!newEvent.trim()) return;
+    const item = {
+      id: Math.random().toString(36).substr(2, 9),
+      text: newEvent,
+      timestamp: new Date().toISOString(),
+      type: 'general'
+    };
+    updateConfig((prev: any) => ({
+      ...prev,
+      events: [item, ...(prev.events || [])]
+    }));
+    setNewEvent('');
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto w-full space-y-8 py-6 px-4">
+      <div className="flex gap-4">
+        <input 
+          type="text"
+          value={newEvent}
+          onChange={(e) => setNewEvent(e.target.value)}
+          placeholder="מה קרה בשיעור? (למשל: שיחת הבהרה, הצלחה מיוחדת, שינוי סידור)"
+          className="flex-1 p-5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl font-bold focus:border-brand-500 outline-none transition-all shadow-sm text-slate-800 dark:text-white"
+          onKeyDown={(e) => e.key === 'Enter' && addEvent()}
+        />
+        <button 
+          onClick={addEvent}
+          className="px-8 bg-brand-600 text-white rounded-3xl font-black shadow-lg hover:bg-brand-700 active:scale-95 transition-all"
+        >
+          הוסף
+        </button>
+      </div>
+
+      <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+        {events.length === 0 ? (
+          <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
+            <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-400 font-bold">אין אירועים רשומים עדיין</p>
+          </div>
+        ) : (
+          events.map((e: any) => (
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              key={e.id} 
+              className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-start gap-5 shadow-sm hover:border-brand-500 transition-colors"
+            >
+              <div className="p-3 bg-brand-50 dark:bg-brand-900/30 rounded-2xl">
+                <Clock className="w-5 h-5 text-brand-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-slate-800 dark:text-white leading-tight underline decoration-brand-500/20 underline-offset-4">{e.text}</p>
+                <div className="flex items-center gap-2 mt-2">
+                   <p className="text-xs font-bold text-slate-400">
+                      {new Date(e.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} • {new Date(e.timestamp).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </p>
+                    <div className="w-1 h-1 rounded-full bg-slate-300" />
+                    <button 
+                      onClick={() => updateConfig((prev: any) => ({ ...prev, events: prev.events.filter((x: any) => x.id !== e.id) }))}
+                      className="text-xs font-black text-rose-500 hover:underline uppercase"
+                    >
+                      מחק
+                    </button>
+                </div>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode }: any) => {
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+
   const tools = [
-    { title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'בקרוב' },
-    { title: 'גלגל שמות למורה', icon: <UserPlus className="w-8 h-8 text-brand-500" />, desc: 'בחירה אקראית של תלמיד לתשובה או משימה', status: 'פעיל' },
-    { title: 'תבניות סידור מוכנות', icon: <LayoutGrid className="w-8 h-8 text-emerald-500" />, desc: 'שמירה וטעינה של תבניות למבנה פיזי (ח, קבוצות, מבחן)', status: 'פעיל' },
-    { title: 'טיימר משימות לכיתה', icon: <Activity className="w-8 h-8 text-amber-500" />, desc: 'שעון עצר מוגדל כולל התראות קוליות למשימות בכתה', status: 'בקרוב' },
-    { title: 'יומן אירועים ונוכחות', icon: <Calendar className="w-8 h-8 text-rose-500" />, desc: 'מעקב היעדרויות, איחורים וחיסורים', status: 'פעיל' },
-    { title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'בקרוב' },
-    { title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'בקרוב' },
-    { title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
-    { title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'בקרוב' },
-    { title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'בקרוב' }
+    { id: 'groups', title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'בקרוב' },
+    { id: 'wheel', title: 'גלגל שמות למורה', icon: <UserPlus className="w-8 h-8 text-brand-500" />, desc: 'בחירה אקראית של תלמיד לתשובה או משימה', status: 'פעיל' },
+    { id: 'templates', title: 'תבניות סידור מוכנות', icon: <LayoutGrid className="w-8 h-8 text-emerald-500" />, desc: 'שמירה וטעינה של תבניות למבנה פיזי (ח, קבוצות, מבחן)', status: 'פעיל' },
+    { id: 'timer', title: 'טיימר משימות לכיתה', icon: <Activity className="w-8 h-8 text-amber-500" />, desc: 'שעון עצר מוגדל כולל התראות קוליות למשימות בכתה', status: 'פעיל' },
+    { id: 'events', title: 'יומן אירועים ונוכחות', icon: <Calendar className="w-8 h-8 text-rose-500" />, desc: 'מעקב היעדרויות, איחורים וחיסורים', status: 'פעיל' },
+    { id: 'stars', title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'בקרוב' },
+    { id: 'birthdays', title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'בקרוב' },
+    { id: 'export', title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
+    { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'בקרוב' },
+    { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'בקרוב' }
   ];
+
+  if (selectedTool) {
+    const tool = tools.find(t => t.id === selectedTool);
+    return (
+      <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => setSelectedTool(null)}
+            className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                {tool?.icon}
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{tool?.title}</h2>
+              <p className="text-slate-500 font-medium">{tool?.desc}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 min-h-[500px] flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+             {React.cloneElement(tool?.icon as React.ReactElement, { className: "w-64 h-64" })}
+          </div>
+          
+          <div className="w-full relative z-10">
+            {selectedTool === 'wheel' && <NameWheel students={students} isDarkMode={isDarkMode} />}
+            {selectedTool === 'timer' && <ClassroomTimer />}
+            {selectedTool === 'events' && <EventLog config={currentConfig} updateConfig={updateCurrentConfig} />}
+            {!['wheel', 'timer', 'events'].includes(selectedTool) && (
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                  <Box className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-800 dark:text-white">כלי זה עדיין בפיתוח</h3>
+                <p className="text-slate-500 font-medium">אנחנו עובדים קשה כדי להביא לכם את הכלים הטובים ביותר לניהול כיתה.</p>
+                <button 
+                  onClick={() => setSelectedTool(null)}
+                  className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:bg-brand-700 transition-all"
+                >
+                  חזור לארגז הכלים
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
       <div className="flex items-center gap-6">
         <button 
           onClick={onBack}
-          className="p-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+          className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
         >
           <ChevronLeft className="w-7 h-7" />
         </button>
@@ -4776,26 +5468,33 @@ const ToolsView = ({ onBack }: { onBack: () => void }) => {
             <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">כלי עזר פדגוגיים</h2>
             <p className="text-slate-500 font-medium">עריכה ופעולות זריזות המסייעות בניהול כיתה יעיל ותקין ברציפות.</p>
           </div>
-          <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">ארגז כלים</Badge>
+          <div className="px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-lg">ארגז כלים</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {tools.map((tool, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-3xl space-y-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer hover:border-brand-500 w-full flex flex-col h-full">
+          <div 
+            key={i} 
+            onClick={() => setSelectedTool(tool.id)}
+            className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-3xl space-y-4 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group cursor-pointer hover:border-brand-500 w-full flex flex-col h-64"
+          >
             <div className="flex items-start justify-between">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 group-hover:scale-110 group-hover:bg-brand-50 transition-all">
                 {tool.icon}
               </div>
               {tool.status === 'בקרוב' ? (
-                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-black rounded-lg">בקרוב</div>
+                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-black rounded-lg uppercase tracking-widest">בקרוב</div>
               ) : (
-                <div className="px-3 py-1 bg-brand-50 dark:bg-brand-900/40 text-brand-600 text-xs font-black rounded-lg border border-brand-100 dark:border-brand-800">פעיל</div>
+                <div className="px-3 py-1 bg-brand-50 dark:bg-brand-900/40 text-brand-600 text-xs font-black rounded-lg border border-brand-100 dark:border-brand-800 uppercase tracking-widest">פעיל</div>
               )}
             </div>
             <div className="pt-2 flex-grow">
-              <h3 className="text-lg font-black text-slate-800 dark:text-white">{tool.title}</h3>
-              <p className="text-sm font-medium text-slate-500 mt-2 leading-relaxed">{tool.desc}</p>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white group-hover:text-brand-600 transition-colors">{tool.title}</h3>
+              <p className="text-sm font-medium text-slate-500 mt-2 leading-relaxed line-clamp-2">{tool.desc}</p>
+            </div>
+            <div className="flex items-center gap-2 text-brand-600 font-black text-xs uppercase opacity-0 group-hover:opacity-100 transition-opacity">
+               פתח כלי <ArrowRight className="w-3 h-3" />
             </div>
           </div>
         ))}
@@ -4809,8 +5508,8 @@ export default function App() {
     id: '1',
     name: 'כיתת מצוינות א׳',
     rows: 6,
-    cols: 8,
-    grid: Array(48).fill(null) as (string | null)[],
+    cols: 9,
+    grid: Array(54).fill(null) as (string | null)[],
     students: [
       { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '' },
       { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '' },
@@ -4847,6 +5546,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [quickPrefsStudentId, setQuickPrefsStudentId] = useState<string | null>(null);
   const [newStudent, setNewStudent] = useState({ name: '', height: 'average' as any });
   const [showHelpModal, setShowHelpModal] = useState(false);
 
@@ -5077,6 +5777,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
   { "action": "addNote", "studentId": "...", "note": "..." },
   { "action": "recordDiagnostic", "studentId": "...", "type": "...", "description": "...", "accommodations": ["..."] },
   { "action": "recordCommunication", "studentId": "...", "type": "phone|email|letter|meeting", "summary": "...", "toParent": true },
+  { "action": "updatePedagogy", "studentId": "...", "interestLevel": "low|medium|high", "supportNeeded": "none|low|medium|high", "environmentPreferences": ["..."] },
   { "action": "showToast", "message": "...", "type": "success|info|error" }
 ]
 אם הפקודה לא מובנת, החזר מערך ריק והוסף showToast עם שגיאה שיאמר למורה שלא הבנת.
@@ -5151,6 +5852,18 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
               acted = true;
             }
           }
+          if (cmd.action === 'updatePedagogy') {
+            const studentIdx = updatedStudents.findIndex(s => String(s.id) === String(cmd.studentId));
+            if (studentIdx !== -1) {
+              updatedStudents[studentIdx] = {
+                ...updatedStudents[studentIdx],
+                interestLevel: cmd.interestLevel || updatedStudents[studentIdx].interestLevel,
+                supportNeeded: cmd.supportNeeded || updatedStudents[studentIdx].supportNeeded,
+                environmentPreferences: cmd.environmentPreferences || updatedStudents[studentIdx].environmentPreferences
+              };
+              acted = true;
+            }
+          }
           if (cmd.action === 'showToast') {
              setNotifications(prevNotif => [{ id: Date.now(), text: cmd.message, type: cmd.type || 'info' }, ...prevNotif]);
              if (cmd.type === 'error') replyMessage = cmd.message;
@@ -5166,10 +5879,9 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
     }
   };
 
-  const runAIShuffle = () => {
+  const runAIShuffle = async () => {
     setIsLoadingAI(true);
     
-    // Convert current config to valid seats list like the Python script
     const rows = activeConfig.rows;
     const cols = activeConfig.cols;
     const validSeats: number[] = [];
@@ -5181,6 +5893,107 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
         }
       }
     }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      
+      const seatsDescription = validSeats.map(idx => {
+        const r = Math.floor(idx / cols);
+        const c = idx % cols;
+        return `SeatIndex: ${idx} (Row: ${r}, Col: ${c})`;
+      }).join(', ');
+
+      const studentsDescription = activeConfig.students.map((s: any) => {
+        const friends = s.preferred?.map((id:string) => activeConfig.students.find((st:any)=>st.id === id)?.name).join(', ') || 'None';
+        const conflicts = s.forbidden?.map((id:string) => activeConfig.students.find((st:any)=>st.id === id)?.name).join(', ') || 'None';
+        const groups = s.groups?.map((id:string) => activeConfig.groups.find((g:any)=>g.id === id)?.name).join(', ') || 'None';
+        
+        // Sentiment analysis on the notes needs to be handled by the AI, so we supply the notes:
+        const notes = s.notes ? `Teacher Notes: "${s.notes}"` : 'No notes';
+        
+        // New pedagogic factors
+        const interest = s.interestLevel ? `Interest: ${s.interestLevel}` : '';
+        const support = s.supportNeeded ? `Support Needed: ${s.supportNeeded}` : '';
+        const envPrefs = s.environmentPreferences?.length ? `Env Prefs: ${s.environmentPreferences.join(', ')}` : '';
+        const gradesAvg = s.grades && s.grades.length > 0 
+          ? `Avg Grade: ${Math.round(s.grades.reduce((a:number, b:any)=>a+b.grade,0) / s.grades.length)}` 
+          : '';
+        
+        return `- ID: ${s.id}, Name: ${s.name}, Height: ${s.height}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}, ${notes}`;
+      }).join('\n');
+
+      const prompt = `You are an expert AI pedagogical advisor and classroom manager. You need to assign an optimal seating arrangement for a classroom.
+There are ${rows} rows and ${cols} columns.
+Available seats:
+${seatsDescription}
+
+Students details (friends, conflicts, groups, and explicit teacher notes):
+${studentsDescription}
+
+Instructions:
+1. Analyze the "Teacher Notes" for each student to infer hidden social dynamics (e.g. "talks too much with X", "needs to be at the front because of sight issues", "shy, needs a friendly neighbor").
+2. Factor in pedagogic attributes: place students with high "Support Needed" near the teacher's desk (if identified) or in accessible areas. Place students with low "Interest" near students with high "Avg Grade" to encourage positive influence. Comply with "Env Prefs" such as needing a quiet area by keeping them away from groups.
+3. Assign each student ID to EXACTLY ONE unique SeatIndex from the available seats.
+4. Keep students with conflicts far away from each other.
+5. Try to seat friends near each other.
+6. Place 'short' students in lower Row numbers (closer to the front).
+7. Return EXACTLY a JSON array of objects with the precise format:
+[
+  { "studentId": "...", "seatIndex": ... }
+]
+Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+      });
+
+      let responseText = response.text || "[]";
+      responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const assignments = JSON.parse(responseText);
+      
+      updateCurrentConfig((prev: any) => {
+        const newGrid = Array(prev.rows * prev.cols).fill(null);
+        let placedCount = 0;
+        
+        assignments.forEach((assignment: any) => {
+          if (assignment.seatIndex !== undefined && assignment.studentId && validSeats.includes(assignment.seatIndex)) {
+             newGrid[assignment.seatIndex] = assignment.studentId;
+             placedCount++;
+          }
+        });
+        
+        // Safety: If AI failed to place someone, place them in empty valid seats
+        if (placedCount < prev.students.length) {
+           const placedIds = assignments.map((a:any) => a.studentId);
+           const unplaced = prev.students.filter((s:any) => !placedIds.includes(s.id));
+           let emptyIdx = 0;
+           unplaced.forEach((s:any) => {
+              while (emptyIdx < prev.rows * prev.cols && (!validSeats.includes(emptyIdx) || newGrid[emptyIdx] !== null)) {
+                emptyIdx++;
+              }
+              if (emptyIdx < prev.rows * prev.cols) {
+                newGrid[emptyIdx] = s.id;
+              }
+           });
+        }
+        
+        return { ...prev, grid: newGrid };
+      });
+      
+      setNotifications(prev => [{ id: Date.now(), text: `ה-AI ניתח סנטימנט בהערות המורה ויצר סידור ישיבה מתקדם במיוחד!`, type: 'success' }, ...prev]);
+    } catch (error) {
+      console.error("AI Gen Error, falling back to simulated annealing", error);
+      // Fallback logic if JSON fails
+      fallbackSimulatedAnnealing(validSeats, rows, cols);
+    } finally {
+      setIsLoadingAI(false);
+      setIsAIPanelOpen(false);
+    }
+  };
+
+  const fallbackSimulatedAnnealing = (validSeats: number[], rows: number, cols: number) => {
 
     const students = [...activeConfig.students];
     const weights = aiWeights;
@@ -5437,12 +6250,21 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
 
     updateCurrentConfig((prev: any) => {
       const newGrid = [...prev.grid];
-      // If student was already on another desk, clear it
       const oldIdx = newGrid.indexOf(draggedStudentId);
-      if (oldIdx !== -1) newGrid[oldIdx] = null;
+      const studentAtTarget = newGrid[deskIdx];
       
-      // Replace whatever is there
-      newGrid[deskIdx] = draggedStudentId;
+      if (oldIdx !== -1) {
+        // Swap between two desks
+        newGrid[oldIdx] = studentAtTarget;
+        newGrid[deskIdx] = draggedStudentId;
+      } else {
+        // From pool
+        if (studentAtTarget) {
+           // We shouldn't overwrite if it's from pool. Let's send the existing back to pool.
+           // Leaving it unhandled automatically sends them back to pool because they are no longer in grid.
+        }
+        newGrid[deskIdx] = draggedStudentId;
+      }
       return { ...prev, grid: newGrid };
     });
     setDraggedStudentId(null);
@@ -5469,9 +6291,21 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
               preferred: (s.preferred || []).map((id: any) => id?.toString()).filter(Boolean),
               forbidden: (s.not_preferred || s.forbidden || []).map((id: any) => id?.toString()).filter(Boolean),
               height: s.height || 'medium',
-              groups: s.groups || []
+              groups: s.groups || [],
+              notes: s.notes || ''
             }));
-            updateCurrentConfig((prev: any) => ({ ...prev, students: [...prev.students, ...mapped] }));
+            
+            updateCurrentConfig((prev: any) => {
+              const groups = [...(prev.groups || [])];
+              mapped.forEach(s => {
+                s.groups.forEach((gName: string) => {
+                  if (!groups.find(g => g.name === gName || g.id === gName)) {
+                    groups.push({ id: gName, name: gName, constraint: 'none' });
+                  }
+                });
+              });
+              return { ...prev, students: [...prev.students, ...mapped], groups };
+            });
           } else if (json.grid && json.students) {
             // Format 2: Full configuration - Replace entirely to avoid conflicts
             updateCurrentConfig({
@@ -5489,12 +6323,24 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
             const mapped = json.students.map((s: any, idx: number) => ({
               id: (s.id || `s-${idx}-${Date.now()}`).toString(),
               name: s.name,
-              preferred: [],
-              forbidden: [],
-              height: 'medium',
-              groups: []
+              preferred: s.preferred || [],
+              forbidden: s.forbidden || [],
+              height: s.height || 'medium',
+              groups: s.groups || [],
+              notes: s.notes || ''
             }));
-            updateCurrentConfig((prev: any) => ({ ...prev, students: [...prev.students, ...mapped] }));
+            
+            updateCurrentConfig((prev: any) => {
+              const groups = [...(prev.groups || [])];
+              mapped.forEach(s => {
+                s.groups.forEach((gName: string) => {
+                  if (!groups.find(g => g.name === gName || g.id === gName)) {
+                    groups.push({ id: gName, name: gName, constraint: 'none' });
+                  }
+                });
+              });
+              return { ...prev, students: [...prev.students, ...mapped], groups };
+            });
           }
         } else {
           // Excel logic
@@ -5504,24 +6350,71 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
           
-          const newStudents = data.slice(1).map((row, idx) => ({
-            id: `imported-${idx}-${Date.now()}`,
-            name: row[0] || 'ללא שם',
-            preferred: row[1] ? row[1].toString().split(',').map((s: string) => s.trim()) : [],
-            forbidden: row[2] ? row[2].toString().split(',').map((s: string) => s.trim()) : [],
-            height: row[3] === 'קצר' || row[3] === 'front' ? 'short' : 'medium',
-            groups: []
-          })).filter(s => s.name !== 'ללא שם');
+          if (data.length <= 1) {
+            setNotifications(prev => [{ id: Date.now(), text: "הקובץ ריק או לא תקין.", type: 'error' }, ...prev]);
+            return;
+          }
+
+          const rawData = data.slice(1);
+          const nameToIdMap = new Map<string, string>();
+          
+          // First pass: Map names to new IDs
+          const studentStubs = rawData.map((row, idx) => {
+            const name = (row[0] || '').toString().trim();
+            if (!name) return null;
+            const id = `imported-${idx}-${Date.now()}`;
+            nameToIdMap.set(name, id);
+            return { row, id, name };
+          }).filter(Boolean) as any[];
+
+          const importedGroups = new Set<string>();
+
+          // Second pass: Create full student objects with resolved references
+          const newStudents = studentStubs.map(({ row, id, name }) => {
+            const preferred = row[1] ? row[1].toString().split(',').map((s: string) => s.trim()).map((s: string) => nameToIdMap.get(s) || s) : [];
+            const forbidden = row[2] ? row[2].toString().split(',').map((s: string) => s.trim()).map((s: string) => nameToIdMap.get(s) || s) : [];
+            const rawGroups = row[4] ? row[4].toString().split(',').map((s: string) => s.trim()) : [];
+            rawGroups.forEach(g => importedGroups.add(g));
+
+            let height = 'medium';
+            const hVal = (row[3] || '').toString().toLowerCase();
+            if (hVal.includes('קצר') || hVal.includes('short') || hVal.includes('קדמי') || hVal.includes('front')) height = 'short';
+            else if (hVal.includes('אחורי') || hVal.includes('back') || hVal.includes('tall') || hVal.includes('גבוה')) height = 'tall';
+
+            return {
+              id,
+              name,
+              preferred,
+              forbidden,
+              height,
+              groups: rawGroups,
+              notes: row[5] || ''
+            };
+          });
 
           if (newStudents.length > 0) {
-            updateCurrentConfig((prev: any) => ({
-              ...prev,
-              students: [...prev.students, ...newStudents]
-            }));
+            updateCurrentConfig((prev: any) => {
+              const existingGroups = prev.groups || [];
+              const nextGroups = [...existingGroups];
+              
+              importedGroups.forEach(gName => {
+                const exists = nextGroups.find((g: any) => g.name === gName || g.id === gName);
+                if (!exists) {
+                  nextGroups.push({ id: gName, name: gName, constraint: 'none' });
+                }
+              });
+
+              return {
+                ...prev,
+                students: [...prev.students, ...newStudents],
+                groups: nextGroups
+              };
+            });
           }
         }
         setNotifications(prev => [{ id: Date.now(), text: `הנתונים יובאו בהצלחה!`, type: 'success' }, ...prev]);
       } catch (err) {
+        console.error("Import error:", err);
         setNotifications(prev => [{ id: Date.now(), text: "שגיאה בטעינת הקובץ.", type: 'error' }, ...prev]);
       }
     };
@@ -5652,7 +6545,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
-      case 'tools': return <ToolsView onBack={onBackToGrid} />;
+      case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} />;
       case 'settings': return (
         <SettingsView 
           onBack={onBackToGrid}
@@ -5686,6 +6579,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
             updateCurrentConfig={updateCurrentConfig}
             onSelectStudent={setSelectedStudentId}
             aiWeights={aiWeights}
+            setQuickPrefsStudentId={setQuickPrefsStudentId}
           />
         ) : null;
       }
@@ -6100,12 +6994,13 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
                       setDraggedStudentId(student.id);
                     }}
                     onDragEnd={() => setDraggedStudentId(null)}
+                    onClick={() => setSelectedStudentId(student.id === selectedStudentId ? null : student.id)}
                     className={cn(
                       "p-4 border-2 rounded-2xl flex items-center justify-between cursor-grab active:cursor-grabbing transition-all group",
                       isDarkMode ? "bg-slate-900" : "bg-white",
                       draggedStudentId === student.id 
                         ? "border-brand-500 shadow-2xl z-50 ring-4 ring-brand-500/20" 
-                        : "border-slate-200 dark:border-slate-800 hover:border-brand-500"
+                        : (selectedStudentId === student.id ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-md" : "border-slate-200 dark:border-slate-800 hover:border-brand-500")
                     )}
                   >
                     <div className="flex items-center gap-4">
@@ -6124,7 +7019,13 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
                       >
                          <Eye className="w-5 h-5" />
                       </button>
-                      <MoreVertical className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                      <button 
+                        onClick={() => setQuickPrefsStudentId && setQuickPrefsStudentId(student.id)}
+                        className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        title="העדפות זריזות"
+                      >
+                        <Sliders className="w-5 h-5" />
+                      </button>
                     </div>
                   </motion.div>
                 ))
@@ -6180,7 +7081,19 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
                        </div>
                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-brand-600">{student.name}</span>
                      </div>
-                     <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-brand-500" />
+                     <div className="flex items-center gap-1">
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setQuickPrefsStudentId && setQuickPrefsStudentId(student.id);
+                         }}
+                         className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100"
+                         title="העדפות זריזות"
+                       >
+                         <Sliders className="w-4 h-4" />
+                       </button>
+                       <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-brand-500" />
+                     </div>
                    </div>
                  ))}
              </div>
@@ -6312,6 +7225,16 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
   return (
     <>
       <AnimatePresence>
+        {quickPrefsStudentId && (
+          <StudentQuickPrefsModal
+            studentId={quickPrefsStudentId}
+            currentConfig={activeConfig}
+            updateCurrentConfig={updateCurrentConfig}
+            onClose={() => setQuickPrefsStudentId(null)}
+            isDarkMode={isDarkMode}
+          />
+        )}
+        
         {onboardingStep !== null && (
           <motion.div 
             initial={{ opacity: 0 }}
@@ -6417,6 +7340,20 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
                      
                      <div className="w-px h-6 bg-slate-200/50 mx-1" />
 
+                     <button
+                        onClick={() => setIs3DView(!is3DView)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2",
+                          is3DView ? "bg-amber-100 text-amber-700 shadow-sm border border-amber-200" : "bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100"
+                        )}
+                        title="תצוגת תלת-ממד"
+                     >
+                        <Box className="w-4 h-4" />
+                        <span>3D</span>
+                     </button>
+                     
+                     <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
                      {/* Group Filter */}
                      <div className="flex items-center gap-2">
                        <Filter className="w-4 h-4 text-slate-400" />
@@ -6519,16 +7456,60 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
                              <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות ClassManager Pro AI</p>
                           </div>
                         )}
-                       {/* Floating Teacher Desk Toggle (Structure Mode Only) */}
-                       {editMode === 'structure' && activeConfig.teacherDesk.index === -1 && (
-                         <button 
-                           onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: 0 } }))}
-                           className="mb-8 px-6 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-xl hover:bg-brand-700 transition-all flex items-center gap-3 animate-bounce"
-                         >
-                           <Plus className="w-5 h-5" />
-                           הוסף שולחן מורה
-                         </button>
-                       )}
+                       {/* Floating UI for Structure Mode */}
+                       {editMode === 'structure' && (
+                          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-6 z-50">
+                             <div className="flex items-center gap-3">
+                               <span className="text-sm font-bold text-slate-600 dark:text-slate-300">שורות</span>
+                               <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                  <button onClick={() => activeConfig.rows > 1 && updateCurrentConfig((prev: any) => ({ ...prev, rows: prev.rows - 1, grid: prev.grid.slice(0, (prev.rows - 1) * prev.cols) }))} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200 font-bold transition-all">-</button>
+                                  <div className="w-10 h-8 flex items-center justify-center font-black text-brand-600 tabular-nums">{activeConfig.rows}</div>
+                                  <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, rows: prev.rows + 1, grid: [...prev.grid, ...Array(prev.cols).fill(null)] }))} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200 font-bold transition-all">+</button>
+                               </div>
+                             </div>
+                             <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                             <div className="flex items-center gap-3">
+                               <span className="text-sm font-bold text-slate-600 dark:text-slate-300">טורים</span>
+                               <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                  <button onClick={() => {
+                                      if (activeConfig.cols > 1) {
+                                          updateCurrentConfig((prev: any) => {
+                                              const newGrid = [];
+                                              const newCols = prev.cols - 1;
+                                              for (let i = 0; i < prev.rows; i++) {
+                                                  newGrid.push(...prev.grid.slice(i * prev.cols, i * prev.cols + newCols));
+                                              }
+                                              return { ...prev, cols: newCols, grid: newGrid };
+                                          });
+                                      }
+                                  }} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200 font-bold transition-all">-</button>
+                                  <div className="w-10 h-8 flex items-center justify-center font-black text-brand-600 tabular-nums">{activeConfig.cols}</div>
+                                  <button onClick={() => {
+                                      updateCurrentConfig((prev: any) => {
+                                          const newGrid = [];
+                                          const newCols = prev.cols + 1;
+                                          for (let i = 0; i < prev.rows; i++) {
+                                              newGrid.push(...prev.grid.slice(i * prev.cols, i * prev.cols + prev.cols), null);
+                                          }
+                                          return { ...prev, cols: newCols, grid: newGrid };
+                                      });
+                                  }} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded shadow-sm text-slate-700 dark:text-slate-200 font-bold transition-all">+</button>
+                               </div>
+                             </div>
+                             {activeConfig.teacherDesk.index === -1 && (
+                                <>
+                                   <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                                   <button 
+                                     onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: 0 } }))}
+                                     className="px-4 py-2 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 transition-all flex items-center gap-2 text-sm"
+                                   >
+                                     <Plus className="w-4 h-4" />
+                                     שולחן מורה
+                                   </button>
+                                </>
+                             )}
+                          </div>
+                        )}
 
                     <div 
                       className={cn(

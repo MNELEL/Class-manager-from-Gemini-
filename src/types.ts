@@ -32,6 +32,11 @@ export interface Student {
   pastHistory?: { year: string, teacher: string, summary: string, gradesAvg: number }[];
   tasks?: { id: string, title: string, description: string, dueDate: string, status: 'pending' | 'completed', category: 'homework' | 'project' | 'study' | 'other', priority: 'low' | 'medium' | 'high' }[];
   lessons?: { id: string, name: string, day: string, time: string, room?: string }[];
+  
+  // New fields from prompt
+  interestLevel?: 'low' | 'medium' | 'high'; // רמת עניין
+  supportNeeded?: 'none' | 'low' | 'medium' | 'high'; // צורך בתמיכה לימודית
+  environmentPreferences?: string[]; // העדפות סביבת לימוד
 }
 
 export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock' | 'obstruction';
