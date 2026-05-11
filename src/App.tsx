@@ -83,8 +83,10 @@ import {
   Moon,
   MoreVertical,
   MousePointer,
+  Pause,
   PhoneCall,
   PieChart as PieChartIcon,
+  Play,
   Plus,
   Printer,
   RotateCcw,
@@ -3817,17 +3819,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 glass-card p-10 rounded-[3rem] bg-indigo-50 border-2 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden group shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <h3 className="text-xl font-display font-bold text-indigo-900 dark:text-indigo-100 tracking-tight">לוח יומן עברי</h3>
-          <p className="text-xl font-medium text-indigo-700 dark:text-indigo-300">היום: {new HDate(today).renderGematriya()}</p>
-          {eventsToday.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-              {eventsToday.map((ev, i) => (
-                 <Badge key={i} className="bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100 px-3 py-1.5 text-sm">
-                   {ev}
-                 </Badge>
-              ))}
-            </div>
-          )}
+          <JewishTimeline />
           <div className="mt-4 p-4 bg-white/50 dark:bg-indigo-900/40 rounded-2xl w-full text-center border-2 border-indigo-50/50 dark:border-indigo-800/50 backdrop-blur-sm">
              <p className="text-indigo-600 dark:text-indigo-400 font-bold opacity-80">מועדים, שבתות וחגים יסונכרנו למערכת השעות והנוכחות שלך באופן אוטומטי.</p>
           </div>
@@ -5405,7 +5397,7 @@ const ClassroomTimer = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [initialTime, setInitialTime] = useState(0);
-  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [customMinutes, setCustomMinutes] = useState('');
   const [activityMode, setActivityMode] = useState<string>('');
 
@@ -5419,14 +5411,13 @@ const ClassroomTimer = () => {
       setIsActive(false);
       clearInterval(interval);
       if (alertsEnabled) {
-        // Play a subtle sound
         try {
-           const ctx = new window.AudioContext();
+           const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
            const osc = ctx.createOscillator();
            const gainNode = ctx.createGain();
            osc.connect(gainNode);
            gainNode.connect(ctx.destination);
-           osc.frequency.value = 523.25; // C5
+           osc.frequency.value = 587.33; // D5
            osc.type = "sine";
            gainNode.gain.setValueAtTime(0, ctx.currentTime);
            gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
@@ -5455,94 +5446,520 @@ const ClassroomTimer = () => {
     setCustomMinutes('');
   };
 
-  const handleCustomStart = () => {
-    const m = parseInt(customMinutes);
-    if (!isNaN(m) && m > 0) {
-      startTimer(m, 'התאמה אישית');
-    }
+  const toggleTimer = () => setIsActive(!isActive);
+  const resetTimer = () => {
+    setIsActive(false);
+    setTimeLeft(initialTime);
   };
 
   return (
-    <div className="flex flex-col items-center gap-10 py-10 w-full">
-      <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full absolute top-8 left-8">
-         <span className="text-sm font-bold text-slate-600 dark:text-slate-300">התראות קוליות</span>
+    <div className="flex flex-col items-center gap-10 py-10 w-full relative">
+      <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full absolute top-0 left-0">
+         <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest whitespace-nowrap">צליל סיום</span>
          <button 
            onClick={() => setAlertsEnabled(!alertsEnabled)}
-           className={cn("w-12 h-6 rounded-full transition-colors relative shadow-inner", alertsEnabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")}
+           className={cn("w-10 h-5 rounded-full transition-colors relative shadow-inner", alertsEnabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")}
          >
-           <div className={cn("w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow", alertsEnabled ? "left-1" : "left-7")} />
+           <div className={cn("w-3 h-3 bg-white rounded-full absolute top-1 transition-all shadow", alertsEnabled ? "left-1" : "left-6")} />
          </button>
       </div>
 
       <div className="text-center space-y-4">
         {activityMode && (
-          <div className="inline-block px-4 py-1.5 bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 rounded-xl font-bold text-sm tracking-wide">
+          <div className="inline-block px-5 py-1.5 bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 rounded-full font-display font-bold text-sm tracking-wide border border-brand-100 dark:border-brand-800">
             {activityMode}
           </div>
         )}
-        <div className="text-[8rem] md:text-[12rem] font-black text-slate-800 dark:text-white leading-none tracking-tighter tabular-nums drop-shadow-sm">
+        <div className={cn(
+          "text-[8rem] md:text-[14rem] font-display font-black leading-none tracking-tighter tabular-nums drop-shadow-sm transition-all duration-1000",
+          timeLeft < 60 && timeLeft > 0 ? "text-rose-500 animate-pulse" : "text-slate-800 dark:text-white"
+        )}>
           {formatTime(timeLeft)}
         </div>
-      </div>
-
-      <div className="flex flex-col gap-6 w-full max-w-3xl px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { m: 5, label: 'מעבר פעילות', mode: 'מעבר פעילות' },
-            { m: 15, label: 'זמן מיקוד', mode: 'זמן מיקוד' },
-            { m: 20, label: 'עבודה בקבוצות', mode: 'עבודה בקבוצות' },
-            { m: 45, label: 'שיעור (45)', mode: 'שיעור' },
-          ].map(preset => (
-            <button 
-              key={preset.mode}
-              onClick={() => startTimer(preset.m, preset.mode)}
-              className="px-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 hover:border-brand-500 hover:text-brand-600 active:scale-95 transition-all text-slate-700 dark:text-slate-300 shadow-sm"
-            >
-              <span className="font-bold text-sm">{preset.label}</span>
-              <span className="text-xs text-slate-400">{preset.m} דק׳</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-3 justify-center w-full max-w-sm mx-auto">
-          <input 
-            type="number"
-            min="1"
-            placeholder="דקות"
-            value={customMinutes}
-            onChange={(e) => setCustomMinutes(e.target.value)}
-            className="w-24 px-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-center outline-none focus:border-brand-500 text-slate-800 dark:text-white"
-          />
+        
+        <div className="flex items-center justify-center gap-4">
           <button 
-            onClick={handleCustomStart}
-            disabled={!customMinutes || parseInt(customMinutes) <= 0}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-2xl font-black transition-all active:scale-95 whitespace-nowrap"
+            onClick={toggleTimer}
+            className={cn(
+              "w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90",
+              isActive ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-brand-600 hover:bg-brand-700 text-white"
+            )}
           >
-            התחל זמן מותאם
+            {isActive ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+          </button>
+          <button 
+            onClick={resetTimer}
+            className="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all active:scale-90"
+          >
+            <RotateCcw className="w-6 h-6" />
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-4">
-        <button 
-          onClick={() => setIsActive(!isActive)}
-          className={cn(
-            "px-10 py-4 rounded-2xl font-black text-xl transition-all shadow-lg active:scale-95",
-            isActive ? "bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200 dark:shadow-none" : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200 dark:shadow-none"
-          )}
-        >
-          {isActive ? 'השהה' : (timeLeft > 0 ? 'המשך' : 'התחל')}
-        </button>
-        <button 
-          onClick={() => { setTimeLeft(0); setIsActive(false); setActivityMode(''); }}
-          className="p-4 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black hover:bg-slate-300 dark:hover:bg-slate-700 transition-all active:scale-95"
-          title="אפס טיימר"
-        >
-          <RotateCcw className="w-6 h-6" />
-        </button>
+      <div className="flex flex-col gap-8 w-full max-w-4xl px-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { m: 5, label: 'מעבר פעילות', mode: 'מעבר פעילות', icon: <ArrowRightLeft className="w-5 h-5" /> },
+            { m: 15, label: 'זמן מיקוד', mode: 'זמן מיקוד', icon: <Brain className="w-5 h-5" /> },
+            { m: 20, label: 'עבודה בקבוצות', mode: 'עבודה בקבוצות', icon: <Users className="w-5 h-5" /> },
+            { m: 45, label: 'שיעור מלא', mode: 'שיעור', icon: <BookOpen className="w-5 h-5" /> },
+          ].map(preset => (
+            <button 
+              key={preset.mode}
+              onClick={() => startTimer(preset.m, preset.mode)}
+              className="px-6 py-6 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-3xl flex flex-col items-center justify-center gap-3 hover:border-brand-500 hover:text-brand-600 active:scale-95 transition-all text-slate-700 dark:text-slate-300 shadow-sm relative overflow-hidden group"
+            >
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl group-hover:bg-brand-50 transition-colors">
+                 {preset.icon}
+              </div>
+              <div className="text-center">
+                <span className="font-display font-bold text-sm block">{preset.label}</span>
+                <span className="text-xs text-slate-400">{preset.m} דק׳</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 justify-center w-full max-w-md mx-auto p-2 bg-slate-100 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+          <input 
+            type="number"
+            min="1"
+            max="120"
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            disabled={isActive}
+            className="w-full bg-transparent border-0 px-5 outline-none font-display font-bold text-lg text-right disabled:opacity-50"
+            placeholder="דקות מותאמות..."
+          />
+          <button 
+            onClick={() => {
+              const m = parseInt(customMinutes);
+              if (!isNaN(m) && m > 0) startTimer(m, 'התאמה אישית');
+            }}
+            disabled={isActive || !customMinutes}
+            className="whitespace-nowrap px-6 py-3 bg-slate-800 dark:bg-slate-700 text-white rounded-2xl font-bold hover:bg-slate-900 transition-all disabled:opacity-50"
+          >
+            הפעל
+          </button>
+        </div>
       </div>
     </div>
   );
+};
+
+const GroupGenerator = ({ students }: { students: any[] }) => {
+  const [groupCount, setGroupCount] = useState(4);
+  const [generatedGroups, setGeneratedGroups] = useState<{ id: string, name: string, members: any[] }[]>([]);
+
+  const generate = () => {
+    const shuffled = [...students].sort(() => Math.random() - 0.5);
+    const groups: any[] = Array.from({ length: groupCount }, (_, i) => ({
+      id: `group-${i}`,
+      name: `קבוצה ${i + 1}`,
+      members: []
+    }));
+
+    shuffled.forEach((s, i) => {
+      groups[i % groupCount].members.push(s);
+    });
+
+    setGeneratedGroups(groups);
+  };
+
+  return (
+    <div className="space-y-8 py-4">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+        <div className="space-y-1 text-right">
+          <h4 className="text-xl font-display font-bold text-slate-900 dark:text-white">הגדרות מחולל</h4>
+          <p className="text-slate-500 font-medium">בחר כמה קבוצות תרצה ליצור מתוך {students.length} תלמידים</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+             <button onClick={() => setGroupCount(Math.max(2, groupCount - 1))} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><Minus className="w-5 h-5" /></button>
+             <span className="px-6 font-display font-black text-xl tabular-nums">{groupCount}</span>
+             <button onClick={() => setGroupCount(groupCount + 1)} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><Plus className="w-5 h-5" /></button>
+          </div>
+          <button 
+            onClick={generate}
+            className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all flex items-center gap-2"
+          >
+            <Zap className="w-5 h-5 fill-current" />
+            צור קבוצות
+          </button>
+        </div>
+      </div>
+
+      {generatedGroups.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-right">
+          {generatedGroups.map(group => (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              key={group.id} 
+              className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[2.5rem] p-6 shadow-sm hover:shadow-md transition-all h-full flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4 border-b border-slate-50 dark:border-slate-800 pb-4">
+                <h5 className="font-display font-bold text-lg text-slate-900 dark:text-white">{group.name}</h5>
+                <Badge className="bg-brand-50 text-brand-600 border-none">{group.members.length} תלמידים</Badge>
+              </div>
+              <div className="space-y-2 flex-grow">
+                {group.members.map(s => (
+                  <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">{s.name[0]}</div>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-slate-50 dark:bg-slate-800/30 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+           <Users className="w-16 h-16 mx-auto mb-4 opacity-20" />
+           <p className="text-lg font-medium">לחץ על "צור קבוצות" כדי להתחיל</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const StarsTracker = ({ students, config, updateConfig }: any) => {
+  const handleAddStar = (studentId: string) => {
+    updateConfig((prev: any) => ({
+      ...prev,
+      students: prev.students.map((s: any) => 
+        s.id === studentId ? { ...s, stars: (s.stars || 0) + 1 } : s
+      )
+    }));
+  };
+
+  return (
+    <div className="space-y-8 py-4 text-right">
+      <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/50 p-6 rounded-3xl flex items-center gap-4">
+         <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-2xl text-amber-600">
+            <Star className="w-8 h-8 fill-current" />
+         </div>
+         <div>
+            <h4 className="text-lg font-display font-bold text-amber-900 dark:text-amber-100">מערכת חיזוקים חיוביים</h4>
+            <p className="text-amber-700/70 dark:text-amber-300/50 font-medium">עודדו התנהגות חיובית ועזרו לתלמידים לצבור "כוכבי כיתה" על השקעה ושיתוף פעולה.</p>
+         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {students.map((s: any) => (
+          <div key={s.id} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-[2.5rem] flex flex-col items-center gap-4 hover:shadow-lg transition-all group">
+             <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center font-display font-black text-2xl text-slate-400 group-hover:scale-110 transition-transform">
+                {s.name[0]}
+             </div>
+             <div className="text-center">
+                <h5 className="font-bold text-slate-900 dark:text-white">{s.name}</h5>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                   <Star className="w-4 h-4 text-amber-500 fill-current" />
+                   <span className="font-display font-black text-xl tabular-nums text-amber-600">{s.stars || 0}</span>
+                </div>
+             </div>
+             <button 
+               onClick={() => handleAddStar(s.id)}
+               className="w-full py-3 bg-amber-500 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-none hover:bg-amber-600 transition-all flex items-center justify-center gap-2"
+             >
+               <Plus className="w-4 h-4" />
+               הענק כוכב
+             </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const BirthdayTable = ({ students }: any) => {
+  const months = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+  const today = new Date();
+  
+  const studentsWithBirthdays = students.map((s: any, i: number) => ({
+    ...s,
+    birthday: s.birthday || new Date(2015, (i % 12), (i * 7) % 28 + 1).toISOString().split('T')[0]
+  }));
+
+  const upcomingBirthdays = [...studentsWithBirthdays]
+    .sort((a, b) => {
+      const db_a = new Date(a.birthday);
+      const db_b = new Date(b.birthday);
+      return (db_a.getUTCMonth() - db_b.getUTCMonth()) || (db_a.getUTCDate() - db_b.getUTCDate());
+    });
+
+  return (
+    <div className="space-y-8 py-4 text-right">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {months.map((month, mIdx) => {
+          const monthStudents = upcomingBirthdays.filter(s => new Date(s.birthday).getUTCMonth() === mIdx);
+          const isCurrentMonth = today.getUTCMonth() === mIdx;
+
+          return (
+            <div key={month} className={cn(
+              "bg-white dark:bg-slate-900 border-2 rounded-[2.5rem] p-6 shadow-sm transition-all",
+              isCurrentMonth ? "border-pink-300 ring-4 ring-pink-50 shadow-pink-100" : "border-slate-100 dark:border-slate-800"
+            )}>
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-50 dark:border-slate-800">
+                <h5 className={cn("font-display font-bold text-xl", isCurrentMonth ? "text-pink-600" : "text-slate-800 dark:text-white")}>{month}</h5>
+                {isCurrentMonth && <Badge className="bg-pink-100 text-pink-600 border-none">החודש!</Badge>}
+              </div>
+              <div className="space-y-3">
+                {monthStudents.length > 0 ? monthStudents.map(s => {
+                  const bDate = new Date(s.birthday);
+                  return (
+                    <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                       <div className="flex items-center gap-3">
+                          <Cake className={cn("w-4 h-4", isCurrentMonth ? "text-pink-500" : "text-slate-400")} />
+                          <span className="font-bold text-slate-700 dark:text-slate-300">{s.name}</span>
+                       </div>
+                       <span className="text-xs font-black text-slate-400 tabular-nums">{bDate.getUTCDate()} לחודש</span>
+                    </div>
+                  );
+                }) : (
+                  <div className="py-8 text-center text-slate-300 text-xs font-medium italic">אין ימי הולדת החודש</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const MeetingPlanner = ({ students }: any) => {
+  const [segments, setSegments] = useState<any[]>([
+    { id: '1', startTime: '16:00', endTime: '16:15', studentId: null },
+    { id: '2', startTime: '16:15', endTime: '16:30', studentId: null },
+    { id: '3', startTime: '16:30', endTime: '16:45', studentId: null },
+    { id: '4', startTime: '16:45', endTime: '17:00', studentId: null },
+    { id: '5', startTime: '17:00', endTime: '17:15', studentId: null },
+    { id: '6', startTime: '17:15', endTime: '17:30', studentId: null },
+  ]);
+
+  const assign = (id: string, sId: string) => {
+    setSegments(prev => prev.map(seg => seg.id === id ? { ...seg, studentId: sId } : seg));
+  };
+
+  return (
+    <div className="space-y-8 py-4 text-right">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex-1 space-y-6">
+          <div className="flex items-center justify-between">
+             <h4 className="text-xl font-display font-bold text-slate-900 dark:text-white">לו"ז אסיפות הורים</h4>
+             <button className="px-4 py-2 bg-brand-50 text-brand-600 rounded-xl text-sm font-bold border border-brand-100 hover:bg-brand-100 transition-colors">הוסף משבצת זמן</button>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {segments.map(seg => (
+              <div key={seg.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-[2rem] flex items-center justify-between shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-6">
+                  <div className="w-32 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-center font-display font-black text-slate-700 dark:text-slate-300 tabular-nums">
+                    {seg.startTime} - {seg.endTime}
+                  </div>
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
+                  {seg.studentId ? (
+                    <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 bg-brand-50 text-brand-600 rounded-lg flex items-center justify-center font-bold">{students.find((s:any)=>s.id===seg.studentId)?.name[0]}</div>
+                       <span className="font-bold text-slate-900 dark:text-white">{students.find((s:any)=>s.id===seg.studentId)?.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">ממתין לשיבוץ...</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                   <select 
+                     onChange={(e) => assign(seg.id, e.target.value)}
+                     className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none ring-2 ring-slate-100 dark:ring-slate-800"
+                     value={seg.studentId || ''}
+                   >
+                     <option value="">בחר תלמיד/ה</option>
+                     {students.map((s: any) => (
+                       <option key={s.id} value={s.id}>{s.name}</option>
+                     ))}
+                   </select>
+                   <button onClick={() => setSegments(prev => prev.filter(p => p.id !== seg.id))} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full md:w-80 space-y-6">
+           <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-6 rounded-[2.5rem] space-y-4">
+              <h5 className="font-display font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                 <Info className="w-5 h-5" />
+                 טיפ למורה
+              </h5>
+              <p className="text-sm text-blue-800/70 dark:text-blue-300 font-medium leading-relaxed">תכננו הפסקות של 5 דקות בין שיחה לשיחה כדי לאפשר לעצמכם זמן ריענון וסיכום רשמים מהפגישה.</p>
+           </div>
+           <div className="glass-card p-6 rounded-[2.5rem] space-y-4">
+              <h5 className="font-display font-bold text-slate-800 dark:text-white">סיכום סטטוס</h5>
+              <div className="space-y-3">
+                 <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">משובצים:</span>
+                    <span className="font-black tabular-nums">{segments.filter(s => s.studentId).length} / {segments.length}</span>
+                 </div>
+                 <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-brand-500 transition-all duration-1000" 
+                      style={{ width: `${(segments.filter(s => s.studentId).length / segments.length) * 100}%` }} 
+                    />
+                 </div>
+              </div>
+              <button className="w-full py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-brand-100 transition-all flex items-center justify-center gap-2">
+                 <Share2 className="w-4 h-4" />
+                 שתף עם הורים
+              </button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AIAppGenerator = ({ students }: any) => {
+  const [prompt, setPrompt] = useState('');
+  const [result, setResult] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generate = async () => {
+    if (!prompt) return;
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const fullPrompt = `You are a pedagogical assistant for a teacher.
+      The teacher wants: ${prompt}
+      The class has ${students.length} students: ${students.map((s:any)=>s.name).join(', ')}.
+      Generate a professional classroom task or material in Hebrew. Use markdown formatting if needed.`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: fullPrompt
+      });
+      setResult(response.text || "לא התקבל תוכן.");
+    } catch (error) {
+      console.error("AI Generation failed", error);
+      setResult("מצטערים, אך אירעה שגיאה בייצור התוכן. אנא בדקו את חיבור האינטרנט או נסו שנית מאוחר יותר.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8 py-4 text-right">
+      <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/50 p-10 rounded-[3rem] space-y-8">
+        <div className="space-y-2">
+           <h4 className="text-2xl font-display font-bold text-violet-900 dark:text-violet-100">מחולל משימות AI חכם</h4>
+           <p className="text-violet-700/70 dark:text-violet-300/50 font-medium">הזינו הנחיה וקבלו מערך שיעור, מטלה או מבחן מותאם אישית לכיתה שלכם.</p>
+        </div>
+
+        <div className="relative">
+          <textarea 
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full bg-white dark:bg-slate-900 border-2 border-violet-100 dark:border-violet-800 rounded-[2.5rem] p-8 min-h-[150px] outline-none focus:border-violet-500 font-bold transition-all text-right resize-none shadow-sm"
+            placeholder="מה תרצו ליצור היום? (למשל: מערך שיעור על מערכת השמש הכולל 3 רמות קושי)"
+          />
+          <button 
+            onClick={generate}
+            disabled={isGenerating || !prompt}
+            className="absolute bottom-6 left-6 px-8 py-4 bg-violet-600 text-white rounded-2xl font-bold shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center gap-2"
+          >
+            {isGenerating ? <Activity className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+            {isGenerating ? 'מעבד...' : 'ייצר עכשיו'}
+          </button>
+        </div>
+      </div>
+
+      {result && (
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-10 rounded-[3.5rem] shadow-xl space-y-6"
+        >
+          <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-6">
+             <h5 className="text-xl font-display font-bold text-slate-800 dark:text-white">תוצר ה-AI שלך</h5>
+             <button 
+               onClick={() => {
+                 navigator.clipboard.writeText(result);
+                 alert("התוכן הועתק ללוח!");
+               }}
+               className="flex items-center gap-2 text-brand-600 font-bold hover:scale-105 transition-transform"
+             >
+                <ClipboardList className="w-5 h-5" />
+                העתק תוצאה
+             </button>
+          </div>
+          <div className="prose prose-slate dark:prose-invert max-w-none text-right font-medium leading-relaxed whitespace-pre-wrap">
+             {result}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+const JewishTimeline = () => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    const events = useMemo(() => {
+        const hDates = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startOfWeek);
+            d.setDate(startOfWeek.getDate() + i);
+            const hd = new HDate(d);
+            const holidays = hd.getHolidays();
+            hDates.push({
+                date: d,
+                hDate: hd,
+                holidays: holidays || []
+            });
+        }
+        return hDates;
+    }, [startOfWeek]);
+
+    return (
+        <div className="w-full space-y-4 text-right">
+            <h4 className="text-sm font-display font-bold text-indigo-900 dark:text-indigo-100 uppercase tracking-widest flex items-center gap-2 justify-end">
+                <CalendarDays className="w-4 h-4" />
+                אירועים בלוח השבוע
+            </h4>
+            <div className="grid grid-cols-7 gap-2">
+                {events.map((e, i) => {
+                    const isToday = e.date.toDateString() === today.toDateString();
+                    return (
+                        <div key={i} className={cn(
+                            "flex flex-col items-center p-2 rounded-xl border transition-all",
+                            isToday ? "bg-indigo-600 text-white border-indigo-700 shadow-md scale-105" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+                        )}>
+                            <span className="text-[10px] font-black uppercase opacity-60 mb-1">
+                                {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'][i]}
+                            </span>
+                            <span className="text-sm font-black tabular-nums">{e.date.getDate()}</span>
+                            <span className="text-[10px] font-bold mt-1 text-center leading-tight">
+                                {e.hDate.renderGematriya().split(' ').slice(0, 1)}
+                            </span>
+                            {e.holidays.length > 0 && (
+                                <div className="mt-1 flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" title={e.holidays[0].render('he')} />
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            {events.some(e => e.holidays.length > 0) && (
+                <div className="flex flex-wrap gap-2 justify-end">
+                    {events.flatMap(e => e.holidays).filter((v, i, a) => a.findIndex(t => t.render('he') === v.render('he')) === i).map((h, i) => (
+                        <Badge key={i} className="bg-amber-50 text-amber-700 border-amber-100 text-[10px] font-bold">{h.render('he')}</Badge>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 };
 
 const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) => {
@@ -5626,17 +6043,30 @@ const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) 
 const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode }: any) => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
+  const handleExport = (config: any, filename: string) => {
+    const data = config.students.map((s: any) => ({
+      'שם': s.name,
+      'קבוצה': s.groupId,
+      'ציונים': s.grades?.map((g: any) => `${g.subject}: ${g.value}`).join(', '),
+      'הערות': s.notes || ''
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "תלמידים");
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+  };
+
   const tools = [
-    { id: 'groups', title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'בקרוב' },
+    { id: 'groups', title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'פעיל' },
     { id: 'wheel', title: 'גלגל שמות למורה', icon: <UserPlus className="w-8 h-8 text-brand-500" />, desc: 'בחירה אקראית של תלמיד לתשובה או משימה', status: 'פעיל' },
     { id: 'templates', title: 'תבניות סידור מוכנות', icon: <LayoutGrid className="w-8 h-8 text-emerald-500" />, desc: 'שמירה וטעינה של תבניות למבנה פיזי (ח, קבוצות, מבחן)', status: 'פעיל' },
     { id: 'timer', title: 'טיימר משימות לכיתה', icon: <Activity className="w-8 h-8 text-amber-500" />, desc: 'שעון עצר מוגדל כולל התראות קוליות למשימות בכתה', status: 'פעיל' },
     { id: 'events', title: 'יומן אירועים ונוכחות', icon: <Calendar className="w-8 h-8 text-rose-500" />, desc: 'מעקב היעדרויות, איחורים וחיסורים', status: 'פעיל' },
-    { id: 'stars', title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'בקרוב' },
-    { id: 'birthdays', title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'בקרוב' },
+    { id: 'stars', title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'פעיל' },
+    { id: 'birthdays', title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'פעיל' },
     { id: 'export', title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
-    { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'בקרוב' },
-    { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'בקרוב' }
+    { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
+    { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' }
   ];
 
   if (selectedTool) {
@@ -5655,13 +6085,13 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
                 {tool?.icon}
             </div>
             <div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{tool?.title}</h2>
+              <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white tracking-tight">{tool?.title}</h2>
               <p className="text-slate-500 font-medium">{tool?.desc}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 min-h-[500px] flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 min-h-[600px] flex flex-col items-center shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
              {React.cloneElement(tool?.icon as React.ReactElement, { className: "w-64 h-64" })}
           </div>
@@ -5670,19 +6100,44 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
             {selectedTool === 'wheel' && <NameWheel students={students} isDarkMode={isDarkMode} />}
             {selectedTool === 'timer' && <ClassroomTimer />}
             {selectedTool === 'events' && <EventLog config={currentConfig} updateConfig={updateCurrentConfig} />}
-            {!['wheel', 'timer', 'events'].includes(selectedTool) && (
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                  <Box className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-800 dark:text-white">כלי זה עדיין בפיתוח</h3>
-                <p className="text-slate-500 font-medium">אנחנו עובדים קשה כדי להביא לכם את הכלים הטובים ביותר לניהול כיתה.</p>
-                <button 
-                  onClick={() => setSelectedTool(null)}
-                  className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:bg-brand-700 transition-all"
-                >
-                  חזור לארגז הכלים
-                </button>
+            {selectedTool === 'groups' && <GroupGenerator students={students} />}
+            {selectedTool === 'stars' && <StarsTracker students={students} config={currentConfig} updateConfig={updateCurrentConfig} />}
+            {selectedTool === 'birthdays' && <BirthdayTable students={students} />}
+            {selectedTool === 'meetings' && <MeetingPlanner students={students} />}
+            {selectedTool === 'ai' && <AIAppGenerator students={students} />}
+            {selectedTool === 'templates' && (
+              <div className="text-center space-y-8 py-10">
+                 <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-600">
+                    <LayoutGrid className="w-10 h-10" />
+                 </div>
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">תבניות סידור מוכנות</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">כלי זה משתמש ב-Presets מובנים למבנה פיזי של הכיתה. הוא זמין דרך פאנל עריכת המבנה במסך המפה הראשי (לחצו על מקצוע המצפן).</p>
+                 </div>
+                 <button 
+                   onClick={onBack}
+                   className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:bg-brand-700 transition-all"
+                 >
+                   עבור למפה
+                 </button>
+              </div>
+            )}
+            {selectedTool === 'export' && (
+              <div className="text-center space-y-8 py-10">
+                 <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-600">
+                    <FileDown className="w-10 h-10" />
+                 </div>
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">ייצוא נתונים מלא</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">הורד את כל נתוני הכיתה, התלמידים, הציונים והנוכחות בקובץ Excel מסודר.</p>
+                 </div>
+                 <button 
+                   onClick={() => handleExport(currentConfig, 'ClassData_Full')}
+                   className="px-10 py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-700 transition-all flex items-center gap-2 mx-auto"
+                 >
+                   <Download className="w-5 h-5" />
+                   הורד קובץ Excel כעת
+                 </button>
               </div>
             )}
           </div>
@@ -6240,8 +6695,9 @@ Instructions:
       });
       
       setNotifications(prev => [{ id: Date.now(), text: `ה-AI ניתח סנטימנט בהערות המורה ויצר סידור ישיבה מתקדם במיוחד!`, type: 'success' }, ...prev]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Gen Error, falling back to simulated annealing", error);
+      setNotifications(prev => [{ id: Date.now(), text: `שגיאה ב-AI: ${error.message || "בעיה בתקשורת"}. מפעיל אלגוריתם חלופי...`, type: 'warning' }, ...prev]);
       // Fallback logic if JSON fails
       fallbackSimulatedAnnealing(validSeats, rows, cols);
     } finally {
@@ -6558,7 +7014,16 @@ Instructions:
 
       try {
         if (file.name.endsWith('.json')) {
-          const json = JSON.parse(content.toString());
+          let json;
+          try {
+            json = JSON.parse(content.toString());
+          } catch(e) {
+            throw new Error("קובץ JSON לא תקין. וודא שהפורמט נכון.");
+          }
+          
+          if (!json || typeof json !== 'object') {
+             throw new Error("קובץ JSON ריק או במבנה לא תואם.");
+          }
           
           if (Array.isArray(json)) {
             // Format 3: Array of students with constraints
@@ -6620,9 +7085,15 @@ Instructions:
             });
           }
         } else {
-          // Excel logic
+          // Excel/CSV logic
           const bstr = content;
-          const wb = XLSX.read(bstr as string, { type: 'binary' });
+          let wb;
+          try {
+            wb = XLSX.read(bstr as string, { type: 'binary' });
+          } catch(e) {
+            throw new Error("קריאת קובץ האקסל נכשלה. וודא שהפורמט תקין.");
+          }
+          
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
@@ -6690,9 +7161,9 @@ Instructions:
           }
         }
         setNotifications(prev => [{ id: Date.now(), text: `הנתונים יובאו בהצלחה!`, type: 'success' }, ...prev]);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Import error:", err);
-        setNotifications(prev => [{ id: Date.now(), text: "שגיאה בטעינת הקובץ.", type: 'error' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now(), text: `שגיאה בייבוא: ${err.message || "קובץ לא תקין"}`, type: 'error' }, ...prev]);
       }
     };
     if (file.name.endsWith('.json')) reader.readAsText(file);
@@ -6881,10 +7352,10 @@ Instructions:
       <div className="flex items-center gap-6">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all shadow-sm group"
+          className="p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-800 group"
           title={isSidebarOpen ? "סגור תפריט" : "פתח תפריט"}
         >
-          <Menu className={cn("w-6 h-6 transition-transform", isSidebarOpen && "rotate-90")} />
+          <Menu className={cn("w-5 h-5 transition-transform stroke-[2.5px]", isSidebarOpen && "rotate-90 text-brand-600")} />
         </button>
         
         {/* Global Toolbar Brand */}
@@ -6893,7 +7364,7 @@ Instructions:
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div className="hidden sm:block">
-          <h1 className="text-xl font-display font-bold text-slate-900 dark:text-white leading-none tracking-tight">CLASSFLOW<span className="text-brand-600 font-extrabold ml-1">v3</span></h1>
+            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase">CLASSFLOW<span className="text-brand-600 ml-1">v3</span></h1>
           </div>
         </div>
 
@@ -6905,7 +7376,7 @@ Instructions:
           <input 
             type="text" 
             placeholder="חפש תלמיד, ציון או משימה..." 
-            className="bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-600 dark:text-slate-300 w-full placeholder:text-slate-300"
+            className="bg-transparent border-none focus:ring-0 text-[13px] font-semibold text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -6914,9 +7385,9 @@ Instructions:
       </div>
 
       <div className="flex items-center gap-3 lg:gap-6">
-        <div className="hidden xl:flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-xl text-emerald-700 dark:text-emerald-400">
-           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-           <span className="text-[10px] font-black uppercase tracking-widest" style={{ fontSize: '15px', fontFamily: 'Verdana, sans-serif', lineHeight: '23px' }}>{hebDateString}</span>
+        <div className="hidden xl:flex items-center gap-1.5 px-4 py-1.5 bg-[#eaf8be] border border-emerald-200/50 dark:border-emerald-900/50 rounded-xl text-emerald-800 dark:text-emerald-400">
+           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+           <span className="text-[13px] font-bold tracking-tight">{hebDateString}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -7103,6 +7574,20 @@ Instructions:
       <div className="w-12 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
     )}
     <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
+      {/* Teacher Profile Avatar */}
+      <button 
+        onClick={() => setIsTeacherModalOpen(true)}
+        className="flex items-center gap-4 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-brand-300 transition-all group"
+      >
+        <div className="w-12 h-12 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center text-brand-600 transition-transform group-hover:scale-105">
+          <UserCircle2 className="w-8 h-8" />
+        </div>
+        <div className="flex-1 text-right">
+          <p className="text-sm font-black text-slate-900 dark:text-white truncate">{teacherProfile.name || 'המורה'}</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{teacherProfile.role || 'לחץ להגדרת תפקיד'}</p>
+        </div>
+      </button>
+
       {/* Visual Navigation Menu */}
       <div className="space-y-2">
         <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">ניהול ראשי</h3>
@@ -7713,8 +8198,8 @@ Instructions:
                {viewType === 'grid' ? (
                  <div 
                    className={cn(
-                     "flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top relative overflow-x-hidden",
-                     is3DView ? "perspective-container bg-slate-900/10 dark:bg-black/50" : ""
+                     "flex-1 overflow-auto p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top relative overflow-x-hidden",
+                     is3DView ? "perspective-container bg-slate-900/10 dark:bg-black/50" : "bg-[#a8c6e4]"
                    )}
                    style={is3DView ? { 
                      perspective: '2000px',
