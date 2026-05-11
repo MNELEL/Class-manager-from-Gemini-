@@ -109,6 +109,8 @@ import {
   Trash2,
   TrendingUp,
   User,
+  UserCircle,
+  UserCircle2,
   Upload,
   UserPlus,
   Users,
@@ -223,7 +225,50 @@ function calculateConflicts(config: any) {
           type: 'height',
           studentId1: id1,
           deskIdx1: idx1,
-          message: `${s1.name} (קדמי) יושב רחוק מדי.`
+          message: `${s1.name} נמוך/קדמי יושב רחוק מדי.`
+        });
+      }
+    }
+
+    // 2.1 Row Preference Conflict
+    if (s1.rowPreference && s1.rowPreference !== 'any') {
+      const row = Math.floor(idx1 / cols);
+      const totalRows = Math.ceil(grid.length / cols);
+      
+      let violated = false;
+      let targetName = '';
+      
+      if (s1.rowPreference === 'front' && row >= 2) {
+        violated = true;
+        targetName = 'קדמית';
+      } else if (s1.rowPreference === 'middle' && (row < 1 || row > totalRows - 2)) {
+        violated = true;
+        targetName = 'אמצעית';
+      } else if (s1.rowPreference === 'back' && row < totalRows - 2) {
+        violated = true;
+        targetName = 'אחורית';
+      }
+      
+      if (violated) {
+        conflicts.push({
+          type: 'missing_pref',
+          studentId1: id1,
+          deskIdx1: idx1,
+          message: `${s1.name} מעדיף שורה ${targetName}.`
+        });
+      }
+    }
+
+    // 2.2 Corner Preference Conflict
+    if (s1.cornerPreference) {
+      const col = idx1 % cols;
+      const isCorner = col === 0 || col === cols - 1;
+      if (!isCorner) {
+        conflicts.push({
+          type: 'missing_pref',
+          studentId1: id1,
+          deskIdx1: idx1,
+          message: `${s1.name} מעדיף לשבת בפינה או בקצה.`
         });
       }
     }
@@ -290,7 +335,7 @@ const IssuesPanelModal = ({ conflicts, students, updateCurrentConfig, onClose }:
           {conflicts.length === 0 ? (
             <div className="p-8 text-center bg-brand-50 rounded-3xl">
               <CheckCircle2 className="w-12 h-12 text-brand-500 mx-auto mb-4" />
-              <h3 className="text-lg font-black text-brand-700">אין בעיות בשיבוץ!</h3>
+              <h3 className="text-lg font-bold text-brand-700">אין בעיות בשיבוץ!</h3>
               <p className="text-brand-600 text-sm">נראה שהכיתה מסודרת באופן מושלם.</p>
             </div>
           ) : (
@@ -392,7 +437,7 @@ const BulkUpdateModal = ({ students, groups = [], onUpdate, onClose }: any) => {
                    <Edit3 className="w-7 h-7 text-brand-600" />
                 </div>
                 <div>
-                   <h3 className="text-2xl font-black text-slate-800 dark:text-white">עדכון קבוצתי בטקסט חופשי</h3>
+                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white">עדכון קבוצתי בטקסט חופשי</h3>
                    <p className="text-slate-500 font-bold">פורמט: שם התלמיד, חברים: חבר1; חבר2, להרחיק: חבר3</p>
                 </div>
               </div>
@@ -450,13 +495,13 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
   return (
     <motion.div
       layoutId="teacher-desk"
-      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: -55, rotateY: -2 } : { scale: 1.02 }}
+      whileHover={is3DView ? { scale: 1.02, y: -12, rotateX: -50, rotateY: -1 } : { scale: 1.02 }}
       style={{
         gridColumn: `${colPos} / span ${width}`,
         gridRow: `${rowPos} / span ${height}`,
         ...(is3DView ? {
-          transform: 'translateZ(40px) rotateX(-55deg)',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          transform: 'translateZ(60px) rotateX(-50deg)',
+          boxShadow: '0 30px 60px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.1)',
           transformStyle: 'preserve-3d',
         } : {})
       }}
@@ -468,28 +513,42 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
         }
       }}
       className={cn(
-        "bg-brand-700 text-white rounded-3xl border-b-[12px] border-brand-900 shadow-2xl flex flex-col items-center justify-center gap-2 z-40 transition-all relative group",
-        editMode === 'structure' ? (isLocked ? "ring-2 ring-slate-400 cursor-not-allowed" : "ring-4 ring-amber-400 cursor-move") : "cursor-default"
+        "bg-slate-700 text-white rounded-3xl border-b-[15px] border-slate-900 shadow-2xl flex flex-col items-center justify-center gap-3 z-40 transition-all relative group overflow-hidden",
+        editMode === 'structure' ? (isLocked ? "ring-4 ring-slate-400/50 cursor-not-allowed" : "ring-4 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)] cursor-move") : "cursor-default border-b-[10px]"
       )}
     >
-      <div className="w-12 h-1 bg-white/20 rounded-full mb-1" />
-      <div className="flex items-center gap-3">
-        <School className="w-8 h-8 text-brand-200" />
-        <span className="text-xl font-black uppercase tracking-widest leading-none">שולחן מורה</span>
+      {/* Table Top Details */}
+      <div className="absolute top-0 inset-x-0 h-1 bg-white/5" />
+      
+      {/* Decorative monitor/laptop representation */}
+      <div className="absolute top-4 left-6 w-16 h-10 bg-slate-800 rounded border border-slate-600 flex flex-col items-center justify-center shadow-inner opacity-40 group-hover:opacity-80 transition-opacity">
+        <div className="w-8 h-4 bg-slate-900 rounded-sm mb-1" />
+        <div className="w-4 h-0.5 bg-slate-700 rounded-full" />
+      </div>
+
+      {/* Decorative papers */}
+      <div className="absolute bottom-4 right-8 w-12 h-14 bg-white/10 rounded rotate-12 shadow-sm border border-white/5 opacity-50" />
+      <div className="absolute bottom-6 right-10 w-12 h-14 bg-white/5 rounded -rotate-6 shadow-sm border border-white/5 opacity-40" />
+
+      <div className="flex flex-col items-center gap-2 relative z-10">
+        <div className="p-3 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 shadow-inner">
+          <Monitor className="w-8 h-8 text-slate-300" />
+        </div>
+        <span className="text-lg font-black uppercase tracking-widest leading-none drop-shadow-md">עמדת מורה</span>
       </div>
       
       {editMode === 'structure' && (
-        <div className="absolute inset-x-0 bottom-2 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-          <div className="flex gap-2">
-            <div className="flex bg-white/20 rounded-lg p-1 gap-1 shadow-sm backdrop-blur-sm">
-              <span className="text-[10px] font-black mr-1 text-white/80 uppercase pt-0.5">רוחב</span>
-              <button onClick={() => width > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width - 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">-</button>
-              <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width + 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">+</button>
+        <div className="absolute inset-x-0 bottom-4 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+          <div className="flex gap-2 p-1.5 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl scale-95 hover:scale-100 transition-transform">
+            <div className="flex items-center gap-1.5 border-r border-white/10 pr-2 mr-1">
+              <span className="text-[10px] font-black text-white/60 uppercase">רוחב</span>
+              <button onClick={(e) => { e.stopPropagation(); width > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width - 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">-</button>
+              <button onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width + 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">+</button>
             </div>
-            <div className="flex bg-white/20 rounded-lg p-1 gap-1 shadow-sm backdrop-blur-sm">
-              <span className="text-[10px] font-black mr-1 text-white/80 uppercase pt-0.5">גובה</span>
-              <button onClick={() => height > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height - 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">-</button>
-              <button onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height + 1 } }))} className="px-2 py-0.5 bg-white/10 hover:bg-white text-white hover:text-brand-700 rounded transition-colors text-xs font-black">+</button>
+            <div className="flex items-center gap-1.5 pl-1">
+              <span className="text-[10px] font-black text-white/60 uppercase">גובה</span>
+              <button onClick={(e) => { e.stopPropagation(); height > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height - 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">-</button>
+              <button onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height + 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">+</button>
             </div>
           </div>
         </div>
@@ -503,9 +562,10 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
               updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, isLocked: !isLocked } }));
             }}
             className={cn(
-              "absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg border transition-all hover:scale-110",
-              isLocked ? "bg-amber-500 text-white border-amber-600 z-50" : "bg-white text-slate-400 border-slate-200 hover:bg-amber-50"
+              "absolute -top-3 -left-3 w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-2 transition-all hover:scale-110 active:scale-95",
+              isLocked ? "bg-amber-500 text-white border-amber-400 z-50" : "bg-white text-slate-400 border-slate-200 hover:bg-amber-50"
             )}
+            title={isLocked ? "שחרר נעילה" : "נעל מיקום"}
           >
             {isLocked ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
           </button>
@@ -514,11 +574,14 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
             onClick={(e) => {
               e.stopPropagation();
               if (isLocked) return;
-              updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: -1 } }));
+              if (confirm("האם להסיר את שולחן המורה מהמפה?")) {
+                updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, index: -1 } }));
+              }
             }}
-            className={cn("absolute -top-3 -right-3 w-8 h-8 bg-white text-rose-600 rounded-full flex items-center justify-center shadow-lg border border-slate-100 transition-all", isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-rose-600 hover:text-white scale-75 hover:scale-100")}
+            className={cn("absolute -top-3 -right-3 w-10 h-10 bg-white text-rose-600 rounded-full flex items-center justify-center shadow-xl border-2 border-slate-100 transition-all active:scale-95", isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-rose-600 hover:text-white scale-90 hover:scale-100")}
+            title="הסר שולחן"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </>
       )}
@@ -572,6 +635,10 @@ const DeskCell = ({
   const isFriendOfSelected = studentId && selectedStudentObj?.preferred?.includes(studentId);
   const isAvoidedBySelected = studentId && selectedStudentObj?.forbidden?.includes(studentId);
   const hasCommonGroup = studentId && selectedStudentObj?.groups && student?.groups && selectedStudentObj.groups.some((g: string) => student.groups.includes(g));
+
+  const isFiltered = currentConfig.selectedGroups && currentConfig.selectedGroups.length > 0;
+  const isInFilteredGroup = studentId && student?.groups?.some((gId: string) => currentConfig.selectedGroups.includes(gId));
+  const isDimmed = isFiltered && !isInFilteredGroup;
 
   const relationalClass = !isSelected && selectedStudentId && studentId ? (
     isFriendOfSelected ? "ring-4 ring-emerald-300 border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-lg z-40" :
@@ -656,18 +723,18 @@ const DeskCell = ({
           }
         }
       }}
-      whileHover={is3DView ? { scale: 1.02, y: -8, rotateX: 2, rotateY: -2 } : { scale: 1.05, y: -4 }}
+      whileHover={is3DView ? { scale: 1.05, y: -15, rotateX: 5, rotateY: -2 } : { scale: 1.05, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      animate={isSelected ? { scale: 1.1, y: -10, z: 50, shadow: "0 20px 40px rgba(0,0,0,0.2)" } : { scale: 1, y: 0, z: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      animate={isSelected ? { scale: 1.1, y: -15, z: 60, shadow: "0 30px 60px rgba(0,0,0,0.3)" } : { scale: 1, y: 0, z: 0 }}
+      transition={{ type: "spring", stiffness: 350, damping: 20 }}
       style={{ 
         gridColumn: colPos, 
         gridRow: rowPos,
         ...(is3DView && !isHidden ? {
-          transform: `translateZ(${idx === activeDeskIdx ? '80px' : '40px'}) rotateX(-55deg)`,
+          transform: `translateZ(${idx === activeDeskIdx || isSelected ? '40px' : '0px'}) rotateX(-50deg)`,
           boxShadow: idx === activeDeskIdx || isSelected
-            ? '0 40px 80px rgba(0,0,0,0.3)' 
-            : '0 20px 40px rgba(0,0,0,0.15)',
+            ? '0 40px 70px -10px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.2)' 
+            : '0 15px 25px -5px rgba(0,0,0,0.15)',
           transformStyle: 'preserve-3d',
         } : {})
       }}
@@ -696,14 +763,16 @@ const DeskCell = ({
         }
       }}
       className={cn(
-        "aspect-square rounded-[2rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
+        "aspect-square rounded-[1.5rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
+        is3DView && !isHidden && "border-b-[12px] border-slate-200 dark:border-slate-800",
         isPrinting ? "bg-white border-slate-100" : (
           isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 opacity-80" :
           isHidden ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
-          !student ? "bg-slate-50/30 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
+          !student ? "bg-white/80 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
         ),
         compatibilityClass,
         relationalClass,
+        isDimmed && "opacity-20 grayscale scale-[0.98] blur-[1px]",
         (isSelected && !isPrinting) && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
         (hasConflict && !isPrinting) && "ring-4 ring-rose-400/30 border-rose-200 dark:border-rose-900",
         (editMode === 'structure' && !isHidden && !isObstruction && !isPrinting) && "cursor-move hover:ring-2 hover:ring-amber-300"
@@ -749,10 +818,20 @@ const DeskCell = ({
 
       {/* Desk Surface Visualization */}
       {!isHidden && !isObstruction && (
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-1" />
+        <div className="absolute inset-x-2 top-2 h-0.5 bg-white/20 rounded-full z-10" />
+      )}
+
+      {/* 3D Chair representation */}
+      {is3DView && !isHidden && !isObstruction && (
+        <div 
+          className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-12 h-12 bg-slate-300 dark:bg-slate-800 rounded-lg shadow-lg border-b-8 border-slate-400 dark:border-black flex flex-col items-center"
+          style={{ transform: 'translateZ(-20px) rotateX(10deg)' }}
+        >
+          <div className="w-10 h-8 bg-slate-400/50 dark:bg-slate-700/50 rounded-sm mt-1" />
+        </div>
       )}
       
-      {showDeskNumbers && !isPrinting && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-black text-slate-400">#{idx + 1}</span>}
+      {showDeskNumbers && !isPrinting && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
       
       {student ? (
         <motion.div 
@@ -793,14 +872,65 @@ const DeskCell = ({
            )}>
              <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
              
+             {/* Hover Tooltip - Hidden when printing or in structure mode */}
+             {!isPrinting && editMode !== 'structure' && (
+               <div className="absolute -top-32 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-[100] w-56 hidden group-hover:block">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    whileHover={{ opacity: 1, y: 0, scale: 1 }}
+                    className="bg-slate-900/95 dark:bg-black/95 text-white rounded-2xl p-4 shadow-2xl border border-slate-700/50 text-right backdrop-blur-md"
+                  >
+                    <p className="text-sm font-black border-b border-white/10 pb-2 mb-2 flex items-center justify-between gap-4">
+                      <span>{student.name}</span>
+                      <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">#{idx + 1}</span>
+                    </p>
+                    <div className="space-y-1.5 text-[11px] font-medium text-slate-300">
+                      <p className="flex justify-between">
+                        <span className="text-slate-500">שורה:</span>
+                        <span>{Math.floor(idx / currentConfig.cols) + 1}</span>
+                      </p>
+                      {student.groups && student.groups.length > 0 && (
+                        <p className="flex justify-between">
+                          <span className="text-slate-500">קבוצות:</span>
+                          <span className="truncate max-w-[120px]">{student.groups?.map((gId: string) => currentConfig.groups?.find((g: any) => g.id === gId)?.name).filter(Boolean).join(', ')}</span>
+                        </p>
+                      )}
+                      
+                      <div className="flex gap-2.5 mt-3 pt-3 border-t border-white/10">
+                         {student.preferred?.length > 0 && (
+                           <div className="flex items-center gap-1 group/tooltip">
+                             <Heart className="w-3 h-3 text-emerald-400 fill-emerald-400" />
+                             <span className="text-[9px]">{student.preferred.length}</span>
+                           </div>
+                         )}
+                         {student.forbidden?.length > 0 && (
+                           <div className="flex items-center gap-1">
+                             <Ban className="w-3 h-3 text-rose-400" />
+                             <span className="text-[9px]">{student.forbidden.length}</span>
+                           </div>
+                         )}
+                         {student.separateFrom?.length > 0 && (
+                           <div className="flex items-center gap-1">
+                             <ShieldAlert className="w-3 h-3 text-amber-400" />
+                             <span className="text-[9px]">{student.separateFrom.length}</span>
+                           </div>
+                         )}
+                         {student.height === 'short' && <Eye className="w-3 h-3 text-sky-400" />}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 rotate-45 w-3 h-3 bg-slate-900 dark:bg-black border-r border-b border-slate-700/50" />
+                  </motion.div>
+               </div>
+             )}
+             
              {/* Indicators for constraints */}
              <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5">
-               {(student.height === 'short' || student.frontPrefer || student.isAlwaysFront || student.preferredRow === 'front') && (
+               {(student.height === 'short' || (student as any).rowPreference === 'front') && (
                  <div title="מעדיף שורות ראשונות / גובה נמוך" className="p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800 shadow-sm shrink-0">
                    <Eye className="w-3.5 h-3.5 text-amber-600" />
                  </div>
                )}
-               {(student.cornerPrefer) && (
+               {( (student as any).cornerPreference ) && (
                  <div title="מעדיף מושב בפינה" className="p-1.5 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-100 dark:border-sky-800 shadow-sm shrink-0">
                    <Maximize2 className="w-3.5 h-3.5 text-sky-600" />
                  </div>
@@ -815,7 +945,7 @@ const DeskCell = ({
                    <Ban className="w-3.5 h-3.5 text-rose-600" />
                  </div>
                )}
-               {(student.backPrefer || student.isAlwaysBack || student.preferredRow === 'back') && (
+               {((student as any).rowPreference === 'back') && (
                  <div title="מעדיף שורות אחרונות" className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm shrink-0">
                    <ChevronDown className="w-3.5 h-3.5 text-slate-600" />
                  </div>
@@ -957,7 +1087,7 @@ const ConflictPanel = ({ conflicts, students, onResolve }: any) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-2">
-        <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-rose-500" />
           ניתוח קונפליקטים ({conflicts.length})
         </h3>
@@ -1186,7 +1316,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white">פילוח הישגים לפי מקצוע</h3>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">פילוח הישגים לפי מקצוע</h3>
               <div className="flex gap-2">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 bg-brand-500 rounded-full" />
@@ -1196,7 +1326,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
             </div>
             <div className="h-[300px] w-full">
               {subjectStats.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                   <BarChart data={subjectStats}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
@@ -1294,7 +1424,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
 
       {isAddingGrade && (
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-brand-100 dark:border-brand-900 shadow-xl space-y-6">
-           <h3 className="text-xl font-black text-slate-800 dark:text-white">הוספת ציון חדש</h3>
+           <h3 className="text-xl font-bold text-slate-800 dark:text-white">הוספת ציון חדש</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-500 uppercase">תלמיד</label>
@@ -1506,7 +1636,7 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
 
       {isAddingTask && (
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6">
-           <h3 className="text-xl font-black text-slate-800 dark:text-white">יצירת משימה חדשה</h3>
+           <h3 className="text-xl font-bold text-slate-800 dark:text-white">יצירת משימה חדשה</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-500 uppercase">ליעד (תלמיד)</label>
@@ -1681,7 +1811,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
           </div>
           
           <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={1}>
               <AreaChart data={engagementData}>
                 <defs>
                   <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
@@ -1740,7 +1870,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
           </h3>
           
           <div className="h-[250px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={1}>
               <RechartsPieChart>
                 <Pie
                   data={categoryData}
@@ -2023,7 +2153,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
       {/* Right Sidebar: All Students List */}
       <div className="w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 hidden md:flex">
         <div className="p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
-           <h3 className="font-black text-slate-800 dark:text-white text-lg">כל התלמידים</h3>
+           <h3 className="font-bold text-slate-800 dark:text-white text-lg">כל התלמידים</h3>
            <p className="text-xs text-slate-500 font-bold tracking-widest uppercase mt-1">{students.length} תלמידים רשומים</p>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
@@ -2163,7 +2293,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                   <div className="lg:col-span-2 space-y-8">
                     <div className="glass-card p-10 rounded-[3.5rem] relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                      <h3 className="text-xl font-black text-slate-800 dark:text-white mb-8 flex items-center gap-3">
+                      <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white mb-8 flex items-center gap-3">
                          <Heart className="w-6 h-6 text-brand-600" />
                          העדפות חברתיות (חברים)
                       </h3>
@@ -2228,7 +2358,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
 
                   <div className="space-y-8">
                     <div className="glass-card p-10 rounded-[3.5rem] space-y-8">
-                      <h3 className="text-lg font-black text-slate-800 dark:text-white">שיבוץ ישיבה</h3>
+                      <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white">שיבוץ ישיבה</h3>
                       
                       <div className="space-y-6">
                         <div className="space-y-3">
@@ -2245,9 +2375,47 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                                      : "text-slate-400 hover:text-slate-600"
                                  )}
                                >
-                                 {h === 'short' ? 'קדמי' : h === 'medium' ? 'מרכז' : 'אחורי'}
+                                 {h === 'short' ? 'קדמי (נמוך)' : h === 'medium' ? 'ממוצע' : 'אחורי (גבוה)'}
                                </button>
                              ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">העדפת שורה</label>
+                          <div className="grid grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[2rem]">
+                             {(['front', 'middle', 'back', 'any'] as const).map(rp => (
+                               <button
+                                 key={rp}
+                                 onClick={() => updateStudent('rowPreference', rp)}
+                                 className={cn(
+                                   "py-3 rounded-[1.2rem] text-[10px] font-black transition-all",
+                                   (student.rowPreference || 'any') === rp 
+                                     ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-lg ring-1 ring-slate-200 dark:ring-slate-600" 
+                                     : "text-slate-400 hover:text-slate-600"
+                                 )}
+                               >
+                                 {rp === 'front' ? 'קדמית' : rp === 'middle' ? 'אמצע' : rp === 'back' ? 'אחורית' : 'כלשהי'}
+                               </button>
+                             ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">העדפות מיוחדות</label>
+                          <div className="flex gap-4">
+                            <button
+                              onClick={() => updateStudent('cornerPreference', !student.cornerPreference)}
+                              className={cn(
+                                "flex-1 flex items-center justify-center gap-3 py-4 rounded-3xl text-xs font-black transition-all border-2",
+                                student.cornerPreference
+                                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                                  : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400"
+                              )}
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                              פינה / קצה
+                            </button>
                           </div>
                         </div>
 
@@ -2284,7 +2452,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                     </div>
 
                     <div className="glass-card p-10 rounded-[3.5rem] space-y-8">
-                       <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                       <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white flex items-center gap-3">
                           <Cake className="w-6 h-6 text-brand-600" />
                           ימי הולדת קרובים
                        </h3>
@@ -2338,7 +2506,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                            <Brain className="w-10 h-10 text-indigo-600" />
                         </div>
                         <div>
-                           <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">פרמטרים לאופטימיזציית AI</h3>
+                           <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white leading-tight">פרמטרים לאופטימיזציית AI</h3>
                            <p className="text-lg font-medium text-slate-400 max-w-2xl">כאן תוכלו להגדיר אילוצים ספציפיים לתלמיד זה שישפיעו על האלגוריתם בעת חישוב הסידור האופטימלי.</p>
                         </div>
                       </div>
@@ -2476,7 +2644,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                             <div className="p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-[2.5rem]">
                                <FileText className="w-10 h-10 text-emerald-600" />
                             </div>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">הערות ותיעוד פדגוגי</h3>
+                            <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">הערות ותיעוד פדגוגי</h3>
                          </div>
                          <div className="text-sm font-black text-slate-400 tracking-widest uppercase">מעודכן לאחרונה: היום</div>
                       </div>
@@ -2742,7 +2910,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                            <div className="p-5 bg-sky-50 dark:bg-sky-900/20 rounded-[2.5rem]">
                               <GraduationCap className="w-10 h-10 text-sky-600" />
                            </div>
-                           <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">ציונים והישגים</h3>
+                           <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">ציונים והישגים</h3>
                         </div>
                         <div className="flex gap-2">
                            <button
@@ -3567,7 +3735,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   );
 };
 
-const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode }: any) => {
+const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen }: any) => {
   const today = new Date();
   const options = {
     start: today,
@@ -3597,10 +3765,16 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
       <div className="flex items-center gap-6">
         <div className="flex items-center justify-between flex-1">
           <div className="space-y-1">
-            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">ברוכים הבאים ל-ClassManager Pro</h2>
+            <h2 className="text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tight">ברוכים הבאים ל-ClassManager Pro</h2>
             <p className="text-slate-500 font-medium">המערכת ההוליסטית לניהול פדגוגי והתאמת כיתה.</p>
           </div>
-          <Badge className="bg-brand-600 text-white border-brand-700 px-4 py-2 text-sm shadow-md">פרופיל מנהל/ת כיתה</Badge>
+          <button 
+            onClick={() => setIsTeacherModalOpen(true)}
+            className="bg-brand-600 hover:bg-brand-700 text-white border-brand-700 px-6 py-2.5 rounded-full text-sm font-display font-bold shadow-lg shadow-brand-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group"
+          >
+            <UserCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+            <span className="font-display">פרופיל מורה: {teacherProfile.name}</span>
+          </button>
         </div>
       </div>
       
@@ -3633,8 +3807,8 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
               )}
             </div>
             <div className="relative">
-              <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{card.label}</h3>
-              <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{card.value}</p>
+              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-1.5">{card.label}</h3>
+              <p className="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tighter">{card.value}</p>
             </div>
           </div>
         ))}
@@ -3643,7 +3817,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 glass-card p-10 rounded-[3rem] bg-indigo-50 border-2 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden group shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <h3 className="text-2xl font-black text-indigo-900 dark:text-indigo-100">לוח יומן עברי</h3>
+          <h3 className="text-xl font-display font-bold text-indigo-900 dark:text-indigo-100 tracking-tight">לוח יומן עברי</h3>
           <p className="text-xl font-medium text-indigo-700 dark:text-indigo-300">היום: {new HDate(today).renderGematriya()}</p>
           {eventsToday.length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
@@ -3663,7 +3837,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
           <div className="w-16 h-16 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 rounded-2xl flex items-center justify-center mb-2 transform -rotate-6 group-hover:rotate-0 transition-transform">
             <LayoutGrid className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-black text-slate-900 dark:text-white">בקרת סידור מרחב</h3>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">בקרת סידור מרחב</h3>
           <button onClick={onBack} className="mt-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-md hover:bg-brand-700 hover:-translate-y-1 transition-all">
             מעבר למפה
           </button>
@@ -3672,7 +3846,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 flex flex-col items-center justify-center relative overflow-hidden">
-           <h3 className="text-xl font-black text-slate-800 dark:text-white mb-8 self-start w-full">סטטוס נוכחות כיתתי (היום)</h3>
+           <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white mb-8 self-start w-full tracking-tight">סטטוס נוכחות כיתתי (היום)</h3>
            <div className="relative w-48 h-48 mb-6">
               <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
                  <circle strokeDasharray="100, 100" className="text-emerald-500 stroke-current opacity-20" strokeWidth="4" fill="none" cx="18" cy="18" r="16" />
@@ -3744,7 +3918,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
         </div>
 
         <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={1}>
             <BarChart
               data={Object.entries((students || []).flatMap((s: any) => s.grades || [])
                 .reduce((acc: any, g: any) => {
@@ -4166,7 +4340,11 @@ const SettingsView = ({
   isAddStudentOpen,
   setIsAddStudentOpen,
   newStudent,
-  setNewStudent
+  setNewStudent,
+  teacherProfile,
+  setTeacherProfile,
+  isTeacherModalOpen,
+  setIsTeacherModalOpen
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -4562,6 +4740,65 @@ const SettingsView = ({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Teacher Profile Modal */}
+          {isTeacherModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl w-full max-w-lg space-y-8 border-2 border-brand-100 dark:border-brand-900"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-brand-100 dark:bg-brand-900/30 rounded-3xl flex items-center justify-center text-brand-600">
+                    <UserCircle2 className="w-10 h-10" />
+                  </div>
+                  <div className="text-right">
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">פרופיל אישי</h3>
+                    <p className="text-slate-500 font-bold">ערוך את פרטי המורה ופרטי הכיתה</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest text-right">שם המורה</label>
+                    <input 
+                      type="text" 
+                      value={teacherProfile.name}
+                      onChange={e => setTeacherProfile({...teacherProfile, name: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 outline-none focus:border-brand-500 font-bold transition-all text-right"
+                      placeholder="מה שמך?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest text-right">תפקיד / כיתה</label>
+                    <input 
+                      type="text" 
+                      value={teacherProfile.role}
+                      onChange={e => setTeacherProfile({...teacherProfile, role: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 outline-none focus:border-brand-500 font-bold transition-all text-right"
+                      placeholder="למשל: מחנך כיתה י' 1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => setIsTeacherModalOpen(false)}
+                    className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl shadow-brand-200 hover:bg-brand-700 transition-all transform hover:-translate-y-1 active:translate-y-0"
+                  >
+                    שמור שינויים
+                  </button>
+                  <button 
+                    onClick={() => setIsTeacherModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-bold"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </motion.div>
             </div>
           )}
 
@@ -5548,6 +5785,30 @@ export default function App() {
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [quickPrefsStudentId, setQuickPrefsStudentId] = useState<string | null>(null);
   const [newStudent, setNewStudent] = useState({ name: '', height: 'average' as any });
+  const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddHeight, setQuickAddHeight] = useState('medium');
+  const [quickAddGroups, setQuickAddGroups] = useState<string[]>([]);
+
+  const handleQuickAddStudent = () => {
+    if (!quickAddName.trim()) return;
+    const id = `student-${Date.now()}`;
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: [...prev.students, {
+        id,
+        name: quickAddName.trim(),
+        height: quickAddHeight,
+        groups: quickAddGroups,
+        preferred: [],
+        forbidden: [],
+        notes: ''
+      }]
+    }));
+    setQuickAddName('');
+    setQuickAddGroups([]);
+    setNotifications(prev => [{ id: Date.now(), text: `התלמיד ${quickAddName} נוסף בהצלחה!`, type: 'success' }, ...prev]);
+  };
+
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
@@ -5729,6 +5990,8 @@ export default function App() {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2' });
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
 
   useEffect(() => {
     if (selectedStudentId && viewType === 'grid') {
@@ -5908,10 +6171,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
         const conflicts = s.forbidden?.map((id:string) => activeConfig.students.find((st:any)=>st.id === id)?.name).join(', ') || 'None';
         const groups = s.groups?.map((id:string) => activeConfig.groups.find((g:any)=>g.id === id)?.name).join(', ') || 'None';
         
-        // Sentiment analysis on the notes needs to be handled by the AI, so we supply the notes:
-        const notes = s.notes ? `Teacher Notes: "${s.notes}"` : 'No notes';
-        
-        // New pedagogic factors
+        // Pedagogic factors
         const interest = s.interestLevel ? `Interest: ${s.interestLevel}` : '';
         const support = s.supportNeeded ? `Support Needed: ${s.supportNeeded}` : '';
         const envPrefs = s.environmentPreferences?.length ? `Env Prefs: ${s.environmentPreferences.join(', ')}` : '';
@@ -5919,7 +6179,12 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
           ? `Avg Grade: ${Math.round(s.grades.reduce((a:number, b:any)=>a+b.grade,0) / s.grades.length)}` 
           : '';
         
-        return `- ID: ${s.id}, Name: ${s.name}, Height: ${s.height}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}, ${notes}`;
+        // Location constraints
+        const height = s.height || 'medium';
+        const rowPref = s.rowPreference || 'any';
+        const cornerPref = s.cornerPreference ? 'Prefers corners/edges' : 'No corner preference';
+
+        return `- ID: ${s.id}, Name: ${s.name}, Height: ${height} (Short means must be rows 0-1), RowPreference: ${rowPref}, CornerPreference: ${cornerPref}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}`;
       }).join('\n');
 
       const prompt = `You are an expert AI pedagogical advisor and classroom manager. You need to assign an optimal seating arrangement for a classroom.
@@ -5927,21 +6192,13 @@ There are ${rows} rows and ${cols} columns.
 Available seats:
 ${seatsDescription}
 
-Students details (friends, conflicts, groups, and explicit teacher notes):
-${studentsDescription}
-
 Instructions:
-1. Analyze the "Teacher Notes" for each student to infer hidden social dynamics (e.g. "talks too much with X", "needs to be at the front because of sight issues", "shy, needs a friendly neighbor").
-2. Factor in pedagogic attributes: place students with high "Support Needed" near the teacher's desk (if identified) or in accessible areas. Place students with low "Interest" near students with high "Avg Grade" to encourage positive influence. Comply with "Env Prefs" such as needing a quiet area by keeping them away from groups.
-3. Assign each student ID to EXACTLY ONE unique SeatIndex from the available seats.
-4. Keep students with conflicts far away from each other.
-5. Try to seat friends near each other.
-6. Place 'short' students in lower Row numbers (closer to the front).
-7. Return EXACTLY a JSON array of objects with the precise format:
-[
-  { "studentId": "...", "seatIndex": ... }
-]
-Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON.`;
+1. Assign each student ID to EXACTLY ONE unique SeatIndex.
+2. Height matching: Students marked 'short' MUST be in Row 0 or 1.
+3. Row Preferences: 'front' (Row 0-1), 'middle' (Row 2-3), 'back' (Row 4+).
+4. Corner Preference: If true, try to place on Column 0 or Column ${cols - 1}.
+5. Constraints: Far from conflicts, near friends, respect group constraints.
+6. Return a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -6113,8 +6370,28 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
 
         // Height constraint
         if (student.height === 'short') {
-          if (r < 2) spatialScore += 50;
+          if (r < 2) spatialScore += 80;
+          else spatialScore -= 150;
+        }
+
+        // Row Preference
+        if (student.rowPreference === 'front') {
+          if (r < 2) spatialScore += 60;
           else spatialScore -= 100;
+        } else if (student.rowPreference === 'middle') {
+          const totalRows = Math.ceil(assignment.length / cols);
+          if (r >= 1 && r <= totalRows - 2) spatialScore += 40;
+          else spatialScore -= 60;
+        } else if (student.rowPreference === 'back') {
+          const totalRows = Math.ceil(assignment.length / cols);
+          if (r >= totalRows - 2) spatialScore += 60;
+          else spatialScore -= 100;
+        }
+
+        // Corner Preference
+        if (student.cornerPreference) {
+          if (c === 0 || c === cols - 1) spatialScore += 70;
+          else spatialScore -= 50;
         }
 
         score += spatialScore * spatialMultiplier;
@@ -6539,7 +6816,7 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
     const onBack = () => setViewType('dashboard');
     const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} />;
+      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} />;
       case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
@@ -6566,6 +6843,10 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
           setIsAddStudentOpen={setIsAddStudentOpen}
           newStudent={newStudent}
           setNewStudent={setNewStudent}
+          teacherProfile={teacherProfile}
+          setTeacherProfile={setTeacherProfile}
+          isTeacherModalOpen={isTeacherModalOpen}
+          setIsTeacherModalOpen={setIsTeacherModalOpen}
         />
       );
       case 'studentDetail': {
@@ -6612,7 +6893,7 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">CLASSFLOW<span className="text-brand-600 font-black ml-1">v3</span></h1>
+          <h1 className="text-xl font-display font-bold text-slate-900 dark:text-white leading-none tracking-tight">CLASSFLOW<span className="text-brand-600 font-extrabold ml-1">v3</span></h1>
           </div>
         </div>
 
@@ -6635,7 +6916,7 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
       <div className="flex items-center gap-3 lg:gap-6">
         <div className="hidden xl:flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-xl text-emerald-700 dark:text-emerald-400">
            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-           <span className="text-[10px] font-black uppercase tracking-widest">{hebDateString}</span>
+           <span className="text-[10px] font-black uppercase tracking-widest" style={{ fontSize: '15px', fontFamily: 'Verdana, sans-serif', lineHeight: '23px' }}>{hebDateString}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -6824,13 +7105,13 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
     <div className="p-6 flex flex-col gap-8 custom-scrollbar h-full overflow-y-auto">
       {/* Visual Navigation Menu */}
       <div className="space-y-2">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">ניהול ראשי</h3>
+        <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">ניהול ראשי</h3>
         {(['dashboard', 'grid', 'attendance', 'grades', 'tasks', 'progress', 'exams', 'tools'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewType(nav)}
             className={cn(
-              "w-full flex items-center gap-4 p-4 rounded-2xl font-black text-sm transition-all group relative overflow-hidden",
+              "w-full flex items-center gap-4 p-4 rounded-2xl font-bold text-sm transition-all group relative overflow-hidden",
               viewType === nav 
                 ? "bg-brand-600 text-white shadow-lg shadow-brand-200 dark:shadow-none" 
                 : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
@@ -6871,14 +7152,14 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
       <div className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-3xl flex flex-col gap-4 border border-slate-100 dark:border-slate-800">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">כיתה פעילה</h3>
+            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest leading-none">כיתה פעילה</h3>
             <Badge className="bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 border border-brand-100 dark:border-brand-800">v3.2.0</Badge>
           </div>
           <div className="flex items-center gap-2 mt-2">
             <input
               value={currentConfig.name}
               onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-              className="text-xl font-black text-slate-900 dark:text-white bg-transparent border-0 p-0 focus:ring-0 flex-1 leading-none"
+              className="text-xl font-bold text-slate-900 dark:text-white bg-transparent border-0 p-0 focus:ring-0 flex-1 leading-none"
             />
                     <button 
                       onClick={() => {
@@ -6942,6 +7223,68 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
                   </div>
                 ))}
               </div>
+          </div>
+
+          {/* Quick Add Student Form */}
+          <div className="bg-brand-50/50 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/30 rounded-3xl p-5 space-y-4">
+            <h3 className="text-xs font-black text-brand-700 dark:text-brand-400 uppercase tracking-widest flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              הוספה מהירה
+            </h3>
+            <div className="space-y-3">
+              <input 
+                type="text"
+                value={quickAddName}
+                onChange={(e) => setQuickAddName(e.target.value)}
+                placeholder="שם התלמיד..."
+                className="w-full bg-white dark:bg-slate-800 border-2 border-brand-100 dark:border-brand-900/50 rounded-xl p-3 text-sm focus:border-brand-300 outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400 transition-all font-bold"
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickAddStudent()}
+              />
+              <div className="flex gap-2">
+                {(['short', 'medium', 'tall'] as const).map(h => (
+                  <button
+                    key={h}
+                    onClick={() => setQuickAddHeight(h)}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-[10px] font-black transition-all border-2",
+                      quickAddHeight === h 
+                        ? "bg-brand-600 text-white border-brand-600 shadow-md" 
+                        : "bg-white dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-brand-200"
+                    )}
+                  >
+                    {h === 'short' ? 'נמוך' : h === 'medium' ? 'בינוני' : 'גבוה'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar p-1">
+                {activeConfig.groups.map((g: any) => (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      setQuickAddGroups(prev => 
+                        prev.includes(g.id) ? prev.filter(id => id !== g.id) : [...prev, g.id]
+                      );
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[9px] font-black transition-all border shrink-0",
+                      quickAddGroups.includes(g.id)
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                    )}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={handleQuickAddStudent}
+                disabled={!quickAddName.trim()}
+                className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-3 rounded-xl shadow-lg shadow-brand-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף למאגר
+              </button>
+            </div>
           </div>
 
           {/* Student Pool */}
@@ -7059,6 +7402,67 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
       ) : (
         /* Generic Sidebar View */
         <div className="flex flex-col gap-4 min-h-[400px]">
+          {/* Quick Add Student Form */}
+          <div className="bg-brand-50/50 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/30 rounded-3xl p-5 space-y-4">
+            <h3 className="text-xs font-black text-brand-700 dark:text-brand-400 uppercase tracking-widest flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              הוספה מהירה
+            </h3>
+            <div className="space-y-3">
+              <input 
+                type="text"
+                value={quickAddName}
+                onChange={(e) => setQuickAddName(e.target.value)}
+                placeholder="שם התלמיד..."
+                className="w-full bg-white dark:bg-slate-800 border-2 border-brand-100 dark:border-brand-900/50 rounded-xl p-3 text-sm focus:border-brand-300 outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400 transition-all font-bold"
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickAddStudent()}
+              />
+              <div className="flex gap-2">
+                {(['short', 'medium', 'tall'] as const).map(h => (
+                  <button
+                    key={h}
+                    onClick={() => setQuickAddHeight(h)}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-[10px] font-black transition-all border-2",
+                      quickAddHeight === h 
+                        ? "bg-brand-600 text-white border-brand-600 shadow-md" 
+                        : "bg-white dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-brand-200"
+                    )}
+                  >
+                    {h === 'short' ? 'נמוך' : h === 'medium' ? 'בינוני' : 'גבוה'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar p-1">
+                {activeConfig.groups.map((g: any) => (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      setQuickAddGroups(prev => 
+                        prev.includes(g.id) ? prev.filter(id => id !== g.id) : [...prev, g.id]
+                      );
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[9px] font-black transition-all border shrink-0",
+                      quickAddGroups.includes(g.id)
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                    )}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={handleQuickAddStudent}
+                disabled={!quickAddName.trim()}
+                className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-3 rounded-xl shadow-lg shadow-brand-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף למאגר
+              </button>
+            </div>
+          </div>
              <div className="flex items-center justify-between px-1">
                <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">מאגר תלמידים מלא ({currentConfig.students.length})</h3>
                <button 
@@ -7310,7 +7714,7 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
                  <div 
                    className={cn(
                      "flex-1 overflow-auto bg-slate-50 p-6 flex flex-col items-center shadow-inner transition-all duration-700 ease-in-out origin-top relative overflow-x-hidden",
-                     is3DView && "bg-slate-900 dark:bg-black perspective-[2000px] shadow-[inset_0_20px_100px_rgba(0,0,0,0.5)] !overflow-hidden"
+                     is3DView ? "perspective-container bg-slate-900/10 dark:bg-black/50" : ""
                    )}
                    style={is3DView ? { 
                      perspective: '2000px',
@@ -7513,11 +7917,11 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
 
                     <div 
                       className={cn(
-                        "grid p-20 transition-all duration-1000 relative",
+                        "grid p-20 transition-all duration-1000 relative classroom-floor",
                         editMode === 'structure' 
                          ? "bg-white dark:bg-slate-900 ring-[12px] ring-amber-400 ring-offset-[12px] ring-offset-slate-100 dark:ring-offset-slate-950 rounded-[5rem] shadow-bento" 
                          : "bg-white dark:bg-slate-900 rounded-[5rem] border-4 border-slate-200 dark:border-slate-800 shadow-2xl",
-                        is3DView && "!bg-[#e2e8f0] dark:!bg-[#0f172a] shadow-[0_100px_100px_-50px_rgba(0,0,0,0.5)] border-0 rounded-none ring-0"
+                        is3DView && "!bg-slate-200 dark:!bg-slate-950 shadow-[0_100px_100px_-50px_rgba(0,0,0,0.5)] border-0 rounded-none ring-0 overflow-visible"
                       )}
                      style={{ 
                        display: 'grid', width: '1200px', height: '700px', padding: '60px',
@@ -7530,20 +7934,50 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
                          `${activeConfig.rowGapSize ? (activeConfig.rowGaps.includes(i) ? `56px ${activeConfig.rowGapSize}px` : '56px') : (activeConfig.rowGaps.includes(i) ? '56px 32px' : '56px')}`
                        ).join(' '),
                        transformStyle: 'preserve-3d',
+                       perspective: is3DView ? '1200px' : 'none',
                        ...(is3DView ? {
-                         transform: 'rotateX(55deg) translateZ(-100px) translateY(-50px) scale(0.9)',
-                         backgroundImage: 'linear-gradient(#cbd5e1 2px, transparent 2px), linear-gradient(90deg, #cbd5e1 2px, transparent 2px)',
-                         backgroundSize: '40px 40px',
+                         transform: 'rotateX(50deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-40px) scale(0.9)',
                        } : { perspective: '1200px' })
                      }}
                     >
+                      {/* 3D Walls */}
+                      {is3DView && (
+                        <>
+                          {/* Right Wall (Window side) */}
+                          <div 
+                            className="absolute top-0 right-0 h-full w-[1500px] bg-gradient-to-l from-slate-300 to-transparent dark:from-slate-900/50 opacity-40 pointer-events-none"
+                            style={{ transform: 'rotateY(90deg) translateZ(600px)', transformOrigin: 'right' }}
+                          >
+                            <div className="absolute inset-y-20 left-40 w-80 h-[500px] bg-white opacity-20 blur-2xl" />
+                            <div className="absolute inset-y-20 left-[600px] w-80 h-[500px] bg-white opacity-20 blur-2xl" />
+                          </div>
+                          {/* Top Wall (Chalkboard side) */}
+                          <div 
+                            className="absolute top-0 inset-x-0 w-full h-[600px] bg-slate-300 dark:bg-slate-900 opacity-20 pointer-events-none"
+                            style={{ transform: 'rotateX(-90deg) translateZ(0px)', transformOrigin: 'top' }}
+                          />
+                        </>
+                      )}
+
+                      {/* Sunlight effect on floor */}
+                      {is3DView && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/5 pointer-events-none" />
+                      )}
                       {/* Chalkboard (Only in 3D View) */}
                       {is3DView && (
                         <div 
-                           className="absolute -top-[300px] left-1/2 -translate-x-1/2 w-[800px] h-[200px] bg-slate-800 border-[12px] border-[#8b5a2b] shadow-2xl flex items-center justify-center rounded-sm"
-                           style={{ transform: 'translateZ(150px) rotateX(-90deg)', transformOrigin: 'bottom' }}
+                           className="absolute -top-[350px] left-1/2 -translate-x-1/2 w-[900px] h-[280px] bg-slate-800 dark:bg-black border-[18px] border-[#5d4037] shadow-[0_50px_100px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center rounded-sm"
+                           style={{ transform: 'translateZ(100px) rotateX(-90deg)', transformOrigin: 'bottom' }}
                         >
-                           <span className="text-white/80 font-mono text-3xl opacity-50 select-none pointer-events-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>ClassManager Pro</span>
+                           <div className="absolute top-2 left-4 flex gap-2">
+                             <div className="w-12 h-2 bg-white/10 rounded-full" />
+                             <div className="w-8 h-2 bg-white/10 rounded-full" />
+                           </div>
+                           <span className="text-white/40 font-mono text-4xl opacity-30 select-none pointer-events-none tracking-widest" style={{ textShadow: '4px 4px 8px rgba(0,0,0,0.8)' }}>MODERN CLASSROOM</span>
+                           <div className="absolute bottom-4 right-8 flex gap-4">
+                             <div className="w-10 h-3 bg-white/20 rounded shadow-inner" title="Magnet" />
+                             <div className="w-10 h-3 bg-white/20 rounded shadow-inner" title="Magnet" />
+                           </div>
                         </div>
                       )}
                     {/* Teacher Desk Injection */}
@@ -7744,6 +8178,7 @@ Do not include any Markdown framing such as \`\`\`json. Return only the raw JSON
                             showDeskNumbers={showDeskNumbers}
                             draggedStudentId={draggedStudentId}
                             selectedStudentId={selectedStudentId}
+                            selectedGroups={selectedGroups}
                             onDrop={handleDrop}
                             updateCurrentConfig={updateCurrentConfig}
                             currentConfig={activeConfig}

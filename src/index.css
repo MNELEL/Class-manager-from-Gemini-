@@ -1,24 +1,51 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&family=Heebo:wght@300;400;500;600;700;800;900&family=Lexend:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Assistant", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", "Montserrat", sans-serif;
+  --font-sans: "Lexend", "Inter", "Heebo", "Assistant", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend", "Outfit", "Montserrat", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-brand-50: #f0f7ff;
-  --color-brand-100: #e0effe;
-  --color-brand-200: #bae0fd;
-  --color-brand-300: #7cc8fb;
-  --color-brand-400: #38aef7;
-  --color-brand-500: #0e93e9;
-  --color-brand-600: #0274c7;
-  --color-brand-700: #035ca1;
-  --color-brand-800: #074e82;
-  --color-brand-900: #0c426d;
-  --color-brand-950: #082a4a;
+  --color-brand-50: #f8fafc;
+  --color-brand-100: #f1f5f9;
+  --color-brand-200: #e2e8f0;
+  --color-brand-300: #cbd5e1;
+  --color-brand-400: #94a3b8;
+  --color-brand-500: #64748b;
+  --color-brand-600: #475569;
+  --color-brand-700: #334155;
+  --color-brand-800: #1e293b;
+  --color-brand-900: #0f172a;
+  --color-brand-950: #020617;
 
-  /* Standard Tailwind colors in HEX to avoid OKLCH export issues */
+  /* Redefining primary brand colors to be a bit more "matte" blue-gray */
+  --color-primary-50: #f0f7ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  --color-primary-950: #082f49;
+
+  /* Overriding brand to be the muted primary by default if needed, 
+     but actually let's just use the blue-gray for "brand" as requested (matte) */
+  --color-brand-50: #f0f5f9;
+  --color-brand-100: #e1ebf2;
+  --color-brand-200: #c2d7e5;
+  --color-brand-300: #94b8d1;
+  --color-brand-400: #6699bd;
+  --color-brand-500: #4a7c9d;
+  --color-brand-600: #3b627d;
+  --color-brand-700: #305066;
+  --color-brand-800: #2b4352;
+  --color-brand-900: #263a47;
+  --color-brand-950: #1a272f;
+
+  /* Standard Tailwind colors in HEX to avoid OKLCH/OKLAB export issues */
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
   --color-slate-200: #e2e8f0;
@@ -30,6 +57,30 @@
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
   --color-slate-950: #020617;
+
+  --color-zinc-50: #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
 
   --color-amber-50: #fffbeb;
   --color-amber-100: #fef3c7;
@@ -129,6 +180,43 @@
 
   --shadow-bento: 0 0 0 1px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.05);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+@layer components {
+  .classroom-floor {
+    background-color: #f1f5f9;
+    background-image: 
+      radial-gradient(#cbd5e1 1px, transparent 1px),
+      linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(203, 213, 225, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px, 100px 100px, 100px 100px;
+  }
+
+  .dark .classroom-floor {
+    background-color: #020617;
+    background-image: 
+      radial-gradient(#1e293b 1px, transparent 1px),
+      linear-gradient(to right, rgba(30, 41, 59, 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
+  }
+
+  .perspective-container {
+    perspective: 2000px;
+    perspective-origin: center 20%;
+  }
+
+  .classroom-wall-front {
+    transform: translateZ(-200px);
+    background: linear-gradient(to bottom, #cbd5e1, #94a3b8);
+  }
+
+  .dark .classroom-wall-front {
+    background: linear-gradient(to bottom, #1e293b, #0f172a);
+  }
+
+  .classroom-desk-3d {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+  }
 }
 
 @layer base {
