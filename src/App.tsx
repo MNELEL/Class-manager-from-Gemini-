@@ -819,6 +819,31 @@ const DeskCell = ({
         (editMode === 'structure' && !isHidden && !isObstruction && !isPrinting) && "cursor-move hover:ring-2 hover:ring-amber-300"
       )}
     >
+      {/* Spotlight for 3D View */}
+      {is3DView && (isSelected || isOver) && !isPrinting && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute -top-[160px] left-1/2 -translate-x-1/2 w-[240px] h-[240px] pointer-events-none z-0"
+        >
+          <div 
+            className="w-full h-full animate-pulse"
+            style={{
+              background: isSelected 
+                ? 'radial-gradient(circle at center, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)'
+                : 'radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)',
+              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+              filter: 'blur(15px)',
+              transform: 'perspective(400px) rotateX(15deg)',
+            }}
+          />
+          {/* Ground Glow */}
+          <div 
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[20%] bg-white/20 blur-xl rounded-[100%]"
+          />
+        </motion.div>
+      )}
+
       {/* Conflict Overlay Pulse */}
       {hasConflict && student && (
         <motion.div 
@@ -6748,6 +6773,92 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [selectedStudentId, viewType]);
+
+  // Keyboard Navigation for Students
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (viewType !== 'grid' || isAIPanelOpen || isAddStudentOpen || quickPrefsStudentId) return;
+      
+      const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];
+      if (!arrows.includes(e.key)) return;
+
+      e.preventDefault();
+
+      const studentIdsInGrid = activeConfig.grid.filter((id: string | null) => id !== null) as string[];
+      if (studentIdsInGrid.length === 0) return;
+
+      if (!selectedStudentId) {
+        setSelectedStudentId(studentIdsInGrid[0]);
+        return;
+      }
+
+      const currentIdx = activeConfig.grid.indexOf(selectedStudentId);
+      if (currentIdx === -1) return;
+
+      const rows = activeConfig.rows;
+      const cols = activeConfig.cols;
+      const r = Math.floor(currentIdx / cols);
+      const c = currentIdx % cols;
+
+      let nextIdx = currentIdx;
+      
+      if (e.key === 'Tab') {
+        const currentIdxInPlaced = studentIdsInGrid.indexOf(selectedStudentId);
+        let nextPlacedIdx = 0;
+        if (e.shiftKey) {
+          nextPlacedIdx = (currentIdxInPlaced - 1 + studentIdsInGrid.length) % studentIdsInGrid.length;
+        } else {
+          nextPlacedIdx = (currentIdxInPlaced + 1) % studentIdsInGrid.length;
+        }
+        setSelectedStudentId(studentIdsInGrid[nextPlacedIdx]);
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        // Move right, find next student
+        for (let i = currentIdx + 1; i < activeConfig.grid.length; i++) {
+          if (activeConfig.grid[i]) {
+            nextIdx = i;
+            break;
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        // Move left, find prev student
+        for (let i = currentIdx - 1; i >= 0; i--) {
+          if (activeConfig.grid[i]) {
+            nextIdx = i;
+            break;
+          }
+        }
+      } else if (e.key === 'ArrowDown') {
+        // Move down row
+        for (let row = r + 1; row < rows; row++) {
+          const targetIdx = row * cols + c;
+          if (activeConfig.grid[targetIdx]) {
+            nextIdx = targetIdx;
+            break;
+          }
+          // Scan row for nearest student if target is empty? For now just direct check
+        }
+      } else if (e.key === 'ArrowUp') {
+        // Move up row
+        for (let row = r - 1; row >= 0; row--) {
+          const targetIdx = row * cols + c;
+          if (activeConfig.grid[targetIdx]) {
+            nextIdx = targetIdx;
+            break;
+          }
+        }
+      }
+
+      if (nextIdx !== currentIdx) {
+        setSelectedStudentId(activeConfig.grid[nextIdx]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewType, selectedStudentId, activeConfig, isAIPanelOpen, isAddStudentOpen, quickPrefsStudentId]);
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [undoHistory, setUndoHistory] = useState<any[]>([]);
