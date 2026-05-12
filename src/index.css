@@ -180,6 +180,141 @@
 
   --shadow-bento: 0 0 0 1px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.05);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+  /* Theme: Nature (Emerald) */
+  --theme-nature-50: #ecfdf5;
+  --theme-nature-100: #d1fae5;
+  --theme-nature-200: #a7f3d0;
+  --theme-nature-300: #6ee7b7;
+  --theme-nature-400: #34d399;
+  --theme-nature-500: #10b981;
+  --theme-nature-600: #059669;
+  --theme-nature-700: #047857;
+  --theme-nature-800: #065f46;
+  --theme-nature-900: #064e3b;
+  --theme-nature-950: #022c22;
+
+  /* Theme: Ocean (Deep Blue) */
+  --theme-ocean-50: #f0f9ff;
+  --theme-ocean-100: #e0f2fe;
+  --theme-ocean-200: #bae6fd;
+  --theme-ocean-300: #7dd3fc;
+  --theme-ocean-400: #38bdf8;
+  --theme-ocean-500: #0ea5e9;
+  --theme-ocean-600: #0284c7;
+  --theme-ocean-700: #0369a1;
+  --theme-ocean-800: #075985;
+  --theme-ocean-900: #0c4a6e;
+  --theme-ocean-950: #082f49;
+
+  /* Theme: Sunset (Rose/Amber) */
+  --theme-sunset-50: #fff1f2;
+  --theme-sunset-100: #ffe4e6;
+  --theme-sunset-200: #fecdd3;
+  --theme-sunset-300: #fda4af;
+  --theme-sunset-400: #fb7185;
+  --theme-sunset-500: #f43f5e;
+  --theme-sunset-600: #e11d48;
+  --theme-sunset-700: #be123c;
+  --theme-sunset-800: #9f1239;
+  --theme-sunset-900: #881337;
+  --theme-sunset-950: #4c0519;
+
+  /* Theme: Royal (Indigo/Purple) */
+  --theme-royal-50: #eef2ff;
+  --theme-royal-100: #e0e7ff;
+  --theme-royal-200: #c7d2fe;
+  --theme-royal-300: #a5b4fc;
+  --theme-royal-400: #818cf8;
+  --theme-royal-500: #6366f1;
+  --theme-royal-600: #4f46e5;
+  --theme-royal-700: #4338ca;
+  --theme-royal-800: #3730a3;
+  --theme-royal-900: #312e81;
+  --theme-royal-950: #1e1b4b;
+
+  /* Theme: Wood (Amber/Brown) */
+  --theme-wood-50: #fffbeb;
+  --theme-wood-100: #fef3c7;
+  --theme-wood-200: #fde68a;
+  --theme-wood-300: #fcd34d;
+  --theme-wood-400: #fbbf24;
+  --theme-wood-500: #f59e0b;
+  --theme-wood-600: #d97706;
+  --theme-wood-700: #b45309;
+  --theme-wood-800: #92400e;
+  --theme-wood-900: #78350f;
+  --theme-wood-950: #451a03;
+}
+
+[data-theme='wood'] {
+  --color-brand-50: var(--theme-wood-50);
+  --color-brand-100: var(--theme-wood-100);
+  --color-brand-200: var(--theme-wood-200);
+  --color-brand-300: var(--theme-wood-300);
+  --color-brand-400: var(--theme-wood-400);
+  --color-brand-500: var(--theme-wood-500);
+  --color-brand-600: var(--theme-wood-600);
+  --color-brand-700: var(--theme-wood-700);
+  --color-brand-800: var(--theme-wood-800);
+  --color-brand-900: var(--theme-wood-900);
+  --color-brand-950: var(--theme-wood-950);
+}
+
+[data-theme='nature'] {
+  --color-brand-50: var(--theme-nature-50);
+  --color-brand-100: var(--theme-nature-100);
+  --color-brand-200: var(--theme-nature-200);
+  --color-brand-300: var(--theme-nature-300);
+  --color-brand-400: var(--theme-nature-400);
+  --color-brand-500: var(--theme-nature-500);
+  --color-brand-600: var(--theme-nature-600);
+  --color-brand-700: var(--theme-nature-700);
+  --color-brand-800: var(--theme-nature-800);
+  --color-brand-900: var(--theme-nature-900);
+  --color-brand-950: var(--theme-nature-950);
+}
+
+[data-theme='ocean'] {
+  --color-brand-50: var(--theme-ocean-50);
+  --color-brand-100: var(--theme-ocean-100);
+  --color-brand-200: var(--theme-ocean-200);
+  --color-brand-300: var(--theme-ocean-300);
+  --color-brand-400: var(--theme-ocean-400);
+  --color-brand-500: var(--theme-ocean-500);
+  --color-brand-600: var(--theme-ocean-600);
+  --color-brand-700: var(--theme-ocean-700);
+  --color-brand-800: var(--theme-ocean-800);
+  --color-brand-900: var(--theme-ocean-900);
+  --color-brand-950: var(--theme-ocean-950);
+}
+
+[data-theme='sunset'] {
+  --color-brand-50: var(--theme-sunset-50);
+  --color-brand-100: var(--theme-sunset-100);
+  --color-brand-200: var(--theme-sunset-200);
+  --color-brand-300: var(--theme-sunset-300);
+  --color-brand-400: var(--theme-sunset-400);
+  --color-brand-500: var(--theme-sunset-500);
+  --color-brand-600: var(--theme-sunset-600);
+  --color-brand-700: var(--theme-sunset-700);
+  --color-brand-800: var(--theme-sunset-800);
+  --color-brand-900: var(--theme-sunset-900);
+  --color-brand-950: var(--theme-sunset-950);
+}
+
+[data-theme='royal'] {
+  --color-brand-50: var(--theme-royal-50);
+  --color-brand-100: var(--theme-royal-100);
+  --color-brand-200: var(--theme-royal-200);
+  --color-brand-300: var(--theme-royal-300);
+  --color-brand-400: var(--theme-royal-400);
+  --color-brand-500: var(--theme-royal-500);
+  --color-brand-600: var(--theme-royal-600);
+  --color-brand-700: var(--theme-royal-700);
+  --color-brand-800: var(--theme-royal-800);
+  --color-brand-900: var(--theme-royal-900);
+  --color-brand-950: var(--theme-royal-950);
 }
 
 @layer components {

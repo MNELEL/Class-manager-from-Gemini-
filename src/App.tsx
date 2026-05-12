@@ -74,6 +74,9 @@ import {
   LayoutGrid,
   Lightbulb,
   LineChart,
+  ListChecks,
+  ListPlus,
+  Palette,
   Lock,
   LockOpen,
   Maximize2,
@@ -493,7 +496,7 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 
 // --- Helper Components ---
 
-const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView, isLocked = false }: any) => {
+const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView, totalCols, totalRows, isLocked = false }: any) => {
   return (
     <motion.div
       layoutId="teacher-desk"
@@ -541,16 +544,40 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
       
       {editMode === 'structure' && (
         <div className="absolute inset-x-0 bottom-4 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
-          <div className="flex gap-2 p-1.5 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl scale-95 hover:scale-100 transition-transform">
+                    <div className="flex gap-2 p-1.5 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl scale-95 hover:scale-100 transition-transform">
             <div className="flex items-center gap-1.5 border-r border-white/10 pr-2 mr-1">
               <span className="text-[10px] font-black text-white/60 uppercase">רוחב</span>
-              <button onClick={(e) => { e.stopPropagation(); width > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width - 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">-</button>
-              <button onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width + 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">+</button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); width > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width - 1 } })); }} 
+                className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black"
+              >-</button>
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const col = index % totalCols;
+                  if (col + width < totalCols) {
+                    updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, width: width + 1 } })); 
+                  }
+                }} 
+                className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black"
+              >+</button>
             </div>
             <div className="flex items-center gap-1.5 pl-1">
               <span className="text-[10px] font-black text-white/60 uppercase">גובה</span>
-              <button onClick={(e) => { e.stopPropagation(); height > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height - 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">-</button>
-              <button onClick={(e) => { e.stopPropagation(); updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height + 1 } })); }} className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black">+</button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); height > 1 && updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height - 1 } })); }} 
+                className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black"
+              >-</button>
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const row = Math.floor(index / totalCols);
+                  if (row + height < totalRows) {
+                    updateCurrentConfig((prev: any) => ({ ...prev, teacherDesk: { ...prev.teacherDesk, height: height + 1 } })); 
+                  }
+                }} 
+                className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-lg transition-all text-xs font-black"
+              >+</button>
             </div>
           </div>
         </div>
@@ -652,7 +679,7 @@ const DeskCell = ({
   const deskConflicts = conflicts.filter((c: any) => c.deskIdx1 === idx || c.deskIdx2 === idx);
   const hasConflict = deskConflicts.length > 0;
 
-  if (((isHidden || isObstruction) && !isPrinting) && editMode === 'normal') return (
+  if (((isHidden || isObstruction) && !isPrinting) && editMode === 'placement') return (
     <div style={{ gridColumn: colPos, gridRow: rowPos }} className="aspect-square bg-transparent flex items-center justify-center">
       {isObstruction && <ShieldAlert className="w-5 h-5 text-slate-200" />}
     </div>
@@ -708,8 +735,13 @@ const DeskCell = ({
       layout
       layoutId={`desk-${idx}`}
       data-student-id={studentId || undefined}
-      draggable={editMode === 'structure' && !isHidden}
-      onDragStart={handleDeskDragStart}
+      draggable={(editMode === 'structure' && !isHidden) || (editMode === 'placement' && !!studentId)}
+      onDragStart={(e) => {
+        if (editMode === 'structure') handleDeskDragStart(e);
+        else if (editMode === 'placement' && studentId) {
+          setDraggedStudentId(studentId);
+        }
+      }}
       onDragOver={(e) => { e.preventDefault(); setIsOver(true); }}
       onDragLeave={() => setIsOver(false)}
       onDrop={handleDeskDrop}
@@ -772,6 +804,7 @@ const DeskCell = ({
           isHidden ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
           !student ? "bg-white/80 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
         ),
+        ( (student?.height === 'short' || (student as any)?.rowPreference === 'front') && !isPrinting ) && "shadow-[0_0_25px_rgba(245,158,11,0.3)] ring-2 ring-amber-400/20 bg-amber-50/10",
         compatibilityClass,
         relationalClass,
         isDimmed && "opacity-20 grayscale scale-[0.98] blur-[1px]",
@@ -1052,7 +1085,7 @@ const DeskCell = ({
              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center leading-tight">שולחן<br/>פנוי</span>
            </div>
            
-           {editMode === 'normal' && (
+          {editMode === 'placement' && (
              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/80 dark:bg-slate-900/80 rounded-[2rem] transition-all backdrop-blur-sm z-20">
                <button 
                  onClick={(e) => {
@@ -2811,22 +2844,32 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                                       : 'לא הוזנו ציונים';
                                     
                                     const tags = student.tags?.length > 0 ? student.tags.join(', ') : 'אין תגיות אפיון';
-                                    const noteTags = student.noteTags?.length > 0 ? student.noteTags.join(', ') : '';
+                                    const noteTags = student.noteTags?.length > 0 ? student.noteTags.join(', ') : 'אין תגיות הערות';
+                                    const interest = student.interestLevel === 'low' ? 'נמוכה' : student.interestLevel === 'medium' ? 'בינונית' : student.interestLevel === 'high' ? 'גבוהה' : 'טרם הוגדרה';
+                                    const support = student.supportNeeded === 'none' ? 'ללא' : student.supportNeeded === 'low' ? 'מועטה' : student.supportNeeded === 'medium' ? 'בינונית' : student.supportNeeded === 'high' ? 'רבה' : 'טרם הוגדר';
+                                    const envPrefs = student.environmentPreferences?.length > 0 ? student.environmentPreferences.join(', ') : 'אין העדפות סביבתיות';
                                     const successes = student.successes || 'לא צוינו חוזקות';
                                     const notes = student.notes || 'אין הערות נוספות';
   
                                     try {
                                       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-                                      const prompt = `${aiWeights.customSystemPrompt || 'אתה יועץ פדגוגי מומחה.'} עליך לספק המלצות לקידום אישי של תלמיד בכיתה.
-  נתוני התלמיד:
-  שם: ${student.name}
-  ממוצע ציונים: ${avg}
-  תגיות אפיון: ${tags}
-  תגיות הערות: ${noteTags}
-  חוזקות והצלחות: ${successes}
-  הערות ואתגרים: ${notes}
-  
-  כתוב המלצה מקצועית, מעשית ומעודדת ב-3-5 משפטים. התייחס ספציפית לנתונים שסופקו. השב בעברית בלבד.`;
+                                      const prompt = `${aiWeights.customSystemPrompt || 'אתה יועץ פדגוגי מומחה ומלווה מקצועי של צוותי הוראה.'} 
+משוב פדגוגי והמלצות לקידום אישי עבור התלמיד/ה: ${student.name}.
+
+נתונים נוכחיים:
+- ממוצע ציונים: ${avg}
+- רמת עניין ומעורבות: ${interest}
+- צורך בתמיכה לימודית: ${support}
+- העדפות סביבת לימוד: ${envPrefs}
+- תגיות אפיון: ${tags}
+- תגיות הערות ואבחון: ${noteTags}
+- חוזקות והצלחות: ${successes}
+- אתגרים והערות: ${notes}
+
+משימה:
+כתוב המלצה פדגוגית ממוקדת, מעשית ומעודדת ב-4-6 משפטים.
+התייחס ספציפית לשילוב בין רמת העניין, הצורך בתמיכה והעדפות הסביבה כדי לייצר אסטרטגיית למידה אופטימלית.
+השב בעברית בלבד.`;
   
                                       const response = await ai.models.generateContent({
                                         model: "gemini-3-flash-preview",
@@ -4713,7 +4756,7 @@ const SettingsView = ({
                       if (newStudent.name.trim()) {
                         updateCurrentConfig((prev: any) => ({
                           ...prev,
-                          students: [...prev.students, { id: Date.now().toString(), name: newStudent.name.trim(), preferred: [], forbidden: [], height: newStudent.height, groups: [] }]
+                          students: [...prev.students, { id: Date.now().toString(), name: newStudent.name.trim(), preferred: [], forbidden: [], height: newStudent.height, groups: [], interestLevel: 'medium', supportNeeded: 'none', tags: [], environmentPreferences: [] }]
                         }));
                         setNotifications((prev: any) => [{id: Date.now(), text: 'התלמיד נוסף בהצלחה', type: 'success'}, ...prev]);
                         setNewStudent({ name: '', height: 'average' });
@@ -5907,15 +5950,29 @@ const JewishTimeline = () => {
     
     const events = useMemo(() => {
         const hDates = [];
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+        const options = {
+            start: startOfWeek,
+            end: endOfWeek,
+            holidays: true,
+            sedrot: true,
+        };
+        const allEvents = HebrewCalendar.calendar(options);
+
         for (let i = 0; i < 7; i++) {
             const d = new Date(startOfWeek);
             d.setDate(startOfWeek.getDate() + i);
             const hd = new HDate(d);
-            const holidays = hd.getHolidays();
+            
+            const dayEvents = allEvents
+                .filter(ev => ev.getDate().abs() === hd.abs());
+
             hDates.push({
                 date: d,
                 hDate: hd,
-                holidays: holidays || []
+                holidays: dayEvents
             });
         }
         return hDates;
@@ -6234,6 +6291,8 @@ export default function App() {
 
   const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools'>('dashboard');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const [cameraAngle, setCameraAngle] = useState<'standard' | 'birdsEye' | 'studentLevel'>('standard');
+  const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood'>('default');
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -6243,6 +6302,7 @@ export default function App() {
   const [quickAddName, setQuickAddName] = useState('');
   const [quickAddHeight, setQuickAddHeight] = useState('medium');
   const [quickAddGroups, setQuickAddGroups] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleQuickAddStudent = () => {
     if (!quickAddName.trim()) return;
@@ -6256,12 +6316,103 @@ export default function App() {
         groups: quickAddGroups,
         preferred: [],
         forbidden: [],
-        notes: ''
+        notes: '',
+        noteTags: [],
+        successes: '',
+        notesLastUpdated: null,
+        interestLevel: 'medium',
+        supportNeeded: 'none',
+        tags: [],
+        environmentPreferences: []
       }]
     }));
     setQuickAddName('');
     setQuickAddGroups([]);
     setNotifications(prev => [{ id: Date.now(), text: `התלמיד ${quickAddName} נוסף בהצלחה!`, type: 'success' }, ...prev]);
+  };
+
+  const handlePredefinedImport = () => {
+    const predefined = [
+      { name: 'אבי כהן', height: 'medium' },
+      { name: 'מאיה לוי', height: 'short' },
+      { name: 'ניקול אברהם', height: 'tall' },
+      { name: 'דניאל יצחקי', height: 'medium' },
+      { name: 'אורן מזרחי', height: 'tall' }
+    ];
+    
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      students: [
+        ...prev.students,
+        ...predefined.map(s => ({
+          id: `student-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: s.name,
+          height: s.height,
+          groups: [],
+          preferred: [],
+          forbidden: [],
+          notes: '',
+          noteTags: [],
+          successes: '',
+          notesLastUpdated: null,
+          interestLevel: 'medium',
+          supportNeeded: 'none',
+          tags: [],
+          environmentPreferences: []
+        }))
+      ]
+    }));
+    
+    setNotifications(prev => [{ id: Date.now(), text: `יובאו ${predefined.length} תלמידים מהרשימה המוכנה!`, type: 'success' }, ...prev]);
+  };
+
+  const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+        const importedStudents = json.map((row: any) => ({
+          id: `student-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: row.name || row['שם'] || row['Full Name'] || row.Name || 'תלמיד חדש',
+          height: row.height || row['גובה'] || 'medium',
+          groups: row.group || row['קבוצה'] ? [String(row.group || row['קבוצה'])] : [],
+          preferred: [],
+          forbidden: [],
+          notes: row.notes || row['הערות'] || '',
+          noteTags: row.noteTags ? String(row.noteTags).split(',').map((t: string) => t.trim()) : [],
+          successes: row.successes || '',
+          notesLastUpdated: null,
+          interestLevel: row.interestLevel || 'medium',
+          supportNeeded: row.supportNeeded || 'none',
+          tags: row.tags ? String(row.tags).split(',').map((t: string) => t.trim()) : [],
+          environmentPreferences: row.environmentPreferences ? String(row.environmentPreferences).split(',').map((p: string) => p.trim()) : []
+        }));
+
+        if (importedStudents.length > 0) {
+          updateCurrentConfig((prev: any) => ({
+            ...prev,
+            students: [...prev.students, ...importedStudents]
+          }));
+          setNotifications(prev => [{ id: Date.now(), text: `יובאו ${importedStudents.length} תלמידים מקובץ ה-CSV!`, type: 'success' }, ...prev]);
+        } else {
+          setNotifications(prev => [{ id: Date.now(), text: "לא נמצאו נתונים תואמים בקובץ", type: 'error' }, ...prev]);
+        }
+      } catch (err) {
+        console.error('Import error:', err);
+        setNotifications(prev => [{ id: Date.now(), text: "שגיאה בפענוח הקובץ", type: 'error' }, ...prev]);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset input
+    event.target.value = '';
   };
 
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -6302,14 +6453,20 @@ export default function App() {
   const onboardingContent = [
     { title: "ברוכים הבאים!", text: "בואו נכיר את ClassManager Pro. המקום בו פדגוגיה פוגשת AI.", icon: <Sparkles className="w-10 h-10 text-brand-600" /> },
     { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer className="w-10 h-10 text-indigo-600" /> },
-    { title: "אופטימיזציית AI", text: "לחצו על כפתור ה-AI כדי לתת למערכת למצוא את הסידור המושלם לפי אילוצים.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
+    { title: "אופטימיזציית AI Smart Sort", text: "אלגוריתם ה-AI שלנו סורק אלפי אפשרויות כדי למצוא את הסידור המושלם. הוא מאזן בין צרכים לימודיים, חברתיים ופיזיים בשניות.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
+    { title: "מנהל האילוצים", text: "ה-AI מתחשב באילוצים חכמים: גובה תלמידים (נמוכים מלפנים), הפרדת מפריעים, הצמדת חברים, ושמירה על הומוגניות קבוצתית בכל שולחן.", icon: <ListChecks className="w-10 h-10 text-sky-600" /> },
+    { title: "פתרון קונפליקטים חכם", text: "כשיש סתירה בין אילוצים, ה-AI מדרג עדיפויות. המערכת תסמן לכם קונפליקטים שנותרו ותסביר בדיוק למה הם נוצרו ואיך ניתן לשפר.", icon: <Zap className="w-10 h-10 text-amber-500" /> },
     { title: "תצוגת 3D", text: "חדש! מעכשיו תוכלו לראות את הכיתה בפרספקטיבה תלת-ממדית.", icon: <Box className="w-10 h-10 text-amber-600" /> }
   ];
 
-  const [editMode, setEditMode] = useState<'normal' | 'structure'>('normal');
+  const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -7449,6 +7606,37 @@ Instructions:
           <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-1" />
 
           <button 
+            onClick={() => setOnboardingStep(0)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
+            title="סיור מודרך"
+          >
+            <HelpCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+          <div className="hidden xl:flex items-center gap-1 bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
+            {[
+              { id: 'default', color: 'bg-slate-400', name: 'קלאסי' },
+              { id: 'wood', color: 'bg-amber-600', name: 'עץ' },
+              { id: 'nature', color: 'bg-emerald-500', name: 'טבע' },
+              { id: 'ocean', color: 'bg-sky-500', name: 'אוקיינוס' },
+              { id: 'sunset', color: 'bg-rose-500', name: 'שקיעה' },
+              { id: 'royal', color: 'bg-indigo-500', name: 'מלכותי' },
+            ].map((t: any) => (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id)}
+                className={cn(
+                  "w-8 h-8 rounded-xl transition-all flex items-center justify-center",
+                  theme === t.id ? "ring-2 ring-brand-600 ring-offset-2 dark:ring-offset-slate-900 scale-110" : "hover:scale-105 opacity-60 hover:opacity-100"
+                )}
+                title={t.name}
+              >
+                <div className={cn("w-5 h-5 rounded-lg shadow-sm border border-white/20", t.color)} />
+              </button>
+            ))}
+          </div>
+
+          <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all"
           >
@@ -7774,15 +7962,43 @@ Instructions:
 
           {/* Student Pool */}
           <div className="flex flex-col gap-4 min-h-[200px]">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
-              <button 
-                onClick={() => setIsAddStudentOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-brand-50 hover:text-brand-600 text-slate-500 rounded-xl bg-slate-50 border border-slate-200 transition-colors font-bold text-xs"
-              >
-                <Plus className="w-4 h-4" />
-                הוסף תלמיד
-              </button>
+            <div className="flex flex-col gap-3 px-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">ממתינים לשיבוץ ({studentsInPool.length})</h3>
+                <button 
+                  onClick={() => setIsAddStudentOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-brand-50 hover:text-brand-600 text-slate-500 rounded-xl bg-slate-50 border border-slate-200 transition-colors font-bold text-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  הוסף תלמיד
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handlePredefinedImport}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl text-[10px] font-black transition-all border border-indigo-100"
+                  title="ייבוא רשימת דוגמה"
+                >
+                  <ListPlus className="w-3.5 h-3.5" />
+                  ייבוא רשימה
+                </button>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-[10px] font-black transition-all border border-emerald-100"
+                  title="ייבוא מקובץ CSV/Excel"
+                >
+                  <FileUp className="w-3.5 h-3.5" />
+                  ייבוא CSV
+                </button>
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleCSVImport}
+                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                  className="hidden"
+                />
+              </div>
             </div>
             <div 
               className={cn("grid grid-cols-1 gap-3 p-2 rounded-2xl transition-all min-h-[100px]", draggedStudentId && editMode === 'placement' && "bg-slate-50 border-2 border-slate-300 border-dashed ring-4 ring-slate-100 shadow-inner")}
@@ -8223,7 +8439,7 @@ Instructions:
                      </AnimatePresence>
 
                      <div className="flex items-center gap-1 p-1 bg-slate-100/50 rounded-xl">
-                       <button onClick={() => setEditMode('normal')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'normal' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>עריכה</button>
+                       <button onClick={() => setEditMode('placement')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'placement' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>שיבוץ</button>
                        <button onClick={() => setEditMode('structure')} className={cn("px-4 py-1.5 rounded-lg text-xs font-black transition-all", editMode === 'structure' ? "bg-white text-brand-600 shadow-sm" : "text-slate-500")}>מבנה</button>
                      </div>
                      
@@ -8240,6 +8456,23 @@ Instructions:
                         <Box className="w-4 h-4" />
                         <span>3D</span>
                      </button>
+
+                     {is3DView && (
+                       <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl">
+                         {(['standard', 'birdsEye', 'studentLevel'] as const).map(angle => (
+                           <button
+                             key={angle}
+                             onClick={() => setCameraAngle(angle)}
+                             className={cn(
+                               "px-3 py-1 rounded-lg text-[9px] font-black transition-all",
+                               cameraAngle === angle ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                             )}
+                           >
+                             {angle === 'standard' ? 'רגיל' : angle === 'birdsEye' ? 'מבט על' : 'עיני תלמיד'}
+                           </button>
+                         ))}
+                       </div>
+                     )}
                      
                      <div className="w-px h-6 bg-slate-200/50 mx-1" />
 
@@ -8421,7 +8654,11 @@ Instructions:
                        transformStyle: 'preserve-3d',
                        perspective: is3DView ? '1200px' : 'none',
                        ...(is3DView ? {
-                         transform: 'rotateX(50deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-40px) scale(0.9)',
+                         transform: cameraAngle === 'birdsEye' 
+                           ? 'rotateX(80deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-100px) scale(0.85)'
+                           : cameraAngle === 'studentLevel'
+                           ? 'rotateX(25deg) rotateY(0deg) rotateZ(0deg) translateZ(150px) translateY(-20px) scale(1.1)'
+                           : 'rotateX(50deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-40px) scale(0.9)',
                        } : { perspective: '1200px' })
                      }}
                     >
@@ -8438,9 +8675,11 @@ Instructions:
                           </div>
                           {/* Top Wall (Chalkboard side) */}
                           <div 
-                            className="absolute top-0 inset-x-0 w-full h-[600px] bg-slate-300 dark:bg-slate-900 opacity-20 pointer-events-none"
+                            className="absolute top-0 inset-x-0 w-full h-[800px] bg-slate-300 dark:bg-slate-900 opacity-20 pointer-events-none"
                             style={{ transform: 'rotateX(-90deg) translateZ(0px)', transformOrigin: 'top' }}
                           />
+                          {/* Floor shadows/reflections */}
+                          <div className="absolute inset-0 bg-brand-500/5 pointer-events-none" />
                         </>
                       )}
 
@@ -8469,6 +8708,8 @@ Instructions:
                     {activeConfig.teacherDesk && activeConfig.teacherDesk.index !== -1 && (
                       <TeacherDesk 
                         {...activeConfig.teacherDesk}
+                        totalCols={activeConfig.cols}
+                        totalRows={activeConfig.rows}
                         colPos={(activeConfig.teacherDesk.index % activeConfig.cols) + 1 + activeConfig.columnGaps.filter(g => g < (activeConfig.teacherDesk.index % activeConfig.cols)).length}
                         rowPos={Math.floor(activeConfig.teacherDesk.index / activeConfig.cols) + 1 + activeConfig.rowGaps.filter(g => g < Math.floor(activeConfig.teacherDesk.index / activeConfig.cols)).length}
                         editMode={editMode}
