@@ -92,6 +92,7 @@ import {
   Play,
   Plus,
   Printer,
+  Repeat,
   RotateCcw,
   Rows,
   Ruler,
@@ -640,6 +641,7 @@ const DeskCell = ({
   setNotifications,
   setNewStudent,
   setIsAddStudentOpen,
+  setQuickPrefsStudentId,
   conflicts = []
 }: any) => {
   const [isOver, setIsOver] = useState(false);
@@ -793,7 +795,11 @@ const DeskCell = ({
             }));
           }
         } else if (!isHidden && !isObstruction) {
-          onShowHistory(idx);
+          if (student && editMode === 'placement') {
+             if (setQuickPrefsStudentId) setQuickPrefsStudentId(student.id);
+          } else {
+             onShowHistory(idx);
+          }
         }
       }}
       className={cn(
@@ -1981,18 +1987,62 @@ const StudentQuickPrefsModal = ({
   currentConfig, 
   updateCurrentConfig, 
   onClose,
-  isDarkMode 
+  isDarkMode,
+  conflicts = []
 }: { 
   studentId: string, 
   currentConfig: any, 
   updateCurrentConfig: any, 
   onClose: () => void,
-  isDarkMode?: boolean
+  isDarkMode?: boolean,
+  conflicts?: any[]
 }) => {
   const student = currentConfig.students.find((s: any) => s.id === studentId);
   const [localStudent, setLocalStudent] = useState<any>(student ? { ...student } : null);
+  const studentIdx = currentConfig.grid.indexOf(studentId);
+  const isPlaced = studentIdx !== -1;
 
   if (!student) return null;
+
+  const getNeighbors = () => {
+    if (studentIdx === -1) return [];
+    const neighbors: any[] = [];
+    const rows = currentConfig.rows;
+    const cols = currentConfig.cols;
+    const r = Math.floor(studentIdx / cols);
+    const c = studentIdx % cols;
+
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          const nIdx = nr * cols + nc;
+          const nStudentId = currentConfig.grid[nIdx];
+          if (nStudentId) {
+            const nStudent = currentConfig.students.find((s: any) => s.id === nStudentId);
+            if (nStudent) neighbors.push({ ...nStudent, index: nIdx });
+          }
+        }
+      }
+    }
+    return neighbors;
+  };
+
+  const neighbors = getNeighbors();
+  const studentConflicts = conflicts.filter((c: any) => c.studentId1 === studentId || c.studentId2 === studentId);
+
+  const swapWithNeighbor = (neighborIdx: number) => {
+    updateCurrentConfig((prev: any) => {
+      const newGrid = [...prev.grid];
+      const targetStudentId = newGrid[neighborIdx];
+      newGrid[neighborIdx] = studentId;
+      newGrid[studentIdx] = targetStudentId;
+      return { ...prev, grid: newGrid };
+    });
+    onClose();
+  };
 
   const toggleArrayItem = (field: string, val: string) => {
     setLocalStudent((prev: any) => {
@@ -2036,6 +2086,88 @@ const StudentQuickPrefsModal = ({
         </div>
 
         <div className="space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
+           {isPlaced && (
+             <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                 <Zap className="w-3 h-3 text-amber-500" />
+                 תובנות מיקום ותלמידים סמוכים
+               </h3>
+               
+               <div className="space-y-3">
+                 <div className="space-y-2">
+                   <p className="text-[10px] font-black text-slate-500 uppercase">שכנים קרובים ({neighbors.length})</p>
+                   <div className="grid grid-cols-2 gap-2">
+                     {neighbors.map((n: any) => {
+                       const isPreferred = localStudent.preferred?.includes(n.id);
+                       const isForbidden = localStudent.forbidden?.includes(n.id);
+                       const hasConflict = studentConflicts.some(c => c.studentId1 === n.id || c.studentId2 === n.id);
+                       
+                       return (
+                         <div key={n.id} className={cn(
+                           "p-2.5 rounded-xl border flex flex-col gap-1.5 transition-all",
+                           isPreferred ? "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10" : 
+                           isForbidden ? "bg-rose-50/50 border-rose-100 dark:bg-rose-900/10" :
+                           "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700 shadow-sm"
+                         )}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{n.name}</span>
+                              {hasConflict && <AlertCircle className="w-3 h-3 text-rose-500" />}
+                            </div>
+                            <div className="flex gap-1">
+                               <button 
+                                 onClick={() => toggleArrayItem('preferred', n.id)}
+                                 className={cn(
+                                   "flex-1 py-1 rounded-lg text-[8px] font-black transition-all",
+                                   isPreferred ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600"
+                                 )}
+                               >
+                                 חבר
+                               </button>
+                               <button 
+                                 onClick={() => toggleArrayItem('forbidden', n.id)}
+                                 className={cn(
+                                   "flex-1 py-1 rounded-lg text-[8px] font-black transition-all",
+                                   isForbidden ? "bg-rose-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-600"
+                                 )}
+                               >
+                                 להפריד
+                               </button>
+                               <button 
+                                 onClick={() => swapWithNeighbor(n.index)}
+                                 title="החלף מקומות"
+                                 className="px-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-brand-600 hover:text-white rounded-lg transition-all"
+                               >
+                                 <Repeat className="w-3 h-3" />
+                               </button>
+                            </div>
+                         </div>
+                       );
+                     })}
+                     {neighbors.length === 0 && <p className="text-[10px] text-slate-400 col-span-2 text-center py-2 italic font-medium">אין תלמידים בקרבת מקום</p>}
+                   </div>
+                 </div>
+
+                 {studentConflicts.length > 0 && (
+                   <div className="p-3 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800">
+                     <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase flex items-center gap-2 mb-1">
+                       <AlertCircle className="w-3 h-3" />
+                       זוהו {studentConflicts.length} קונפליקטים במיקום זה
+                     </p>
+                     <div className="space-y-1">
+                        {studentConflicts.map((c, i) => (
+                          <p key={i} className="text-[9px] font-medium text-rose-500 leading-tight">
+                            • {c.type === 'forbidden' ? 'יושב ליד תלמיד שאמור להתרחק ממנו' : 
+                               c.type === 'height' ? 'תלמיד נמוך בשורה אחורית' : 
+                               c.type === 'corner' ? 'מעדיף פינה אך לא משובץ באחת' : c.reason}
+                          </p>
+                        ))}
+                     </div>
+                   </div>
+                 )}
+               </div>
+             </div>
+           )}
+
            <div className="space-y-2">
               <label className="text-sm font-black text-slate-700 dark:text-slate-300 flex items-center gap-2"><Heart className="w-4 h-4 text-emerald-500"/> תלמידים מועדפים (לשבת ליד)</label>
               <div className="flex flex-wrap gap-2">
@@ -6795,8 +6927,11 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
         const height = s.height || 'medium';
         const rowPref = s.rowPreference || 'any';
         const cornerPref = s.cornerPreference ? 'Prefers corners/edges' : 'No corner preference';
+        const successes = s.successes || 'None mentioned';
+        const notes = s.notes || 'No further notes';
+        const noteTags = s.noteTags?.length > 0 ? s.noteTags.join(', ') : 'None';
 
-        return `- ID: ${s.id}, Name: ${s.name}, Height: ${height} (Short means must be rows 0-1), RowPreference: ${rowPref}, CornerPreference: ${cornerPref}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}`;
+        return `- ID: ${s.id}, Name: ${s.name}, Height: ${height} (Short means must be rows 0-1), RowPreference: ${rowPref}, CornerPreference: ${cornerPref}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}, Successes: ${successes}, Teacher Notes: ${notes}, Note Tags: ${noteTags}`;
       }).join('\n');
 
       const prompt = `You are an expert AI pedagogical advisor and classroom manager. You need to assign an optimal seating arrangement for a classroom.
@@ -6804,13 +6939,27 @@ There are ${rows} rows and ${cols} columns.
 Available seats:
 ${seatsDescription}
 
+Student Data:
+${studentsDescription}
+
 Instructions:
-1. Assign each student ID to EXACTLY ONE unique SeatIndex.
-2. Height matching: Students marked 'short' MUST be in Row 0 or 1.
-3. Row Preferences: 'front' (Row 0-1), 'middle' (Row 2-3), 'back' (Row 4+).
-4. Corner Preference: If true, try to place on Column 0 or Column ${cols - 1}.
-5. Constraints: Far from conflicts, near friends, respect group constraints.
-6. Return a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
+1. Assign each student ID to EXACTLY ONE unique SeatIndex from the available list.
+2. Height matching: Students marked 'short' MUST be in Row 0 or 1 to see the board.
+3. Row Preferences: 
+   - 'front' (Row 0-1)
+   - 'middle' (Row 2-3) 
+   - 'back' (Row 4+)
+4. Corner Preference: If a student prefers corners, try to place them on Column 0 or Column ${cols - 1}.
+5. Pedagogical Needs (CRITICAL):
+   - Support Needed: Students with 'high' support needed MUST be in the front (Row 0-1).
+   - Interest/Engagement: Strategically place students with 'low' interest closer to the teacher (front) or amongst 'high' interest peers to boost engagement.
+   - Environment Preferences: If a student prefers 'quiet', place them away from high-traffic indices. If they prefer 'near window', assume columns near index ${cols - 1} are windows.
+   - Clinical/Behavioral Cues: Analyze 'Teacher Notes' and 'Note Tags' for any additional location requirements mentioned by the teacher (e.g., "must sit near board", "needs easy access to teacher").
+6. Social Constraints:
+   - Near Friends: Group students with their 'preferred' friends.
+   - Far from Conflicts: Ensure students are NOT adjacent (including diagonals) to their 'forbidden' peers.
+   - Groups: Keep students of the same group in the same general area of the grid.
+7. Return ONLY a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -7007,6 +7156,44 @@ Instructions:
           else spatialScore -= 50;
         }
 
+        // Support Needed (Pedagogical)
+        if (student.supportNeeded === 'high') {
+          if (r === 0) spatialScore += 100; // Front row is priority
+          else if (r === 1) spatialScore += 60;
+          else spatialScore -= 100;
+        } else if (student.supportNeeded === 'medium') {
+          if (r <= 2) spatialScore += 30;
+          else spatialScore -= 20;
+        }
+
+        // Interest Level / Engagement
+        if (student.interestLevel === 'low') {
+          // Low interest students should be closer to teacher OR near high interest students
+          if (r <= 1) spatialScore += 40;
+          
+          const hasHighInterestNeighbor = neighbors.some(nIdx => {
+             const neighborId = assignment[nIdx];
+             if (!neighborId) return false;
+             const neighbor = students.find(s => s.id === neighborId);
+             return neighbor?.interestLevel === 'high';
+          });
+          if (hasHighInterestNeighbor) spatialScore += 30;
+        }
+
+        // Environment Preferences
+        if (student.environmentPreferences && student.environmentPreferences.length > 0) {
+          student.environmentPreferences.forEach((pref: string) => {
+            if (pref === 'חלון' || pref === 'window') {
+               if (c === cols - 1) spatialScore += 50;
+            } else if (pref === 'דלת' || pref === 'door') {
+               if (c === 0) spatialScore += 50;
+            } else if (pref === 'שקט' || pref === 'quiet') {
+               // Assuming quiet areas are back corners
+               if (r >= rows - 2 && (c === 0 || c === cols - 1)) spatialScore += 50;
+            }
+          });
+        }
+        
         score += spatialScore * spatialMultiplier;
       });
       return score;
@@ -7657,8 +7844,18 @@ Instructions:
               "p-3 rounded-2xl transition-all group",
               viewType === 'settings' ? "bg-brand-600 text-white shadow-lg" : "bg-slate-50 dark:bg-slate-800 text-slate-500"
             )}
+            title="הגדרות"
           >
             <Settings2 className="w-5 h-5 group-hover:rotate-45 transition-transform" />
+          </button>
+
+          <button 
+            onClick={() => setIsAIPanelOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-brand-100 hover:shadow-xl hover:scale-105 active:scale-95 transition-all group"
+            title="הפעל סידור חכם (AI)"
+          >
+            <Zap className="w-4 h-4 fill-white animate-pulse" />
+            <span className="hidden md:inline">סידור חכם</span>
           </button>
         </div>
       </div>
@@ -8337,6 +8534,7 @@ Instructions:
             updateCurrentConfig={updateCurrentConfig}
             onClose={() => setQuickPrefsStudentId(null)}
             isDarkMode={isDarkMode}
+            conflicts={conflicts}
           />
         )}
         
@@ -8923,6 +9121,7 @@ Instructions:
                             setNewStudent={setNewStudent}
                             setIsAddStudentOpen={setIsAddStudentOpen}
                             setNotifications={setNotifications}
+                            setQuickPrefsStudentId={setQuickPrefsStudentId}
                             conflicts={conflicts}
                           />
                         );
