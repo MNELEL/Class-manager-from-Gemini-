@@ -112,6 +112,7 @@ import {
   Stethoscope,
   Sun,
   Tablet,
+  Timer,
   Trash2,
   TrendingUp,
   User,
@@ -2004,6 +2005,93 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+
+const FloatingTimer = ({ 
+  seconds, 
+  isRunning, 
+  onToggle, 
+  onReset, 
+  onClose,
+  onAdjust,
+  duration,
+  isFinished
+}: any) => {
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const percentage = (seconds / duration) * 100;
+
+  return (
+    <motion.div 
+      drag
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.9, y: 100 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className={cn(
+        "fixed bottom-24 right-8 z-[100] w-64 bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border-2 p-6 flex flex-col gap-4 cursor-move",
+        isFinished ? "border-rose-500 animate-pulse bg-rose-50 dark:bg-rose-900/20 shadow-rose-200" : "border-brand-100 dark:border-slate-800"
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={cn(
+            "p-1.5 rounded-lg",
+            isFinished ? "bg-rose-100 text-rose-600" : "bg-brand-50 text-brand-600"
+          )}>
+            <Timer className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">טיימר משימה</span>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className={cn(
+        "text-5xl font-black text-center font-mono tabular-nums tracking-tighter transition-colors",
+        isFinished ? "text-rose-600" : "text-slate-800 dark:text-white"
+      )}>
+        {formatTime(seconds)}
+      </div>
+
+      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <motion.div 
+          initial={false}
+          animate={{ width: `${percentage}%` }}
+          className={cn("h-full", isFinished ? "bg-rose-500" : "bg-brand-500")}
+        />
+      </div>
+
+      <div className="flex items-center justify-center gap-2 mt-2">
+        <button 
+          onClick={onAdjust}
+          className="flex-1 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all font-bold text-[10px] uppercase tracking-wider"
+        >
+          כוון זמן
+        </button>
+        <button 
+          onClick={onToggle}
+          className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all active:scale-90",
+            isRunning ? "bg-amber-500 shadow-amber-200" : "bg-brand-600 shadow-brand-200"
+          )}
+        >
+          {isRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+        </button>
+        <button 
+          onClick={onReset}
+          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all active:rotate-180 duration-500"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
+      </div>
+    </motion.div>
   );
 };
 
@@ -6459,7 +6547,42 @@ export default function App() {
   const [quickAddName, setQuickAddName] = useState('');
   const [quickAddHeight, setQuickAddHeight] = useState('medium');
   const [quickAddGroups, setQuickAddGroups] = useState<string[]>([]);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
+  const [showDeskNumbers, setShowDeskNumbers] = useState(false);
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [is3DView, setIs3DView] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
+  const [isIssuesPanelOpen, setIsIssuesPanelOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
+  const [accessibility, setAccessibility] = useState({ highContrast: false, fontSize: 'medium' });
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2' });
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(600); // 10 minutes default
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(600);
+  const [isTimerFinished, setIsTimerFinished] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const adjustTimer = () => {
+    const time = prompt("הזן זמן בדקות (למשל: 5, 10, 15):", (timerDuration / 60).toString());
+    if (time && !isNaN(Number(time))) {
+      const secs = Math.max(1, Math.floor(Number(time) * 60));
+      setTimerSeconds(secs);
+      setTimerDuration(secs);
+      setIsTimerRunning(false);
+      setIsTimerFinished(false);
+    }
+  };
 
   const handleQuickAddStudent = () => {
     if (!quickAddName.trim()) return;
@@ -6616,19 +6739,7 @@ export default function App() {
     { title: "תצוגת 3D", text: "חדש! מעכשיו תוכלו לראות את הכיתה בפרספקטיבה תלת-ממדית.", icon: <Box className="w-10 h-10 text-amber-600" /> }
   ];
 
-  const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
-  const [showDeskNumbers, setShowDeskNumbers] = useState(false);
-  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
-  const [is3DView, setIs3DView] = useState(false);
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const isPrinting = (currentConfig as any).isPrinting;
-  const gridRef = useRef<HTMLDivElement>(null);
 
   const dashboardStats = useMemo(() => {
     const studentCount = activeConfig.students.length;
@@ -6751,17 +6862,6 @@ export default function App() {
     return insights;
   }, [activeConfig]);
 
-  const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
-  const [isIssuesPanelOpen, setIsIssuesPanelOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
-  const [accessibility, setAccessibility] = useState({ highContrast: false, fontSize: 'medium' });
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2' });
-  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
-
   useEffect(() => {
     if (selectedStudentId && viewType === 'grid') {
       const timer = setTimeout(() => {
@@ -6773,6 +6873,62 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [selectedStudentId, viewType]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const playAlertSound = useCallback(() => {
+    try {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, context.currentTime); // High pitch A
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+
+      gain.gain.setValueAtTime(0, context.currentTime);
+      gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
+
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.8);
+      
+      // Play a second beep for better alert
+      setTimeout(() => {
+        const osc2 = context.createOscillator();
+        const gain2 = context.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1109.12, context.currentTime); // C#6
+        osc2.connect(gain2);
+        gain2.connect(context.destination);
+        gain2.gain.setValueAtTime(0, context.currentTime);
+        gain2.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.05);
+        gain2.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 1);
+        osc2.start();
+        osc2.stop(context.currentTime + 1);
+      }, 200);
+    } catch (e) {
+      console.warn('Audio alert not supported or blocked:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (isTimerRunning && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => prev - 1);
+      }, 1000);
+    } else if (timerSeconds === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      setIsTimerFinished(true);
+      playAlertSound();
+      setNotifications(prev => [{ id: Date.now(), text: "הטיימר הסתיים! 🔔", type: 'info' }, ...prev]);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timerSeconds, playAlertSound]);
 
   // Keyboard Navigation for Students
   useEffect(() => {
@@ -7967,6 +8123,21 @@ Instructions:
           >
             <Zap className="w-4 h-4 fill-white animate-pulse" />
             <span className="hidden md:inline">סידור חכם</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              setShowTimer(!showTimer);
+              if (isTimerFinished) setIsTimerFinished(false);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-2xl font-black shadow-lg transition-all active:scale-95 group",
+              showTimer ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-white dark:bg-slate-800 text-slate-500 border border-slate-100 dark:border-slate-800 hover:bg-slate-50"
+            )}
+            title="טיימר משימה"
+          >
+            <Timer className={cn("w-4 h-4", showTimer && "animate-spin-slow")} />
+            <span className="hidden md:inline">טיימר</span>
           </button>
         </div>
       </div>
@@ -9538,6 +9709,22 @@ Instructions:
               </div>
             </motion.div>
           </motion.div>
+        )}
+        {showTimer && (
+          <FloatingTimer 
+            seconds={timerSeconds}
+            isRunning={isTimerRunning}
+            onToggle={() => setIsTimerRunning(!isTimerRunning)}
+            onReset={() => {
+              setIsTimerRunning(false);
+              setTimerSeconds(timerDuration);
+              setIsTimerFinished(false);
+            }}
+            onClose={() => setShowTimer(false)}
+            onAdjust={adjustTimer}
+            duration={timerDuration}
+            isFinished={isTimerFinished}
+          />
         )}
       </AnimatePresence>
 
