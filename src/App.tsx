@@ -4055,7 +4055,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   );
 };
 
-const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen }: any) => {
+const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen, setViewType }: any) => {
   const today = new Date();
   const options = {
     start: today,
@@ -4085,7 +4085,7 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
       <div className="flex items-center gap-6">
         <div className="flex items-center justify-between flex-1">
           <div className="space-y-1">
-            <h2 className="text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tight">ברוכים הבאים ל-ClassManager Pro</h2>
+            <h2 className="text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tight">ברוכים הבאים ל-CLass&scool pro-manager</h2>
             <p className="text-slate-500 font-medium">המערכת ההוליסטית לניהול פדגוגי והתאמת כיתה.</p>
           </div>
           <button 
@@ -4148,9 +4148,16 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
             <LayoutGrid className="w-8 h-8" />
           </div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">בקרת סידור מרחב</h3>
-          <button onClick={onBack} className="mt-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-md hover:bg-brand-700 hover:-translate-y-1 transition-all">
-            מעבר למפה
-          </button>
+          <div className="flex gap-2">
+            <button onClick={onBack} className="flex-1 px-4 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-md hover:bg-brand-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+              <Layout className="w-4 h-4" />
+              מפה
+            </button>
+            <button onClick={() => setViewType('groups-management')} className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:bg-slate-50 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+              <Users className="w-4 h-4 text-brand-500" />
+              קבוצות
+            </button>
+          </div>
         </div>
       </div>
 
@@ -5083,13 +5090,23 @@ const SettingsView = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest text-right">תפקיד / כיתה</label>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest text-right">תפקיד / כיתה / מקצוע</label>
                     <input 
                       type="text" 
                       value={teacherProfile.role}
                       onChange={e => setTeacherProfile({...teacherProfile, role: e.target.value})}
                       className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 outline-none focus:border-brand-500 font-bold transition-all text-right"
-                      placeholder="למשל: מחנך כיתה י' 1"
+                      placeholder="למשל: מחנך כיתה י' 1 / מתמטיקה"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest text-right">שם בית ספר</label>
+                    <input 
+                      type="text" 
+                      value={teacherProfile.school}
+                      onChange={e => setTeacherProfile({...teacherProfile, school: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 outline-none focus:border-brand-500 font-bold transition-all text-right"
+                      placeholder="הזן את שם בית הספר"
                     />
                   </div>
                 </div>
@@ -6372,21 +6389,8 @@ const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) 
   );
 };
 
-const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode }: any) => {
+const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode, exportToExcel, importFromCSV }: any) => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-
-  const handleExport = (config: any, filename: string) => {
-    const data = config.students.map((s: any) => ({
-      'שם': s.name,
-      'קבוצה': s.groupId,
-      'ציונים': s.grades?.map((g: any) => `${g.subject}: ${g.value}`).join(', '),
-      'הערות': s.notes || ''
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "תלמידים");
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
-  };
 
   const tools = [
     { id: 'groups', title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'פעיל' },
@@ -6396,7 +6400,8 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     { id: 'events', title: 'יומן אירועים ונוכחות', icon: <Calendar className="w-8 h-8 text-rose-500" />, desc: 'מעקב היעדרויות, איחורים וחיסורים', status: 'פעיל' },
     { id: 'stars', title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'פעיל' },
     { id: 'birthdays', title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'פעיל' },
-    { id: 'export', title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
+    { id: 'export-excel', title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
+    { id: 'import-csv', title: 'ייבוא תלמידים מקובץ', icon: <Upload className="w-8 h-8 text-sky-500" />, desc: 'העלאת רשימת תלמידים מקובץ Excel או CSV', status: 'פעיל' },
     { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
     { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' }
   ];
@@ -6454,22 +6459,41 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
                  </button>
               </div>
             )}
-            {selectedTool === 'export' && (
+            {selectedTool === 'export-excel' && (
               <div className="text-center space-y-8 py-10">
                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-600">
                     <FileDown className="w-10 h-10" />
                  </div>
                  <div className="space-y-2">
-                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">ייצוא נתונים מלא</h3>
-                    <p className="text-slate-500 max-w-md mx-auto">הורד את כל נתוני הכיתה, התלמידים, הציונים והנוכחות בקובץ Excel מסודר.</p>
+                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">ייצוא נתונים מלא ל-Excel</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">הורד את כל נתוני הכיתה, התלמידים, הציונים והנוכחות בקובץ Excel מסודר הכולל שדות מורחבים.</p>
                  </div>
                  <button 
-                   onClick={() => handleExport(currentConfig, 'ClassData_Full')}
+                   onClick={exportToExcel}
                    className="px-10 py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-700 transition-all flex items-center gap-2 mx-auto"
                  >
                    <Download className="w-5 h-5" />
                    הורד קובץ Excel כעת
                  </button>
+              </div>
+            )}
+            {selectedTool === 'import-csv' && (
+              <div className="text-center space-y-8 py-10">
+                 <div className="w-20 h-20 bg-sky-50 dark:bg-sky-900/20 rounded-3xl flex items-center justify-center mx-auto text-sky-600">
+                    <FileUp className="w-10 h-10" />
+                 </div>
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">ייבוא תלמידים מקובץ</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">העלו קובץ CSV או Excel עם רשימת תלמידים. וודאו שהקובץ כולל עמודת "שם מלא".</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-4">
+                    <label className="px-10 py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-700 transition-all flex items-center gap-2 cursor-pointer">
+                      <Upload className="w-5 h-5" />
+                      בחר קובץ לייבוא
+                      <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={importFromCSV} />
+                    </label>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">תומך בפורמטים: .CSV, .XLSX, .XLS</p>
+                 </div>
               </div>
             )}
           </div>
@@ -6592,7 +6616,7 @@ export default function App() {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2' });
+  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' });
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
@@ -6761,7 +6785,7 @@ export default function App() {
   };
 
   const onboardingContent = [
-    { title: "ברוכים הבאים!", text: "בואו נכיר את ClassManager Pro. המקום בו פדגוגיה פוגשת AI.", icon: <Sparkles className="w-10 h-10 text-brand-600" /> },
+    { title: "ברוכים הבאים!", text: "בואו נכיר את CLass&scool pro-manager. המקום בו פדגוגיה פוגשת AI.", icon: <Sparkles className="w-10 h-10 text-brand-600" /> },
     { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer className="w-10 h-10 text-indigo-600" /> },
     { title: "אופטימיזציית AI Smart Sort", text: "אלגוריתם ה-AI שלנו סורק אלפי אפשרויות כדי למצוא את הסידור המושלם. הוא מאזן בין צרכים לימודיים, חברתיים ופיזיים בשניות.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
     { title: "מנהל האילוצים", text: "ה-AI מתחשב באילוצים חכמים: גובה תלמידים (נמוכים מלפנים), הפרדת מפריעים, הצמדת חברים, ושמירה על הומוגניות קבוצתית בכל שולחן.", icon: <ListChecks className="w-10 h-10 text-sky-600" /> },
@@ -7929,13 +7953,36 @@ Instructions:
     const onBack = () => setViewType('dashboard');
     const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} />;
+      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} setViewType={setViewType} />;
       case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
-      case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} />;
+      case 'groups-management': return (
+        <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={onBackToGrid}
+              className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+            >
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+            <div className="flex-1">
+              <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">ניהול קבוצות ואילוצים</h2>
+              <p className="text-slate-500 font-medium">הגדר קבוצות למידה, אילוצי ישיבה חברתיים ופדגוגיים שה-AI יתחשב בהם.</p>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
+            <GroupManager 
+              groups={activeConfig.groups} 
+              updateCurrentConfig={updateCurrentConfig} 
+              setNotifications={setNotifications} 
+            />
+          </div>
+        </div>
+      );
+      case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} exportToExcel={exportToExcel} importFromCSV={importFromCSV} />;
       case 'settings': return (
         <SettingsView 
           onBack={onBackToGrid}
@@ -7980,10 +8027,6 @@ Instructions:
       default: return null;
     }
   };
-
-  const exportToExcel = () => console.log("Exporting to Excel...");
-
-
   const Header = () => {
     const today = new Date();
     const hd = new HDate(today);
@@ -8006,7 +8049,7 @@ Instructions:
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase">CLASSFLOW<span className="text-brand-600 ml-1">v3</span></h1>
+            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase">CLass&Sscool<span className="text-brand-600 ml-1">pro</span></h1>
           </div>
         </div>
 
@@ -8230,6 +8273,75 @@ Instructions:
     }
   };
   
+  const exportToExcel = () => {
+    const data = activeConfig.students.map((s: any) => ({
+      'ID': s.id,
+      'מזהה חיצוני': s.externalId || '',
+      'שם מלא': s.name,
+      'כינוי': s.nickname || '',
+      'גובה': s.height === 'short' ? 'נמוך' : s.height === 'tall' ? 'גבוה' : 'בינוני',
+      'צורך בתמיכה': s.supportNeeded || 'none',
+      'רמת עניין': s.interestLevel || 'medium',
+      'הערות': s.notes || '',
+      'קבוצות': (s.groups || []).map((gId: string) => activeConfig.groups?.find((g: any) => g.id === gId)?.name).join('; ')
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "תלמידים");
+    XLSX.writeFile(workbook, `students-export-${activeConfig.name || 'unnamed'}.xlsx`);
+    
+    setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני תלמידים יוצאו לאקסל", type: 'success' }, ...prev]);
+  };
+
+  const importFromCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const bstr = event.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        const importedStudents = data.map((row, index) => ({
+          id: row['ID'] || `imported-${Date.now()}-${index}`,
+          name: row['שם מלא'] || row['Name'] || row['שם'] || 'תלמיד חדש',
+          externalId: row['מזהה חיצוני'] || row['External ID'] || '',
+          nickname: row['כינוי'] || row['Nickname'] || '',
+          height: row['גובה'] === 'נמוך' ? 'short' : row['גובה'] === 'גבוה' ? 'tall' : 'medium',
+          supportNeeded: row['צורך בתמיכה'] || 'none',
+          interestLevel: row['רמת עניין'] || 'medium',
+          notes: row['הערות'] || '',
+          preferred: [],
+          forbidden: [],
+          separateFrom: [],
+          forbiddenNeighbors: [],
+          keepDistantFrom: [],
+          groups: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+
+        updateCurrentConfig((prev: any) => ({
+          ...prev,
+          students: [...prev.students, ...importedStudents]
+        }));
+
+        setNotifications((prev: any) => [{ id: Date.now(), text: `יובאו ${importedStudents.length} תלמידים בהצלחה`, type: 'success' }, ...prev]);
+      } catch (err) {
+        console.error("Import error:", err);
+        setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה בייבוא הקובץ", type: 'error' }, ...prev]);
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset input value
+    e.target.value = '';
+  };
+
   const exportToJSON = () => {
     const dataStr = JSON.stringify(currentConfig, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -8283,6 +8395,7 @@ Instructions:
         <div className="flex-1 text-right">
           <p className="text-sm font-black text-slate-900 dark:text-white truncate">{teacherProfile.name || 'המורה'}</p>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{teacherProfile.role || 'לחץ להגדרת תפקיד'}</p>
+          <p className="text-[9px] font-medium text-brand-600 truncate">{teacherProfile.school}</p>
         </div>
       </button>
 
@@ -8769,15 +8882,15 @@ Instructions:
                 </button>
                 <div className="grid grid-cols-2 gap-2">
                   <button 
-                    onClick={() => setIsGroupsPanelOpen(true)}
-                    className="py-4 bg-white border border-slate-100 text-slate-700 rounded-2xl font-black text-xs hover:bg-slate-50 flex items-center justify-center gap-2"
+                    onClick={() => setViewType('groups-management')}
+                    className="py-4 bg-white border border-slate-100 dark:bg-slate-800 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl font-black text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
                   >
                     <LayoutGrid className="w-4 h-4 text-brand-500" />
-                    קבוצות
+                    ניהול קבוצות
                   </button>
                   <button 
                     onClick={() => setIsIssuesPanelOpen(true)}
-                    className="py-4 bg-white border border-slate-100 text-slate-700 rounded-2xl font-black text-xs hover:bg-slate-50 flex items-center justify-center gap-2 relative"
+                    className="py-4 bg-white border border-slate-100 dark:bg-slate-800 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl font-black text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 relative transition-all hover:scale-[1.02]"
                   >
                     <AlertCircle className="w-4 h-4 text-rose-500" />
                     בעיות
@@ -8802,20 +8915,24 @@ Instructions:
                 </div>
               </div>
 
-              {/* Quick Exports */}
+              {/* Quick Exports & Import */}
               <div className="mt-auto space-y-4">
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest px-2">ייצוא מהיר</h3>
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest px-2">כלים וייצוא</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={exportToExcel} className="flex items-center justify-center gap-3 px-2 py-4 bg-brand-50 text-brand-700 rounded-2xl text-xs font-bold hover:bg-brand-100 border border-brand-100">
+                    <button onClick={exportToExcel} className="flex items-center justify-center gap-3 px-2 py-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-2xl text-xs font-bold hover:bg-emerald-100 border border-emerald-100 dark:border-emerald-800 transition-all">
                       <Download className="w-5 h-5" />
                       Excel
                     </button>
-                    <button onClick={exportToPDF} className="flex items-center justify-center gap-3 px-2 py-4 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold hover:bg-rose-100 border border-rose-100">
+                    <button onClick={() => setViewType('tools')} className="flex items-center justify-center gap-3 px-2 py-4 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 rounded-2xl text-xs font-bold hover:bg-sky-100 border border-sky-100 dark:border-sky-800 transition-all">
+                      <Upload className="w-5 h-5" />
+                      ייבוא
+                    </button>
+                    <button onClick={exportToPDF} className="flex items-center justify-center gap-3 px-2 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 rounded-2xl text-xs font-bold hover:bg-rose-100 border border-rose-100 dark:border-rose-800 transition-all">
                       <FileDown className="w-5 h-5" />
                       PDF
                     </button>
-                    <button onClick={exportToJSON} className="flex items-center justify-center gap-3 px-2 py-4 bg-slate-50 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-100 border border-slate-200">
+                    <button onClick={exportToJSON} className="flex items-center justify-center gap-3 px-2 py-4 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-bold hover:bg-slate-100 border border-slate-200 dark:border-slate-800 transition-all">
                       <Share2 className="w-5 h-5" />
                       JSON
                     </button>
@@ -9107,7 +9224,7 @@ Instructions:
                                 <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">סה"כ תלמידים: {activeConfig.students.length}</span>
                                 <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">תאריך: {new Date().toLocaleDateString('he-IL')}</span>
                              </div>
-                             <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות ClassManager Pro AI</p>
+                             <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות CLass&scool pro-manager AI</p>
                           </div>
                         )}
                        {/* Floating UI for Structure Mode */}
@@ -9618,7 +9735,7 @@ Instructions:
                            }
                         </div>
                         <div className="mt-20 text-center text-slate-300 text-[10px] font-bold uppercase tracking-[0.2em]">
-                           Generated by ClassManager Pro // End of Report
+                           Generated by CLass&scool pro-manager // End of Report
                         </div>
                      </div>
                    )}
@@ -9658,7 +9775,7 @@ Instructions:
                     <HelpCircle className="w-6 h-6" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">מדריך למשתמש - ClassFlow v3</h2>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">מדריך למשתמש - CLass&scool pro-manager</h2>
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">כל מה שצריך לדעת כדי לנהל את הכיתה בצורה חכמה</p>
                   </div>
                 </div>
@@ -9748,7 +9865,7 @@ Instructions:
 
                 <div className="p-8 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem] border border-brand-100 dark:border-brand-800/50 text-center shadow-inner">
                   <p className="text-brand-800 dark:text-brand-200 font-bold mb-3 italic">"הכלי הזה נבנה כדי להוריד ממך את העומס הבירוקרטי ולתת לך מקום לפדגוגיה אמיתית."</p>
-                  <p className="text-brand-600 dark:text-brand-400 text-sm font-black uppercase tracking-widest">— צוות ClassFlow Israel</p>
+                  <p className="text-brand-600 dark:text-brand-400 text-sm font-black uppercase tracking-widest">— צוות CLass&scool pro-manager</p>
                 </div>
               </div>
 
@@ -9872,7 +9989,7 @@ Instructions:
       </nav>
 
       <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
-        <div>ClassManager Pro v3.0 // Ready</div>
+        <div>CLass&scool pro-manager // Ready</div>
         <div className="flex gap-4">
           <span>{activeConfig.students.length} תלמידים</span>
           <span>•</span>

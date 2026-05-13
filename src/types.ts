@@ -36,7 +36,11 @@ export interface Student {
   // New fields from prompt
   interestLevel?: 'low' | 'medium' | 'high'; // רמת עניין
   supportNeeded?: 'none' | 'low' | 'medium' | 'high'; // צורך בתמיכה לימודית
-  environmentPreferences?: string[]; // העדפות סביבת לימוד
+  // Migration fields for database integration
+  externalId?: string;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock' | 'obstruction';
