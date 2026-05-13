@@ -41,14 +41,14 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      target: 'esnext'
+      target: 'es2022'
     },
     esbuild: {
-      target: 'esnext'
+      target: 'es2022'
     },
     optimizeDeps: {
       esbuildOptions: {
-        target: 'esnext'
+        target: 'es2022'
       }
     },
     server: {
