@@ -67,6 +67,20 @@ export interface ClassroomConfig {
   deskHistory?: Record<number, { studentId: string | number | null; timestamp: number }[]>;
   updatedAt: number;
   themeColor?: string;
+  campaigns?: Campaign[];
+}
+
+export interface Campaign {
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  targetGoal: number;
+  unit: string;
+  type: 'individual' | 'team' | 'class';
+  status: 'active' | 'completed' | 'draft';
+  progress: Record<string, number>; // studentId -> progress value
 }
 
 export interface StudentGroup {

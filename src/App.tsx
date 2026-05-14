@@ -129,7 +129,14 @@ import {
   Zap,
   Paperclip,
   File,
-  FileUp
+  FileUp,
+  Trophy,
+  Target,
+  Edit2,
+  Archive,
+  Image as ImageIcon,
+  Map,
+  Trash2 as TrashIcon
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1677,7 +1684,209 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
 };
 
 
-const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
+const EventsView = ({ currentConfig, updateCurrentConfig, onBack }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], description: '', type: 'activity' });
+  const events = currentConfig.events || [];
+
+  const addEvent = () => {
+    if (!newEvent.title) return;
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      events: [{ ...newEvent, id: Date.now().toString() }, ...(prev.events || [])]
+    }));
+    setIsAdding(false);
+    setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], description: '', type: 'activity' });
+  };
+
+  const eventTypes: any = {
+    activity: { label: 'פעילות מיוחדת', color: 'bg-indigo-500', icon: <Sparkles className="w-4 h-4" /> },
+    trip: { label: 'טיול', color: 'bg-emerald-500', icon: <Map className="w-4 h-4" /> },
+    meeting: { label: 'אסיפת הורים', color: 'bg-amber-500', icon: <Users className="w-4 h-4" /> },
+    other: { label: 'אחר', color: 'bg-slate-500', icon: <Info className="w-4 h-4" /> }
+  };
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+       <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm">
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">יומן אירועים כיתתי</h2>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">תיעוד חוויות, פעילויות ואירועים משמעותיים</p>
+            </div>
+          </div>
+          <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-brand-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            אירוע חדש
+          </button>
+       </div>
+
+       {isAdding && (
+         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-brand-100 dark:border-brand-900 shadow-xl space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               <div className="space-y-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">כותרת האירוע</label>
+                 <input value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" placeholder="מה קרה היום?" />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">תאריך</label>
+                 <input type="date" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">סוג האירוע</label>
+                 <select value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none">
+                    {Object.entries(eventTypes).map(([k, v]: [string, any]) => <option key={k} value={k}>{v.label}</option>)}
+                 </select>
+               </div>
+               <div className="space-y-2 lg:col-span-3">
+                 <label className="text-xs font-black text-slate-500 uppercase">תיאור קצר</label>
+                 <textarea value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-medium text-slate-700 outline-none h-24" placeholder="פרטים נוספים (אופציונלי)..." />
+               </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+               <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black">ביטול</button>
+               <button onClick={addEvent} className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-black shadow-lg">שמור אירוע</button>
+            </div>
+         </div>
+       )}
+
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.length === 0 ? (
+             <div className="col-span-full py-20 text-center opacity-50 space-y-4">
+                <History className="w-16 h-16 mx-auto" />
+                <p className="text-xl font-black text-slate-500">טרם תועדו אירועים ביומן</p>
+             </div>
+          ) : (
+            events.map((e: any) => (
+              <div key={e.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+                 <div className="flex items-center justify-between mb-4">
+                    <div className={cn("px-4 py-1.5 rounded-full flex items-center gap-2 text-[10px] font-black text-white uppercase shadow-sm", eventTypes[e.type]?.color)}>
+                       {eventTypes[e.type]?.icon}
+                       {eventTypes[e.type]?.label}
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400">{new Date(e.date).toLocaleDateString('he-IL')}</span>
+                 </div>
+                 <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">{e.title}</h3>
+                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">{e.description}</p>
+                 <button 
+                  onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, events: prev.events.filter((ev: any) => ev.id !== e.id) }))}
+                  className="mt-6 text-rose-500 text-[10px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                 >מחק אירוע</button>
+              </div>
+            ))
+          )}
+       </div>
+    </div>
+  );
+};
+
+const RemindersView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newReminder, setNewReminder] = useState({ title: '', time: '', date: new Date().toISOString().split('T')[0], notify: true });
+  const reminders = currentConfig.reminders || [];
+
+  const addReminder = () => {
+    if (!newReminder.title || !newReminder.time) return;
+    const item = { ...newReminder, id: Date.now().toString() };
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      reminders: [...(prev.reminders || []), item]
+    }));
+    
+    if (newReminder.notify) {
+      setNotifications((prev: any) => [{ id: Date.now(), text: `תזכורת הוגדרה: ${newReminder.title} ל-${newReminder.time}`, type: 'success' }, ...prev]);
+    }
+
+    setIsAdding(false);
+    setNewReminder({ title: '', time: '', date: new Date().toISOString().split('T')[0], notify: true });
+  };
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+       <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm">
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">תזכורות ופעולות קרובות</h2>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">ניהול לו"ז כיתתי ותזכורות פדגוגיות</p>
+            </div>
+          </div>
+          <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            תזכורת חדשה
+          </button>
+       </div>
+
+       {isAdding && (
+         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               <div className="space-y-2 lg:col-span-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">מה להזכיר?</label>
+                 <input value={newReminder.title} onChange={e => setNewReminder({...newReminder, title: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" placeholder="למשל: ישיבת צוות שכבתית, הכנת חומרים לשיעור חשבון..." />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">תאריך</label>
+                 <input type="date" value={newReminder.date} onChange={e => setNewReminder({...newReminder, date: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-black text-slate-500 uppercase">שעה</label>
+                 <input type="time" value={newReminder.time} onChange={e => setNewReminder({...newReminder, time: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" />
+               </div>
+               <div className="flex items-center gap-3 pt-6">
+                  <input type="checkbox" checked={newReminder.notify} onChange={e => setNewReminder({...newReminder, notify: e.target.checked})} className="w-5 h-5 rounded-lg text-brand-600 focus:ring-brand-500 border-slate-300" id="notify-check" />
+                  <label htmlFor="notify-check" className="text-sm font-bold text-slate-600 cursor-pointer">שלח התראה בזמן המתאים</label>
+               </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+               <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black">ביטול</button>
+               <button onClick={addReminder} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg">קבע תזכורת</button>
+            </div>
+         </div>
+       )}
+
+       <div className="max-w-4xl space-y-4">
+          {reminders.length === 0 ? (
+             <div className="py-20 text-center opacity-50 space-y-4">
+                <Calendar className="w-16 h-16 mx-auto" />
+                <p className="text-xl font-black text-slate-500">יומן התזכורות ריק</p>
+             </div>
+          ) : (
+            reminders.sort((a: any, b: any) => (a.date + a.time).localeCompare(b.date + b.time)).map((r: any) => (
+              <div key={r.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border-2 border-slate-100 dark:border-slate-800 flex items-center justify-between gap-6 group hover:translate-x-2 transition-transform">
+                 <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 min-w-20 shadow-sm">
+                       <span className="text-[10px] font-black text-brand-600 uppercase tracking-tighter">{new Date(r.date).toLocaleDateString('he-IL', { weekday: 'short' })}</span>
+                       <span className="text-lg font-black text-slate-800 dark:text-white leading-none mt-1">{new Date(r.date).getDate()}</span>
+                    </div>
+                    <div>
+                       <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight">{r.title}</h3>
+                       <div className="flex items-center gap-2 mt-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-sm font-bold text-slate-500">{r.time}</span>
+                          {r.notify && <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full ml-2">התראה פעילה</span>}
+                       </div>
+                    </div>
+                 </div>
+                 <button 
+                  onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, reminders: prev.reminders.filter((rem: any) => rem.id !== r.id) }))}
+                  className="p-3 text-rose-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                 >
+                    <Trash2 className="w-5 h-5" />
+                 </button>
+              </div>
+            ))
+          )}
+       </div>
+    </div>
+  );
+};
+
+const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: any }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTask, setNewTask] = useState({ studentId: 'all', title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium' as any, category: 'homework' as any });
@@ -2386,6 +2595,12 @@ const StudentQuickPrefsModal = ({
 
 const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent, aiWeights, setQuickPrefsStudentId }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void, aiWeights: any, setQuickPrefsStudentId?: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(student.name);
+  
+  useEffect(() => {
+    setTempName(student.name);
+  }, [student.id]);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isAddingDiag, setIsAddingDiag] = useState(false);
   const [newDiag, setNewDiag] = useState({ type: '', date: '', description: '', accommodations: '' });
@@ -2453,6 +2668,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
     { id: 'tasks', label: 'משימות ורשימות', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'pedagogy', label: 'פדגוגיה', icon: <FileText className="w-4 h-4" /> },
     { id: 'academic', label: 'הישגים', icon: <GraduationCap className="w-4 h-4" /> },
+    { id: 'rewards', label: 'נקודות ופרסים', icon: <Trophy className="w-4 h-4" /> },
     { id: 'attendance', label: 'נוכחות', icon: <Calendar className="w-4 h-4" /> },
     { id: 'diagnostics', label: 'אבחונים והתאמות', icon: <Stethoscope className="w-4 h-4" /> },
     { id: 'communications', label: 'קשר הורים', icon: <PhoneCall className="w-4 h-4" /> },
@@ -2509,10 +2725,36 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
              <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-brand-200 ring-4 ring-brand-50 dark:ring-brand-900/20">
                {student.name[0]}
              </div>
-             <div>
-                <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none">{student.name}</h2>
+             <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setIsEditingName(true)}>
+                   {isEditingName ? (
+                      <input 
+                        autoFocus
+                        value={tempName}
+                        onChange={e => setTempName(e.target.value)}
+                        onBlur={() => { updateStudent('name', tempName); setIsEditingName(false); }}
+                        onKeyDown={e => e.key === 'Enter' && (e.target as any).blur()}
+                        className="text-xl font-black bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-2 outline-none w-full"
+                      />
+                   ) : (
+                      <>
+                         <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none truncate">{student.name}</h2>
+                         <Edit2 className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </>
+                   )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">תלמיד #{student.id}</span>
+                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                  <div className="flex items-center gap-1">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">כינוי:</span>
+                     <EditableText 
+                       value={student.nickname || ''} 
+                       onSave={(val) => updateStudent('nickname', val)}
+                       placeholder="הוסף כינוי..."
+                       className="text-[10px] font-black text-brand-600 uppercase tracking-widest leading-none"
+                     />
+                  </div>
                   <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                   <span className="text-[10px] font-black text-brand-600 leading-none">פעיל במערכת</span>
                 </div>
@@ -3701,6 +3943,116 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
                 </div>
               )}
 
+               {activeTab === 'rewards' && (
+                <div className="lg:col-span-3 space-y-8">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[2.5rem]">
+                          <Trophy className="w-10 h-10 text-amber-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black text-slate-900 dark:text-white">נקודות ופרסים</h3>
+                          <p className="text-slate-500 font-medium">ניהול המאזן האישי והישגי התלמיד.</p>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">יתרה נוכחית</p>
+                         <p className="text-5xl font-display font-black text-brand-600">
+                           {currentConfig.student_points?.[student.id] || 0}
+                         </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                         <h4 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                           <Zap className="w-5 h-5 text-brand-600" />
+                           הענקת נקודות בונוס
+                         </h4>
+                         <div className="grid grid-cols-3 gap-3">
+                           {[5, 10, 25, 50, 100, 250].map(val => (
+                             <button
+                               key={val}
+                               onClick={() => {
+                                 const reason = prompt("מה סיבת הענקת הנקודות?", "השתתפות יפה בשיעור");
+                                 if (!reason) return;
+                                 updateCurrentConfig((prev: any) => {
+                                   const newPoints = { ...prev.student_points, [student.id]: (prev.student_points[student.id] || 0) + val };
+                                   const newLog = [...(prev.analytics_log || []), {
+                                     type: 'points',
+                                     studentId: student.id,
+                                     reason,
+                                     value: val,
+                                     timestamp: Date.now()
+                                   }].slice(-1000);
+                                   return { ...prev, student_points: newPoints, analytics_log: newLog };
+                                 });
+                               }}
+                               className="py-4 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-all shadow-sm"
+                             >
+                               +{val}
+                             </button>
+                           ))}
+                         </div>
+                      </div>
+
+                      <div className="space-y-6">
+                         <h4 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                           <Target className="w-5 h-5 text-indigo-600" />
+                           מבצעים פעילים
+                         </h4>
+                         <div className="space-y-3">
+                           {(currentConfig.campaigns || []).filter((c: any) => c.status === 'active').map((c: any) => {
+                             const progress = c.progress?.[student.id] || 0;
+                             const percent = Math.min(100, (progress / c.target) * 100);
+                             return (
+                               <div key={c.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                 <div className="flex justify-between items-center mb-2">
+                                   <span className="font-bold text-sm dark:text-white">{c.title}</span>
+                                   <span className="text-[10px] font-black text-slate-400">{progress} / {c.target}</span>
+                                 </div>
+                                 <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-brand-600 transition-all" style={{ width: `${percent}%` }} />
+                                 </div>
+                               </div>
+                             );
+                           })}
+                           {(currentConfig.campaigns || []).filter((c: any) => c.status === 'active').length === 0 && (
+                             <p className="text-xs text-slate-400 italic text-center py-4">אין מבצעים פעילים כרגע</p>
+                           )}
+                         </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                       <div className="flex-1 space-y-4">
+                          <h4 className="text-lg font-black text-slate-400 uppercase tracking-widest px-1">היסטוריית פרסים</h4>
+                          <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                             {(currentConfig.student_rewards?.[student.id] || []).slice().reverse().map((r: any, idx: number) => (
+                               <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                     <div className="p-2 bg-brand-50 dark:bg-brand-900/20 rounded-xl text-brand-600">
+                                        {r.icon === 'Clock' && <Clock className="w-4 h-4" />}
+                                        {r.icon === 'Zap' && <Zap className="w-4 h-4" />}
+                                        {r.icon === 'Map' && <Map className="w-4 h-4" />}
+                                        {r.icon === 'CheckCircle2' && <CheckCircle2 className="w-4 h-4" />}
+                                     </div>
+                                     <span className="font-bold dark:text-white text-sm">{r.title}</span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-400">{new Date(r.purchasedAt).toLocaleDateString('he-IL')}</span>
+                               </div>
+                             ))}
+                             {(!currentConfig.student_rewards?.[student.id] || currentConfig.student_rewards?.[student.id].length === 0) && (
+                               <div className="p-8 text-center text-slate-300 font-bold uppercase text-[10px] tracking-widest border-2 border-dashed border-slate-100 rounded-3xl">טרם נרכשו פרסים</div>
+                             )}
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'attendance' && (
                 <div className="lg:col-span-3">
                    <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
@@ -4055,7 +4407,7 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
   );
 };
 
-const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen, setViewType }: any) => {
+const DashboardView = ({ activeConfig, stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen, setViewType }: any) => {
   const today = new Date();
   const options = {
     start: today,
@@ -4079,6 +4431,9 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
   const absentCount = (students || []).filter((s:any) => s.status === 'absent').length;
   const totalAttendance = (students || []).length || 1;
   const attendancePercentage = Math.round(((presentCount + lateCount) / totalAttendance) * 100);
+ 
+  const upcomingEvents = ((activeConfig as any).events || []).filter((e: any) => new Date(e.date).getTime() >= new Date().setHours(0,0,0,0)).slice(0, 3);
+  const activeReminders = ((activeConfig as any).reminders || []).slice(0, 3);
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -4158,6 +4513,10 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
               קבוצות
             </button>
           </div>
+          <button onClick={() => setViewType('campaigns')} className="w-full px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 mt-2">
+            <Trophy className="w-4 h-4" />
+            ניהול מבצעים
+          </button>
         </div>
       </div>
 
@@ -4187,6 +4546,77 @@ const DashboardView = ({ stats, students, onBack, updateCurrentConfig, isDarkMod
                  <p className="text-xs font-bold text-slate-500 uppercase">חסרים</p>
                  <p className="text-2xl font-black text-rose-600 mt-1">{absentCount}</p>
               </div>
+           </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 flex flex-col">
+           <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                 <Bell className="w-6 h-6 text-indigo-500" />
+                 תזכורות פעילות
+                 <Badge className="bg-indigo-100 text-indigo-600 border-none">{activeReminders.length}</Badge>
+              </h3>
+              <button onClick={() => setViewType('reminders')} className="text-xs font-black text-slate-400 hover:text-brand-600 uppercase tracking-widest">צפה בהכל</button>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+              {activeReminders.length === 0 ? (
+                 <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <Clock className="w-12 h-12 text-slate-300 mb-4" />
+                    <p className="font-bold text-slate-500">אין תזכורות קרובות</p>
+                 </div>
+              ) : (
+                 activeReminders.map((r: any, i: number) => (
+                    <div key={i} className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between group">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-xl flex flex-col items-center justify-center shadow-sm">
+                             <span className="text-[10px] font-black text-brand-600 leading-none">{new Date(r.date).getDate()}</span>
+                             <span className="text-[8px] font-medium text-slate-400 uppercase">{new Date(r.date).toLocaleDateString('he-IL', { month: 'short' })}</span>
+                          </div>
+                          <div>
+                             <p className="font-bold text-slate-800 dark:text-slate-200">{r.title}</p>
+                             <p className="text-xs font-medium text-slate-500">{r.time}</p>
+                          </div>
+                       </div>
+                    </div>
+                 ))
+              )}
+           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 flex flex-col">
+           <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                 <History className="w-6 h-6 text-brand-500" />
+                 אירועים קרובים
+                 <Badge className="bg-brand-100 text-brand-600 border-none">{upcomingEvents.length}</Badge>
+              </h3>
+              <button onClick={() => setViewType('events')} className="text-xs font-black text-slate-400 hover:text-brand-600 uppercase tracking-widest">כל האירועים</button>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+              {upcomingEvents.length === 0 ? (
+                 <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <Sparkles className="w-12 h-12 text-slate-300 mb-4" />
+                    <p className="font-bold text-slate-500">יומן אירועים פנוי</p>
+                 </div>
+              ) : (
+                 upcomingEvents.map((e: any, i: number) => (
+                    <div key={i} className="p-5 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between">
+                       <div className="flex items-center gap-4">
+                          <div className={cn("px-3 py-1 rounded-full text-[9px] font-black text-white uppercase", e.type === 'trip' ? 'bg-emerald-500' : e.type === 'meeting' ? 'bg-amber-500' : 'bg-brand-500')}>
+                             {e.type}
+                          </div>
+                          <div>
+                             <p className="font-bold text-slate-800 dark:text-slate-200">{e.title}</p>
+                             <p className="text-xs font-medium text-slate-500">{new Date(e.date).toLocaleDateString('he-IL')}</p>
+                          </div>
+                       </div>
+                    </div>
+                 ))
+              )}
            </div>
         </div>
 
@@ -5510,6 +5940,809 @@ const ExamsView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
+const CampaignsView = ({ students, campaigns = [], updateCurrentConfig, onBack, setViewType }: any) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newCampaign, setNewCampaign] = useState({
+    title: '',
+    description: '',
+    targetGoal: 10,
+    unit: 'נקודות',
+    type: 'individual' as 'individual' | 'class',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  });
+
+  const addCampaign = () => {
+    if (!newCampaign.title) return;
+    const campaign = {
+      ...newCampaign,
+      id: `camp-${Date.now()}`,
+      status: 'active',
+      progress: {}
+    };
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      campaigns: [...(prev.campaigns || []), campaign]
+    }));
+    setIsAdding(false);
+  };
+
+  const updateProgress = (campaignId: string, studentId: string, val: number) => {
+    updateCurrentConfig((prev: any) => {
+      const oldVal = prev.campaigns?.find((c: any) => c.id === campaignId)?.progress?.[studentId] || 0;
+      const diff = val - oldVal;
+      
+      const newCampaigns = (prev.campaigns || []).map((c: any) => 
+        c.id === campaignId ? { ...c, progress: { ...c.progress, [studentId]: val } } : c
+      );
+      
+      const newPoints = { ...(prev.student_points || {}) };
+      newPoints[studentId] = (newPoints[studentId] || 0) + diff;
+
+      // Log to analytics
+      const newLog = [...(prev.analytics_log || []), {
+        type: 'points',
+        studentId,
+        campaignId,
+        value: diff,
+        timestamp: Date.now()
+      }].slice(-1000); // Keep last 1000 entries
+      
+      return { ...prev, campaigns: newCampaigns, student_points: newPoints, analytics_log: newLog };
+    });
+  };
+
+  return (
+     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={onBack}
+            className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1">
+             <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">ניהול מבצעים כיתתיים</h2>
+             <p className="text-slate-500 font-medium">יצירת אתגרים, מוקדי עניין ותמריצים כיתתיים למינוף הפדגוגיה.</p>
+          </div>
+          <div className="flex gap-3">
+             <button 
+               onClick={() => setViewType('campaign-display')}
+               className="px-6 py-4 bg-white border-2 border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+             >
+               <Monitor className="w-5 h-5 text-brand-600" />
+               מסך הקרנה
+             </button>
+             <button 
+               onClick={() => setIsAdding(true)}
+               className="px-6 py-4 bg-brand-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-700 transition-all shadow-lg active:scale-95"
+             >
+               <Plus className="w-5 h-5" />
+               מבצע חדש
+             </button>
+          </div>
+        </div>
+
+        {isAdding && (
+           <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-xl space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+              <h3 className="text-2xl font-black dark:text-white">פרקטיקה חדשה לכיתה</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">שם המבצע</label>
+                    <input 
+                      type="text" 
+                      value={newCampaign.title} 
+                      onChange={e => setNewCampaign({...newCampaign, title: e.target.value})}
+                      placeholder="למשל: תולעת ספרים, אלוף הניקיון..."
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">סוג המבצע</label>
+                    <select 
+                      value={newCampaign.type}
+                      onChange={e => setNewCampaign({...newCampaign, type: e.target.value as any})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                    >
+                       <option value="individual">אישי (כל תלמיד לעצמו)</option>
+                       <option value="class">כיתתי (כולם יחד ליעד)</option>
+                    </select>
+                 </div>
+                 <div className="space-y-2 col-span-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">תיאור והוראות</label>
+                    <textarea 
+                      value={newCampaign.description} 
+                      onChange={e => setNewCampaign({...newCampaign, description: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-medium focus:ring-2 focus:ring-brand-500 outline-none h-24 custom-scrollbar"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">יעד סיום (מספרי)</label>
+                    <input 
+                      type="number" 
+                      value={newCampaign.targetGoal} 
+                      onChange={e => setNewCampaign({...newCampaign, targetGoal: parseInt(e.target.value)})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">יחידת מידה</label>
+                    <input 
+                      type="text" 
+                      value={newCampaign.unit} 
+                      onChange={e => setNewCampaign({...newCampaign, unit: e.target.value})}
+                      placeholder="כוכבים, נקודות, דפים..."
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                 </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                 <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-xl font-bold">ביטול</button>
+                 <button onClick={addCampaign} className="px-8 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-lg shadow-brand-200">הפעלה</button>
+              </div>
+           </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-8">
+           {campaigns.length === 0 && !isAdding && (
+             <div className="py-20 text-center space-y-6">
+                <div className="w-24 h-24 bg-brand-50 dark:bg-brand-900/20 rounded-full flex items-center justify-center mx-auto text-brand-600">
+                   <Target className="w-12 h-12" />
+                </div>
+                <div className="space-y-2">
+                   <h3 className="text-2xl font-black text-slate-800 dark:text-white">אין מבצעים פעילים</h3>
+                   <p className="text-slate-500 max-w-sm mx-auto">זה הזמן ליזום אתגר חדש לכיתה ולראות את המוטיבציה עולה!</p>
+                </div>
+             </div>
+           )}
+
+           {campaigns.map((c: any) => (
+              <div key={c.id} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50/50 dark:bg-brand-900/10 rounded-bl-[5rem] -mr-10 -mt-10 group-hover:scale-110 transition-transform" />
+                 
+                 <div className="flex flex-col md:flex-row gap-10 relative z-10">
+                    <div className="flex-1 space-y-6">
+                       <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                             <div className="w-12 h-12 bg-brand-600 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                                <Trophy className="w-6 h-6" />
+                             </div>
+                             <div>
+                                <h3 className="text-2xl font-black dark:text-white">{c.title}</h3>
+                                <span className={cn("text-[10px] font-black uppercase tracking-widest", c.type === 'class' ? "text-indigo-600":"text-emerald-600")}>
+                                   {c.type === 'class' ? 'מבצע כיתתי משותף' : 'מבצע אישי תחרותי'}
+                                </span>
+                             </div>
+                          </div>
+                          <p className="text-slate-500 font-medium leading-relaxed">{c.description}</p>
+                       </div>
+
+                       {c.type === 'class' ? (
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-end">
+                                <span className="text-sm font-black text-slate-800 dark:text-white">התקדמות כיתתית כוללת</span>
+                                <span className="text-sm font-display font-black text-brand-600">
+                                   {Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number} / {c.targetGoal} {c.unit}
+                                </span>
+                             </div>
+                             <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${Math.min(100, ((Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number) / c.targetGoal) * 100)}%` }}
+                                  className="h-full bg-brand-600 shadow-sm"
+                                />
+                             </div>
+                          </div>
+                       ) : (
+                          <div className="space-y-4">
+                             <h4 className="text-sm font-black text-slate-800 dark:text-white">מובילים במבצע:</h4>
+                             <div className="flex flex-wrap gap-3">
+                                {students.slice(0, 5).map((s: any) => {
+                                   const prog = c.progress?.[s.id] || 0;
+                                   const percent = Math.min(100, (prog / c.targetGoal) * 100);
+                                   return (
+                                      <div key={s.id} className="bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-2xl border border-slate-100 dark:border-slate-700 min-w-32 flex flex-col gap-1">
+                                         <span className="text-xs font-bold truncate">{s.name}</span>
+                                         <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black text-brand-600">{prog} {c.unit}</span>
+                                            <span className="text-[10px] font-bold text-slate-400">{Math.round(percent)}%</span>
+                                         </div>
+                                      </div>
+                                   );
+                                })}
+                             </div>
+                          </div>
+                       )}
+                    </div>
+
+                    <div className="w-full md:w-80 space-y-6">
+                       <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">עדכון ידני של נקודות</h4>
+                       <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                          {students.slice().sort((a: any, b: any) => a.name.localeCompare(b.name, 'he')).map((s: any) => (
+                             <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                                <span className="text-sm font-bold truncate pr-2">{s.name}</span>
+                                <div className="flex items-center gap-2">
+                                   <button 
+                                      onClick={() => updateProgress(c.id, s.id, Math.max(0, (c.progress?.[s.id] || 0) - 1))}
+                                      className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-colors"
+                                   >-</button>
+                                   <span className="w-10 text-center font-display font-black text-brand-600">{c.progress?.[s.id] || 0}</span>
+                                   <button 
+                                      onClick={() => updateProgress(c.id, s.id, (c.progress?.[s.id] || 0) + 1)}
+                                      className="w-8 h-8 rounded-lg bg-brand-600 text-white shadow-sm flex items-center justify-center transition-transform active:scale-95"
+                                   >+</button>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                       <button 
+                          onClick={() => {
+                             updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                campaigns: prev.campaigns.filter((camp: any) => camp.id !== c.id)
+                             }));
+                          }}
+                          className="w-full py-3 text-rose-500 font-bold text-sm bg-rose-50 dark:bg-rose-900/20 rounded-xl hover:bg-rose-100 transition-colors"
+                       >סיום ומחיקה</button>
+                    </div>
+                 </div>
+              </div>
+           ))}
+        </div>
+     </div>
+  );
+};
+
+const CampaignDisplayView = ({ campaigns = [], students = [], onBack }: any) => {
+   const activeCamps = (campaigns || []).filter((c: any) => c.status === 'active');
+
+   return (
+      <div className="fixed inset-0 z-[500] bg-slate-900 flex flex-col items-center justify-center p-12 overflow-hidden rtl" dir="rtl">
+         <button 
+           onClick={onBack}
+           className="absolute top-8 right-8 p-4 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all z-10"
+         >
+           <X className="w-8 h-8" />
+         </button>
+
+         <div className="max-w-7xl w-full h-full flex flex-col gap-12">
+            <div className="text-center space-y-4">
+               <h2 className="text-6xl font-black text-white tracking-widest uppercase">לוח הישגים כיתתי</h2>
+               <div className="h-1 w-40 bg-brand-500 mx-auto rounded-full" />
+            </div>
+
+            {activeCamps.length === 0 ? (
+               <div className="flex-1 flex flex-col items-center justify-center text-white/30 space-y-6">
+                  <Monitor className="w-32 h-32" />
+                  <p className="text-3xl font-bold uppercase tracking-widest">ממתין להפעלת מבצע...</p>
+               </div>
+            ) : (
+               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 overflow-y-auto p-4 custom-scrollbar">
+                  {activeCamps.map((c: any) => (
+                     <div key={c.id} className="bg-white/5 border-4 border-white/10 rounded-[4rem] p-12 flex flex-col gap-8 relative overflow-hidden backdrop-blur-xl">
+                        <div className="flex items-center gap-6">
+                           <div className="w-24 h-24 bg-brand-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-brand-500/20">
+                              <Trophy className="w-12 h-12 text-white" />
+                           </div>
+                           <div className="space-y-1">
+                              <h3 className="text-5xl font-black text-white">{c.title}</h3>
+                              <p className="text-2xl text-white/50 font-medium">{c.unit} של הצלחה</p>
+                           </div>
+                        </div>
+
+                        {c.type === 'class' ? (
+                           <div className="space-y-10 flex-1 flex flex-col justify-center">
+                              <div className="space-y-6">
+                                 <div className="flex justify-between items-end text-white">
+                                    <span className="text-4xl font-black">התקדמות משותפת</span>
+                                    <span className="text-4xl font-display font-black text-brand-500">
+                                       {Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number} / {c.targetGoal}
+                                    </span>
+                                 </div>
+                                 <div className="h-16 bg-white/10 rounded-3xl overflow-hidden p-2 border-2 border-white/5">
+                                    <motion.div 
+                                       initial={{ width: 0 }}
+                                       animate={{ width: `${Math.min(100, ((Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number) / c.targetGoal) * 100)}%` }}
+                                       className="h-full bg-brand-600 rounded-2xl shadow-[0_0_50px_rgba(37,99,235,0.4)] relative"
+                                    >
+                                       <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                    </motion.div>
+                                 </div>
+                              </div>
+                              <p className="text-2xl text-center text-white/80 font-bold leading-relaxed bg-white/5 p-8 rounded-3xl border border-white/10">
+                                 {c.description}
+                              </p>
+                           </div>
+                        ) : (
+                           <div className="space-y-8 flex-1">
+                              <div className="grid grid-cols-1 gap-4">
+                                 {Object.entries(c.progress || {})
+                                    .sort(([, a], [, b]) => (b as number) - (a as number))
+                                    .slice(0, 8)
+                                    .map(([sId, val]: [string, any], idx) => {
+                                       const student = students.find((s:any)=>s.id===sId);
+                                       return (
+                                          <div key={sId} className="flex items-center gap-6 bg-white/5 p-5 rounded-[2rem] border border-white/5">
+                                             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center font-black text-2xl text-white">
+                                                {idx + 1}
+                                             </div>
+                                             <div className="flex-1">
+                                                <div className="flex justify-between items-center mb-2">
+                                                   <span className="text-2xl font-black text-white">{student?.name || `תלמיד #${sId}`}</span>
+                                                   <span className="text-2xl font-display font-black text-brand-500">{val}</span>
+                                                </div>
+                                                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                                                   <motion.div 
+                                                      initial={{ width: 0 }}
+                                                      animate={{ width: `${Math.min(100, ((val as number) / c.targetGoal) * 100)}%` }}
+                                                      className="h-full bg-brand-600"
+                                                   />
+                                                </div>
+                                             </div>
+                                          </div>
+                                       );
+                                    })
+                                 }
+                              </div>
+                           </div>
+                        )}
+                     </div>
+                  ))}
+               </div>
+            )}
+         </div>
+      </div>
+   );
+};
+
+const RewardsView = ({ rewards = [], student_points = {}, updateCurrentConfig, onBack }: any) => {
+  const buyReward = (rewardId: string, studentId: string) => {
+    updateCurrentConfig((prev: any) => {
+      const reward = prev.rewards.find((r: any) => r.id === rewardId);
+      const points = prev.student_points[studentId] || 0;
+      
+      if (!reward || points < reward.price || reward.stock <= 0) return prev;
+      
+      const newPoints = { ...prev.student_points, [studentId]: points - reward.price };
+      const newRewards = prev.rewards.map((r: any) => r.id === rewardId ? { ...r, stock: r.stock - 1 } : r);
+      
+      const studentInventory = [...(prev.student_rewards?.[studentId] || []), { ...reward, purchasedAt: Date.now() }];
+      const newStudentRewards = { ...(prev.student_rewards || {}), [studentId]: studentInventory };
+      
+      return { ...prev, student_points: newPoints, rewards: newRewards, student_rewards: newStudentRewards };
+    });
+  };
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+      <div className="flex items-center gap-6">
+        <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 transition-all shadow-sm">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div className="flex-1">
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white">חנות הפרסים הכיתתית</h2>
+          <p className="text-slate-500 font-medium">המקום שבו המאמץ הופך למתנה. קנו פרסים בעזרת הנקודות שצברתם!</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {(rewards || []).map((r: any) => (
+          <div key={r.id} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-8 shadow-sm flex flex-col gap-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-50/50 dark:bg-brand-900/10 rounded-bl-[4rem] flex items-center justify-center -mr-4 -mt-4">
+               {r.icon === 'Clock' && <Clock className="w-8 h-8 text-brand-600" />}
+               {r.icon === 'Zap' && <Zap className="w-8 h-8 text-brand-600" />}
+               {r.icon === 'Map' && <Map className="w-8 h-8 text-brand-600" />}
+               {r.icon === 'CheckCircle2' && <CheckCircle2 className="w-8 h-8 text-brand-600" />}
+            </div>
+            
+            <div className="space-y-2 pr-12">
+               <h3 className="text-2xl font-black dark:text-white">{r.title}</h3>
+               <div className="flex items-center gap-2">
+                  <Badge className="bg-brand-600 text-white font-display">{r.price} נקודות</Badge>
+                  <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500">נותרו {r.stock}</Badge>
+               </div>
+            </div>
+
+            <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+            <div className="space-y-4">
+               <p className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">בחרו תלמיד למימוש:</p>
+               <div className="max-h-40 overflow-y-auto custom-scrollbar flex flex-wrap gap-2">
+                  {Object.entries(student_points).filter(([, p]) => (p as number) >= r.price).map(([sId, p]) => (
+                    <button 
+                      key={sId}
+                      onClick={() => buyReward(r.id, sId)}
+                      className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 hover:text-brand-600 rounded-lg text-[10px] font-bold border border-slate-200 transition-colors"
+                    >
+                      {sId} ({p})
+                    </button>
+                  ))}
+               </div>
+               {Object.values(student_points).every((p: any) => p < r.price) && (
+                 <p className="text-xs text-slate-400 italic font-medium p-4 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl">טרם נצברו מספיק נקודות על ידי אף תלמיד.</p>
+               )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const LeaderboardView = ({ students = [], student_points = {}, onBack }: any) => {
+  const sorted = [...students].sort((a, b) => (student_points[b.id] || 0) - (student_points[a.id] || 0));
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+       <div className="flex items-center gap-6">
+        <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 transition-all shadow-sm">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div>
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white">טבלת ליגה והישגים</h2>
+          <p className="text-slate-500 font-medium">דירוג התלמידים לפי צבירת נקודות והישיגים אישיים.</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
+         <div className="grid grid-cols-1 gap-4">
+            {sorted.map((s, idx) => (
+               <div key={s.id} className={cn(
+                 "flex items-center justify-between p-6 rounded-3xl border-2 transition-all",
+                 idx === 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-900/50" : 
+                 idx === 1 ? "bg-slate-50 border-slate-200 dark:bg-slate-800/50" :
+                 idx === 2 ? "bg-orange-50 border-orange-200 dark:bg-orange-900/10" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+               )}>
+                  <div className="flex items-center gap-6">
+                     <div className={cn(
+                       "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm",
+                       idx === 0 ? "bg-amber-400 text-white" :
+                       idx === 1 ? "bg-slate-300 text-slate-600" :
+                       idx === 2 ? "bg-orange-400 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                     )}>
+                        {idx + 1}
+                     </div>
+                     <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center font-bold text-slate-600 text-xl">
+                           {s.name[0]}
+                        </div>
+                        <div>
+                           <h4 className="text-xl font-black text-slate-800 dark:text-white">{s.name}</h4>
+                           <p className="text-xs font-bold text-slate-400">נקודות מצטברות: {student_points[s.id] || 0}</p>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="flex items-center gap-8">
+                     <div className="text-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">נקודות</p>
+                        <p className="text-3xl font-display font-black text-brand-600">{student_points[s.id] || 0}</p>
+                     </div>
+                     <div className="flex gap-1">
+                        {[1,2,3].map(i => <Star key={i} className={cn("w-5 h-5", i <= (idx === 0 ? 3 : idx === 1 ? 2 : 1) ? "text-amber-400 fill-amber-400" : "text-slate-200")} />)}
+                     </div>
+                  </div>
+               </div>
+            ))}
+         </div>
+      </div>
+    </div>
+  );
+};
+
+const AnalyticsDashboardView = ({ currentConfig, onBack }: { currentConfig: any, onBack: () => void }) => {
+  const { analytics_log = [], students = [], groups = [] } = currentConfig;
+
+  const pointsTimeline = useMemo(() => {
+    const entries: Record<string, number> = {};
+    (analytics_log || []).filter((l: any) => l.type === 'points').forEach((l: any) => {
+      const date = new Date(l.timestamp).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' });
+      entries[date] = (entries[date] || 0) + l.value;
+    });
+    return Object.entries(entries).map(([date, val]) => ({ date, points: val })).slice(-10);
+  }, [analytics_log]);
+
+  const groupDistribution = useMemo(() => {
+    return groups.map((g: any) => {
+      const groupStudents = students.filter((s: any) => s.groups?.includes(g.id));
+      const totalPoints = groupStudents.reduce((acc: number, s: any) => acc + (currentConfig.student_points?.[s.id] || 0), 0);
+      return { name: g.name, value: totalPoints };
+    }).filter((g: any) => g.value > 0);
+  }, [groups, students, currentConfig.student_points]);
+
+  const topStudents = useMemo(() => {
+    return students.map((s: any) => ({
+      name: s.name,
+      points: currentConfig.student_points?.[s.id] || 0
+    })).sort((a: any, b: any) => b.points - a.points).slice(0, 8);
+  }, [students, currentConfig.student_points]);
+
+  const rewardStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(currentConfig.student_rewards || {}).flat().forEach((r: any) => {
+      counts[r.title] = (counts[r.title] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count).slice(0, 5);
+  }, [currentConfig.student_rewards]);
+
+  const COLORS = ['#2563eb', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
+
+  return (
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
+       <div className="flex items-center gap-6">
+        <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 transition-all shadow-sm">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div>
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white">אנליטיקה ושיפור כיתתי</h2>
+          <p className="text-slate-500 font-medium">מעקב אחר מגמות למידה, התנהגות והישגים בזמן אמת.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">סה"כ נקודות כיתתיות</p>
+            <p className="text-3xl font-black text-brand-600">{Object.values(currentConfig.student_points || {}).reduce((a:any,b:any)=>a+(b as number),0) as number}</p>
+         </div>
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">פרסים שנרכשו</p>
+            <p className="text-3xl font-black text-indigo-600">{Object.values(currentConfig.student_rewards || {}).flat().length}</p>
+         </div>
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">פעולות AI החודש</p>
+            <p className="text-3xl font-black text-emerald-600">42</p>
+         </div>
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">שיעור נוכחות ממוצע</p>
+            <p className="text-3xl font-black text-rose-600">94%</p>
+         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
+            <h3 className="text-xl font-black dark:text-white">מגמת צבירת נקודות</h3>
+            <div className="h-80 w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={pointsTimeline}>
+                     <defs>
+                        <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
+                           <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                           <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                        </linearGradient>
+                     </defs>
+                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                     <Tooltip 
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                        itemStyle={{ color: '#2563eb', fontWeight: 900 }}
+                     />
+                     <Area type="monotone" dataKey="points" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorPoints)" />
+                  </AreaChart>
+               </ResponsiveContainer>
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
+            <h3 className="text-xl font-black dark:text-white">שיאו של המאמץ הקבוצתי</h3>
+            <div className="h-80 w-full flex items-center">
+               <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                     <Pie
+                        data={groupDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                     >
+                        {groupDistribution.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                     </Pie>
+                     <Tooltip />
+                  </RechartsPieChart>
+               </ResponsiveContainer>
+               <div className="w-1/3 flex flex-col gap-2">
+                  {groupDistribution.map((g, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                       <span className="text-xs font-bold dark:text-white">{g.name}: {g.value}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
+            <h3 className="text-xl font-black dark:text-white">דירוג עשרת המצטיינים</h3>
+            <div className="h-80 w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topStudents} layout="vertical" margin={{ left: 40 }}>
+                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                     <XAxis type="number" hide />
+                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#1e293b' }} />
+                     <Tooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                     />
+                     <Bar dataKey="points" fill="#2563eb" radius={[0, 10, 10, 0]} />
+                  </BarChart>
+               </ResponsiveContainer>
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
+            <h3 className="text-xl font-black dark:text-white">פופולריות פרסים</h3>
+            <div className="space-y-4">
+               {rewardStats.map((r, idx) => {
+                 const max = rewardStats[0].count;
+                 const percent = (r.count / max) * 100;
+                 return (
+                   <div key={idx} className="space-y-1">
+                      <div className="flex justify-between items-end">
+                         <span className="font-bold text-sm dark:text-white">{r.name}</span>
+                         <span className="text-xs font-black text-slate-400">{r.count} מימושים</span>
+                      </div>
+                      <div className="h-3 bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                         <motion.div 
+                           initial={{ width: 0 }}
+                           animate={{ width: `${percent}%` }}
+                           className="h-full bg-indigo-500"
+                         />
+                      </div>
+                   </div>
+                 );
+               })}
+               {rewardStats.length === 0 && <p className="py-20 text-center text-slate-400 italic">טרם נרכשו פרסים</p>}
+            </div>
+         </div>
+      </div>
+    </div>
+  );
+};
+
+const FurnitureManager = ({ furniture = [], updateCurrentConfig, onClose }: any) => {
+  const [newFurniture, setNewFurniture] = useState({ type: 'cabinet', x: 100, y: 100, width: 100, height: 100, rotation: 0 });
+
+  const addFurniture = () => {
+    const item = { ...newFurniture, id: `f-${Date.now()}` };
+    updateCurrentConfig((prev: any) => ({ ...prev, furniture: [...(prev.furniture || []), item] }));
+  };
+
+  const removeFurniture = (id: string) => {
+    updateCurrentConfig((prev: any) => ({ ...prev, furniture: (prev.furniture || []).filter((f: any) => f.id !== id) }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[3rem] p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-8 left-8 p-3 hover:bg-slate-100 rounded-2xl transition-all">
+          <X className="w-6 h-6 text-slate-400" />
+        </button>
+        <div className="mb-8">
+           <h2 className="text-3xl font-black dark:text-white">עיצוב וריהוט הכיתה</h2>
+           <p className="text-slate-500 font-medium">הוסיפו אלמנטים נוספים למפה כדי לדמות את המציאות בצורה הטובה ביותר.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+           <div className="space-y-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+              <h3 className="text-xl font-bold dark:text-white">הוספת רכיב חדש</h3>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 px-1">סוג</label>
+                    <select value={newFurniture.type} onChange={e => setNewFurniture({...newFurniture, type: e.target.value})} className="w-full bg-white dark:bg-slate-800 rounded-xl p-3 font-bold border-2 border-slate-100 dark:border-slate-700">
+                       <option value="cabinet">ארון</option>
+                       <option value="plant">עציץ</option>
+                       <option value="table">שולחן עבודה</option>
+                       <option value="sofa">ספה / פוף</option>
+                       <option value="rug">שטיח</option>
+                    </select>
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 px-1">רוחב (px)</label>
+                    <input type="number" value={newFurniture.width} onChange={e => setNewFurniture({...newFurniture, width: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-800 rounded-xl p-3 font-bold border-2 border-slate-100 dark:border-slate-700" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 px-1">גובה (px)</label>
+                    <input type="number" value={newFurniture.height} onChange={e => setNewFurniture({...newFurniture, height: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-800 rounded-xl p-3 font-bold border-2 border-slate-100 dark:border-slate-700" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400 px-1">סיבוב (מעלות)</label>
+                    <input type="number" value={newFurniture.rotation} onChange={e => setNewFurniture({...newFurniture, rotation: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-800 rounded-xl p-3 font-bold border-2 border-slate-100 dark:border-slate-700" />
+                 </div>
+              </div>
+              <button 
+                onClick={addFurniture}
+                className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-lg hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                הוסף רהיט למפה
+              </button>
+           </div>
+
+           <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+              <h3 className="text-xl font-bold dark:text-white px-1">רשימת רהיטים ({furniture.length})</h3>
+              {furniture.map((f: any) => (
+                 <div key={f.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 group">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                          {f.type === 'board' ? <Monitor className="w-5 h-5" /> : 
+                           f.type === 'plant' ? <Heart className="w-5 h-5 text-emerald-500" /> : <Box className="w-5 h-5" />}
+                       </div>
+                       <div>
+                          <p className="font-bold dark:text-white">{f.type === 'cabinet' ? 'ארון' : f.type === 'plant' ? 'עציץ' : f.type === 'rug' ? 'שטיח' : f.type === 'board' ? 'לוח' : f.type}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{f.width}x{f.height} // {f.x},{f.y}</p>
+                       </div>
+                    </div>
+                    <button onClick={() => removeFurniture(f.id)} className="p-2 text-rose-500 opacity-0 group-hover:opacity-100 hover:bg-rose-50 rounded-lg transition-all">
+                       <TrashIcon className="w-5 h-5" />
+                    </button>
+                 </div>
+              ))}
+              {furniture.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">אין רהיטים נוספים</div>}
+           </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const FurnitureItem = ({ item, is3DView, updateCurrentConfig }: any) => {
+  const isDragging = useRef(false);
+
+  return (
+    <motion.div
+      drag={!is3DView}
+      dragMomentum={false}
+      onDragEnd={(_, info) => {
+        updateCurrentConfig((prev: any) => ({
+          ...prev,
+          furniture: prev.furniture.map((f: any) => f.id === item.id ? { ...f, x: f.x + info.offset.x, y: f.y + info.offset.y } : f)
+        }));
+      }}
+      className={cn(
+        "absolute cursor-move select-none z-[5]",
+        is3DView && "pointer-events-none"
+      )}
+      style={{
+        left: item.x,
+        top: item.y,
+        width: item.width,
+        height: item.height,
+        transform: `rotate(${item.rotation}deg)`,
+        transformStyle: 'preserve-3d'
+      }}
+    >
+      <div className={cn(
+        "w-full h-full relative transition-all",
+        item.type === 'board' ? "bg-slate-800 border-x-4 border-slate-700" :
+        item.type === 'cabinet' ? "bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-200 dark:border-amber-800 rounded-lg" :
+        item.type === 'plant' ? "flex items-center justify-center" :
+        item.type === 'rug' ? "bg-indigo-50 dark:bg-indigo-900/10 border-4 border-indigo-100 dark:border-indigo-900/30 rounded-[3rem] opacity-40" :
+        "bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-lg shadow-sm"
+      )}>
+        {item.type === 'plant' && <div className="w-full h-full bg-emerald-500 rounded-full blur-xl opacity-20" />}
+        {item.type === 'plant' && <Heart className="w-1/2 h-1/2 text-emerald-600 absolute animate-pulse" />}
+        {item.type === 'board' && <div className="absolute inset-0 flex items-center justify-center text-white/5 opacity-5 font-black text-4xl">לוח</div>}
+        
+        {is3DView && (
+           <>
+              <div 
+                className="absolute inset-x-0 bottom-0 h-[80px] bg-inherit border-inherit opacity-70"
+                style={{ transform: 'rotateX(-90deg)', transformOrigin: 'bottom' }}
+              />
+              <div 
+                className="absolute inset-y-0 right-0 w-[80px] bg-inherit border-inherit opacity-60"
+                style={{ transform: 'rotateY(90deg)', transformOrigin: 'right' }}
+              />
+           </>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 const FloatingAIAssistant = ({ onCommand }: { onCommand: (text: string) => Promise<string> }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
@@ -5724,6 +6957,36 @@ const NameWheel = ({ students, isDarkMode }: { students: any[], isDarkMode: bool
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+const EditableText = ({ value, onSave, className, placeholder }: { value: string, onSave: (val: string) => void, className?: string, placeholder?: string }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [temp, setTemp] = useState(value);
+  
+  useEffect(() => {
+    setTemp(value);
+  }, [value]);
+
+  if (isEditing) {
+    return (
+      <input 
+        autoFocus
+        value={temp}
+        onChange={e => setTemp(e.target.value)}
+        onBlur={() => { onSave(temp); setIsEditing(false); }}
+        onKeyDown={e => e.key === 'Enter' && (e.target as any).blur()}
+        placeholder={placeholder}
+        className={cn("bg-slate-100 dark:bg-slate-800 rounded px-1 outline-brand-500", className)}
+      />
+    );
+  }
+  
+  return (
+    <div className="flex items-center gap-2 group cursor-pointer inline-flex" onClick={() => setIsEditing(true)}>
+       <span className={cn(className, !value && "text-slate-300 dark:text-slate-700 italic")}>{value || placeholder || 'לחץ לעריכה...'}</span>
+       <Edit2 className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   );
 };
@@ -6559,9 +7822,9 @@ export default function App() {
     cols: 9,
     grid: Array(54).fill(null) as (string | null)[],
     students: [
-      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '' },
-      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '' },
-      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'], notes: '' }
+      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '', birthday: '2015-05-14' },
+      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '', birthday: '2015-06-20' },
+      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'], notes: '', birthday: '2015-12-10' }
     ],
     hiddenDesks: [] as number[],
     rowGaps: [] as number[],
@@ -6572,6 +7835,11 @@ export default function App() {
       { id: 'ב', name: 'קבוצה ב', constraint: 'none' },
       { id: 'ג', name: 'קבוצה ג', constraint: 'none' },
     ] as any[],
+    furniture: [
+       { id: 'f1', type: 'board', x: 300, y: -10, width: 600, height: 120, rotation: 0 },
+       { id: 'f2', type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
+       { id: 'f3', type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
+    ] as any[],
     availableLessons: [
       { id: 'math-adv', name: 'מתמטיקה מתקדם', day: 'א', time: '08:00', category: 'regular' },
       { id: 'english-ext', name: 'אנגלית מורחב', day: 'ב', time: '10:00', category: 'enrichment' },
@@ -6580,7 +7848,25 @@ export default function App() {
     updatedAt: Date.now(),
     columnGapSize: 32,
     rowGapSize: 32,
-    obstructions: [] as number[]
+    obstructions: [] as number[],
+    events: [] as any[],
+    reminders: [] as any[],
+    campaigns: [] as any[],
+    rewards: [
+      { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
+      { id: 'rev-2', title: 'ממתק קטן', price: 50, stock: 20, icon: 'Zap' },
+      { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
+      { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
+    ] as any[],
+    student_points: {} as Record<string, number>,
+    student_rewards: {} as Record<string, any[]>,
+    achievements: [
+      { id: 'ach-1', title: 'תולעת ספרים', description: 'קרא 5 ספרים מהספרייה הכיתתית', icon: 'BookOpen', points: 100 },
+      { id: 'ach-2', title: 'עוזר נאמן', description: 'שימש כעוזר מורה במשך שבוע', icon: 'UserCircle2', points: 150 },
+      { id: 'ach-3', title: 'אלוף הנוכחות', description: 'חודש שלם ללא איחורים או חיסורים', icon: 'CheckCircle2', points: 300 }
+    ] as any[],
+    student_achievements: {} as Record<string, string[]>,
+    analytics_log: [] as any[]
   });
 
   const [isPracticeMode, setIsPracticeMode] = useState(false);
@@ -6588,7 +7874,7 @@ export default function App() {
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
 
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools'>('dashboard');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard'>('dashboard');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [cameraAngle, setCameraAngle] = useState<'standard' | 'birdsEye' | 'studentLevel'>('standard');
   const [rotationY, setRotationY] = useState(0);
@@ -6621,6 +7907,7 @@ export default function App() {
   const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' });
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isFurnitureModalOpen, setIsFurnitureModalOpen] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(600); // 10 minutes default
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -7209,6 +8496,34 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
       return "מצטער, הייתה בעיה לעבד את הבקשה. תוכל לנסח שוב?";
     }
   };
+
+  useEffect(() => {
+    if (activeConfig.students) {
+      const today = new Date();
+      const birthdaysToday = activeConfig.students.filter((s: any) => {
+        if (!s.birthday) return false;
+        const bday = new Date(s.birthday);
+        return bday.getDate() === today.getDate() && bday.getMonth() === today.getMonth();
+      });
+
+      if (birthdaysToday.length > 0) {
+        setNotifications((prev: any) => {
+          const newItems = birthdaysToday
+            .map((s: any) => ({
+              id: `birthday-${s.id}-${today.toDateString()}`,
+              title: `יום הולדת שמח! 🎂`,
+              text: `היום חל יום ההולדת של ${s.name}. אל תשכחו לברך!`,
+              type: 'info',
+              time: 'עכשיו'
+            }))
+            .filter(newItem => !prev.some((n: any) => n.id === newItem.id));
+
+          if (newItems.length === 0) return prev;
+          return [...newItems, ...prev];
+        });
+      }
+    }
+  }, [activeConfig.students]);
 
   const runAIShuffle = async () => {
     setIsLoadingAI(true);
@@ -7915,6 +9230,36 @@ Instructions:
     setNotifications(prevNotif => [{ id: Date.now(), text: "הפעולה בוטלה בהצלחה", type: 'info' }, ...prevNotif]);
   };
 
+
+  const exportLayoutToImage = async () => {
+    const gridElement = document.querySelector('.classroom-grid-container');
+    if (!gridElement) {
+       setNotifications(prev => [{ id: Date.now(), text: "לא נמצא אלמנט לייצוא", type: 'error' }, ...prev]);
+       return;
+    }
+    
+    setNotifications(prev => [{ id: Date.now(), text: "מפיק תמונה...", type: 'info' }, ...prev]);
+
+    try {
+      const canvas = await html2canvas(gridElement as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+        windowWidth: gridElement.scrollWidth,
+        windowHeight: gridElement.scrollHeight,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `Classroom-Layout-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      setNotifications(prev => [{ id: Date.now(), text: "תמונה נשמרה בהצלחה", type: 'success' }, ...prev]);
+    } catch (error) {
+      console.error(error);
+      setNotifications(prev => [{ id: Date.now(), text: "שגיאה בייצוא התמונה", type: 'error' }, ...prev]);
+    }
+  };
+
   const handleGridResize = (type: 'rows' | 'cols', delta: number) => {
     updateCurrentConfig((prev: any) => {
       const newVal = Math.max(2, Math.min(12, prev[type] + delta));
@@ -7955,12 +9300,19 @@ Instructions:
     const onBack = () => setViewType('dashboard');
     const onBackToGrid = () => setViewType('grid');
     switch (viewType) {
-      case 'dashboard': return <DashboardView stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} setViewType={setViewType} />;
+      case 'dashboard': return <DashboardView activeConfig={activeConfig} stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} setViewType={setViewType} />;
       case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
+      case 'events': return <EventsView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBack} />;
+      case 'reminders': return <RemindersView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBack} setNotifications={setNotifications} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
+      case 'campaigns': return <CampaignsView students={activeConfig.students} campaigns={activeConfig.campaigns} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setViewType={setViewType} />;
+      case 'campaign-display': return <CampaignDisplayView campaigns={activeConfig.campaigns} students={activeConfig.students} onBack={() => setViewType('campaigns')} />;
+      case 'rewards': return <RewardsView rewards={activeConfig.rewards} student_points={activeConfig.student_points} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} />;
+      case 'leaderboard': return <LeaderboardView students={activeConfig.students} student_points={activeConfig.student_points} onBack={onBackToGrid} />;
+      case 'analytics': return <AnalyticsDashboardView currentConfig={activeConfig} onBack={onBackToGrid} />;
       case 'groups-management': return (
         <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
           <div className="flex items-center gap-6">
@@ -8404,7 +9756,7 @@ Instructions:
       {/* Visual Navigation Menu */}
       <div className="space-y-2">
         <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">ניהול ראשי</h3>
-        {(['dashboard', 'grid', 'attendance', 'grades', 'tasks', 'progress', 'exams', 'tools'] as const).map(nav => (
+        {(['dashboard', 'grid', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewType(nav)}
@@ -8424,6 +9776,12 @@ Instructions:
               {nav === 'attendance' && <Calendar className="w-5 h-5" />}
               {nav === 'grades' && <GraduationCap className="w-5 h-5" />}
               {nav === 'tasks' && <Bell className="w-5 h-5" />}
+              {nav === 'events' && <History className="w-5 h-5" />}
+              {nav === 'reminders' && <Clock className="w-5 h-5" />}
+              {nav === 'campaigns' && <Target className="w-5 h-5" />}
+              {nav === 'rewards' && <Zap className="w-5 h-5" />}
+              {nav === 'leaderboard' && <Trophy className="w-5 h-5" />}
+              {nav === 'analytics' && <BarChart3 className="w-5 h-5" />}
               {nav === 'progress' && <LineChart className="w-5 h-5" />}
               {nav === 'exams' && <Bookmark className="w-5 h-5" />}
               {nav === 'tools' && <Wrench className="w-5 h-5" />}
@@ -8433,6 +9791,12 @@ Instructions:
             {nav === 'attendance' && 'נוכחות'}
             {nav === 'grades' && 'ציונים'}
             {nav === 'tasks' && 'משימות'}
+            {nav === 'events' && 'יומן אירועים'}
+            {nav === 'reminders' && 'תזכורות'}
+            {nav === 'campaigns' && 'מבצעים'}
+            {nav === 'rewards' && 'מתנות ופרסים'}
+            {nav === 'leaderboard' && 'טבלת ליגה'}
+            {nav === 'analytics' && 'אנליטיקה'}
             {nav === 'progress' && 'התקדמות'}
             {nav === 'exams' && 'מבחנים'}
             {nav === 'tools' && 'ארגז כלים'}
@@ -8800,7 +10164,7 @@ Instructions:
             </div>
           </div>
              <div className="flex items-center justify-between px-1">
-               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">מאגר תלמידים מלא ({currentConfig.students.length})</h3>
+               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">מאגר תלמידים מלא ({(currentConfig as any).students.length})</h3>
                <button 
                  onClick={() => setIsAddStudentOpen(true)}
                  className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-brand-50 hover:text-brand-600 text-slate-500 rounded-xl bg-slate-50 border border-slate-200 transition-colors font-bold text-xs"
@@ -8811,11 +10175,11 @@ Instructions:
              </div>
              <Reorder.Group 
                axis="y" 
-               values={currentConfig.students} 
+               values={(currentConfig as any).students} 
                onReorder={(newStudents) => updateCurrentConfig((prev: any) => ({ ...prev, students: newStudents }))}
                className="grid grid-cols-1 gap-2"
              >
-                 {currentConfig.students.map((student: any) => (
+                 {(currentConfig as any).students.map((student: any) => (
                    <Reorder.Item 
                         key={student.id} 
                         value={student}
@@ -8831,20 +10195,20 @@ Instructions:
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">גרור לשינוי סדר</span>
                        </div>
                      </div>
-                     <div className="flex items-center gap-1">
-                       <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-brand-500 mr-2" />
-                       <button 
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           setQuickPrefsStudentId && setQuickPrefsStudentId(student.id);
-                         }}
-                         className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100"
-                         title="העדפות זריזות"
-                       >
-                         <Sliders className="w-4 h-4" />
-                       </button>
-                       <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-brand-500" />
-                     </div>
+                    <div className="flex items-center gap-1">
+                      <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-brand-500 mr-2" />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuickPrefsStudentId && setQuickPrefsStudentId(student.id);
+                        }}
+                        className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100"
+                        title="העדפות זריזות"
+                      >
+                        <Sliders className="w-4 h-4" />
+                      </button>
+                      <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-brand-500" />
+                    </div>
                    </Reorder.Item>
                  ))}
              </Reorder.Group>
@@ -9108,6 +10472,15 @@ Instructions:
                         <span>3D</span>
                      </button>
 
+                     <button
+                        onClick={() => setIsFurnitureModalOpen(true)}
+                        className="px-4 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100"
+                        title="ניהול ריהוט"
+                     >
+                        <Layout className="w-4 h-4" />
+                        <span>ריהוט</span>
+                     </button>
+
                      {is3DView && (
                        <div className="flex items-center gap-3 bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-2xl">
                          <div className="flex items-center gap-1">
@@ -9133,7 +10506,7 @@ Instructions:
                          <div className="flex items-center gap-2 px-2">
                             <RotateCcw className="w-3 h-3 text-slate-400 cursor-pointer" onClick={() => setRotationY(0)} />
                             <input 
-                              type="range" min="-45" max="45" value={rotationY} 
+                              type="range" min="-180" max="180" value={rotationY} 
                               onChange={(e) => setRotationY(parseInt(e.target.value))}
                               className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-brand-500" 
                             />
@@ -9141,7 +10514,7 @@ Instructions:
                          <div className="flex items-center gap-2 px-2">
                             <Maximize2 className="w-3 h-3 text-slate-400 cursor-pointer" onClick={() => setZoomLevel(1)} />
                             <input 
-                              type="range" min="0.5" max="1.5" step="0.05" value={zoomLevel} 
+                              type="range" min="0.3" max="2.5" step="0.05" value={zoomLevel} 
                               onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
                               className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-brand-500" 
                             />
@@ -9173,7 +10546,18 @@ Instructions:
 
                      <div className="w-px h-6 bg-slate-200/50 mx-1" />
 
-                     {editMode === 'structure' ? (
+                      <button 
+                        onClick={exportLayoutToImage}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-brand-600 transition-all flex items-center gap-2 group/btn"
+                        title="ייצא כתמונה"
+                      >
+                         <ImageIcon className="w-5 h-5" />
+                         <span className="text-[10px] font-black uppercase tracking-widest hidden lg:group-hover/btn:block shrink-0">ייצא תמונה</span>
+                      </button>
+
+                      <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
+                      {editMode === 'structure' ? (
                        <div className="flex items-center gap-3">
                          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
                            <span className="text-xs font-black text-slate-500 uppercase px-2">שורות</span>
@@ -9337,6 +10721,16 @@ Instructions:
                        } : { perspective: '1200px' })
                      }}
                     >
+                      {/* Furniture Items */}
+                      {(activeConfig.furniture || []).map((item: any) => (
+                        <FurnitureItem 
+                          key={item.id} 
+                          item={item} 
+                          is3DView={is3DView} 
+                          updateCurrentConfig={updateCurrentConfig} 
+                        />
+                      ))}
+
                       {/* 3D Walls */}
                       {is3DView && (
                         <>
@@ -10053,6 +11447,13 @@ Instructions:
           <span>{activeConfig.grid.filter(id => id).length} משובצים</span>
         </div>
       </footer>
+      {isFurnitureModalOpen && (
+        <FurnitureManager 
+          furniture={activeConfig.furniture} 
+          updateCurrentConfig={updateCurrentConfig} 
+          onClose={() => setIsFurnitureModalOpen(false)} 
+        />
+      )}
     </div>
     </>
   );

@@ -1,6 +1,6 @@
 {
-  "name": "CLass&scool pro-manager",
-  "description": "מערכת פדגוגית חכמה הכוללת ניהול תלמידים מקיף, סידור ישיבה מתקדם מבוסס AI עם תצוגת 3D אינטראקטיבית וניהול העדפות מיקום",
+  "name": "ClassPro Pro-Manager",
+  "description": "מערכת פדגוגית חכמה לניהול כיתה: סידור ישיבה 3D עם AI, יומן אירועים, תזכורות, ייצוא Layout, ניהול מבצעים, ציונים ונוכחות.",
   "requestFramePermissions": [],
   "majorCapabilities": ["AI-powered sorting", "Excel import/export", "PWA support"]
 }
