@@ -6591,6 +6591,8 @@ export default function App() {
   const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools'>('dashboard');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [cameraAngle, setCameraAngle] = useState<'standard' | 'birdsEye' | 'studentLevel'>('standard');
+  const [rotationY, setRotationY] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(0.9);
   const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood'>('default');
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -9107,19 +9109,43 @@ Instructions:
                      </button>
 
                      {is3DView && (
-                       <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl">
-                         {(['standard', 'birdsEye', 'studentLevel'] as const).map(angle => (
-                           <button
-                             key={angle}
-                             onClick={() => setCameraAngle(angle)}
-                             className={cn(
-                               "px-3 py-1 rounded-lg text-[9px] font-black transition-all",
-                               cameraAngle === angle ? "bg-white text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                             )}
-                           >
-                             {angle === 'standard' ? 'רגיל' : angle === 'birdsEye' ? 'מבט על' : 'עיני תלמיד'}
-                           </button>
-                         ))}
+                       <div className="flex items-center gap-3 bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-2xl">
+                         <div className="flex items-center gap-1">
+                           {(['standard', 'birdsEye', 'studentLevel'] as const).map(angle => (
+                             <button
+                               key={angle}
+                               onClick={() => {
+                                 setCameraAngle(angle);
+                                 if (angle === 'standard') { setRotationY(0); setZoomLevel(0.9); }
+                                 if (angle === 'birdsEye') { setRotationY(0); setZoomLevel(0.85); }
+                                 if (angle === 'studentLevel') { setRotationY(0); setZoomLevel(1.1); }
+                               }}
+                               className={cn(
+                                 "px-3 py-1 rounded-lg text-[9px] font-black transition-all",
+                                 cameraAngle === angle ? "bg-white dark:bg-slate-800 text-brand-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                               )}
+                             >
+                               {angle === 'standard' ? 'רגיל' : angle === 'birdsEye' ? 'מבט על' : 'עיני תלמיד'}
+                             </button>
+                           ))}
+                         </div>
+                         <div className="w-px h-6 bg-slate-200/50 dark:bg-slate-700 mx-1" />
+                         <div className="flex items-center gap-2 px-2">
+                            <RotateCcw className="w-3 h-3 text-slate-400 cursor-pointer" onClick={() => setRotationY(0)} />
+                            <input 
+                              type="range" min="-45" max="45" value={rotationY} 
+                              onChange={(e) => setRotationY(parseInt(e.target.value))}
+                              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-brand-500" 
+                            />
+                         </div>
+                         <div className="flex items-center gap-2 px-2">
+                            <Maximize2 className="w-3 h-3 text-slate-400 cursor-pointer" onClick={() => setZoomLevel(1)} />
+                            <input 
+                              type="range" min="0.5" max="1.5" step="0.05" value={zoomLevel} 
+                              onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer accent-brand-500" 
+                            />
+                         </div>
                        </div>
                      )}
                      
@@ -9304,10 +9330,10 @@ Instructions:
                        perspective: is3DView ? '1200px' : 'none',
                        ...(is3DView ? {
                          transform: cameraAngle === 'birdsEye' 
-                           ? 'rotateX(80deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-100px) scale(0.85)'
+                           ? `rotateX(80deg) rotateY(${rotationY}deg) rotateZ(0deg) translateZ(-50px) translateY(-100px) scale(${zoomLevel})`
                            : cameraAngle === 'studentLevel'
-                           ? 'rotateX(25deg) rotateY(0deg) rotateZ(0deg) translateZ(150px) translateY(-20px) scale(1.1)'
-                           : 'rotateX(50deg) rotateY(0deg) rotateZ(0deg) translateZ(-50px) translateY(-40px) scale(0.9)',
+                           ? `rotateX(25deg) rotateY(${rotationY}deg) rotateZ(0deg) translateZ(150px) translateY(-20px) scale(${zoomLevel})`
+                           : `rotateX(50deg) rotateY(${rotationY}deg) rotateZ(0deg) translateZ(-50px) translateY(-40px) scale(${zoomLevel})`,
                        } : { perspective: '1200px' })
                      }}
                     >
@@ -9316,7 +9342,15 @@ Instructions:
                         <>
                           {/* Right Wall (Window side) */}
                           <div 
-                            className="absolute top-0 right-0 h-full w-[1500px] bg-gradient-to-l from-slate-300 to-transparent dark:from-slate-900/50 opacity-40 pointer-events-none"
+                            className={cn(
+                              "absolute top-0 right-0 h-full w-[1500px] bg-gradient-to-l opacity-40 pointer-events-none",
+                              theme === 'wood' ? "from-amber-900/40" : 
+                              theme === 'nature' ? "from-emerald-900/40" :
+                              theme === 'ocean' ? "from-sky-900/40" :
+                              theme === 'royal' ? "from-indigo-900/40" :
+                              theme === 'sunset' ? "from-rose-900/40" :
+                              "from-slate-300 dark:from-slate-900/50"
+                            )}
                             style={{ transform: 'rotateY(90deg) translateZ(600px)', transformOrigin: 'right' }}
                           >
                             <div className="absolute inset-y-20 left-40 w-80 h-[500px] bg-white opacity-20 blur-2xl" />
@@ -9324,7 +9358,15 @@ Instructions:
                           </div>
                           {/* Top Wall (Chalkboard side) */}
                           <div 
-                            className="absolute top-0 inset-x-0 w-full h-[800px] bg-slate-300 dark:bg-slate-900 opacity-20 pointer-events-none"
+                            className={cn(
+                              "absolute top-0 inset-x-0 w-full h-[800px] opacity-20 pointer-events-none",
+                              theme === 'wood' ? "bg-amber-900" : 
+                              theme === 'nature' ? "bg-emerald-900" :
+                              theme === 'ocean' ? "bg-sky-900" :
+                              theme === 'royal' ? "bg-indigo-900" :
+                              theme === 'sunset' ? "bg-rose-900" :
+                              "bg-slate-300 dark:bg-slate-900"
+                            )}
                             style={{ transform: 'rotateX(-90deg) translateZ(0px)', transformOrigin: 'top' }}
                           />
                           {/* Floor shadows/reflections */}
@@ -9339,14 +9381,29 @@ Instructions:
                       {/* Chalkboard (Only in 3D View) */}
                       {is3DView && (
                         <div 
-                           className="absolute -top-[350px] left-1/2 -translate-x-1/2 w-[900px] h-[280px] bg-slate-800 dark:bg-black border-[18px] border-[#5d4037] shadow-[0_50px_100px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center rounded-sm"
+                           className={cn(
+                             "absolute -top-[350px] left-1/2 -translate-x-1/2 w-[900px] h-[280px] border-[18px] shadow-[0_50px_100px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center rounded-sm",
+                             theme === 'wood' ? "bg-amber-950 border-[#3e2723]" :
+                             theme === 'nature' ? "bg-[#1b5e20] border-[#3e2723]" :
+                             theme === 'ocean' ? "bg-[#01579b] border-slate-700" :
+                             theme === 'royal' ? "bg-[#311b92] border-yellow-600" :
+                             theme === 'sunset' ? "bg-[#880e4f] border-orange-800" :
+                             "bg-slate-800 dark:bg-black border-[#5d4037]"
+                           )}
                            style={{ transform: 'translateZ(100px) rotateX(-90deg)', transformOrigin: 'bottom' }}
                         >
                            <div className="absolute top-2 left-4 flex gap-2">
                              <div className="w-12 h-2 bg-white/10 rounded-full" />
                              <div className="w-8 h-2 bg-white/10 rounded-full" />
                            </div>
-                           <span className="text-white/40 font-mono text-4xl opacity-30 select-none pointer-events-none tracking-widest" style={{ textShadow: '4px 4px 8px rgba(0,0,0,0.8)' }}>MODERN CLASSROOM</span>
+                           <span className="text-white/40 font-mono text-4xl opacity-30 select-none pointer-events-none tracking-widest uppercase" style={{ textShadow: '4px 4px 8px rgba(0,0,0,0.8)' }}>
+                             {theme === 'wood' ? 'Forest Academy' : 
+                              theme === 'nature' ? 'Eco-Learning' :
+                              theme === 'ocean' ? 'Deep Sea Study' :
+                              theme === 'royal' ? 'Royal Hall' :
+                              theme === 'sunset' ? 'Golden Hour' :
+                              'Modern Classroom'}
+                           </span>
                            <div className="absolute bottom-4 right-8 flex gap-4">
                              <div className="w-10 h-3 bg-white/20 rounded shadow-inner" title="Magnet" />
                              <div className="w-10 h-3 bg-white/20 rounded shadow-inner" title="Magnet" />
