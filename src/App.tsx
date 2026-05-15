@@ -5127,7 +5127,7 @@ const SettingsView = ({
   }, [currentConfig.students, searchQuery, filterHeight, filterGroup, sortBy]);
 
   const loadExampleData = () => {
-    if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה מהסימולציה. האם להמשיך?")) {
+    if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה המלאים. האם להמשיך?")) {
       const demoStudents = [
         "נתי אורדמן", "אוריאל אנסבכר", "חיים בן פורת", "דניאל גוטרמן",
         "חיים גולדמן", "ניסים דיין", "מוישי הריסון", "אברימי זיאת",
@@ -5135,134 +5135,107 @@ const SettingsView = ({
         "מלאכי לינצר", "אליהו מויאל", "מאיר מיימון", "נדב מלול",
         "איתמר משולם", "אביתר עמר", "מנחם פודור", "גידי פולסקי",
         "יהונתן פז", "ישי כוחלני", "יוסף קמחי", "בן ציון קצב",
-        "נדב רובין", "יהונתן רוזן", "אברהם ריין", "אריאל שטאובר",
-        "איתי שלזינגר", "דניאל ששון", "אוריה תם", "יצחק וולק"
+        "נדב רובין", "יהונתן רוזן", "אברהם ריין", "אריאל שטאובר"
       ].map((name, i) => ({
         id: (i + 1).toString(),
         name,
         preferred: [] as string[],
         forbidden: [] as string[],
-        height: 'medium' as any,
-        groups: [] as string[],
-        areaPref: {} as any
+        height: (i % 3 === 0 ? 'short' : i % 3 === 1 ? 'medium' : 'tall') as any,
+        groups: (i < 8 ? ['קבוצת אומנות'] : i < 16 ? ['נבחרת כדורסל'] : []) as string[],
+        areaPref: {} as any,
+        notes: i === 0 ? 'תלמיד מצטיין, עוזר לאחרים' : ''
       }));
 
-      const wants: Record<string, string[]> = {
-        "נתי אורדמן": ["חיים גולדמן", "אוריאל אנסבכר", "ציקי יורקוביץ", "ישי כוחלני"],
-        "אוריאל אנסבכר": ["ישי כוחלני", "מלאכי לינצר", "אריאל שטאובר"],
-        "חיים בן פורת": ["נדב רובין", "מוישי הריסון", "מלאכי לינצר", "נתי אורדמן", "אליהו מויאל", "גידי פולסקי"],
-        "דניאל גוטרמן": ["אברהם ריין", "נדב רובין", "מיכאל יעקובי", "כתריאל לוי"],
-        "חיים גולדמן": ["נתי אורדמן", "מלאכי לינצר", "אליהו מויאל", "נדב רובין"],
-        "מוישי הריסון": ["אליהו מויאל", "נתי אורדמן", "גידי פולסקי", "נדב רובין"],
-        "ציקי יורקוביץ": ["נתי אורדמן", "אוריאל אנסבכר", "חיים גולדמן", "מיכאל יעקובי"],
-        "מיכאל יעקובי": ["נדב רובין", "חיים גולדמן", "בן ציון קצב", "דניאל גוטרמן"],
-        "אלחנן כהן": ["מיכאל יעקובי", "יהונתן רוזן", "יהונתן פז", "אביתר עמר"],
-        "כתריאל לוי": ["יצחק וולק", "ישי כוחלני", "חיים גולדמן"],
-        "מלאכי לינצר": ["חיים גולדמן", "נתי אורדמן", "נדב רובין"],
-        "אליהו מויאל": ["חיים גולדמן", "ישי כוחלני", "ציקי יורקוביץ", "מלאכי לינצר", "נדב רובין", "מוישי הריסון", "איתמר משולם", "יצחק וולק", "מנחם פודור"],
-        "נדב מלול": ["נדב רובין", "אביתר עמר"],
-        "איתמר משולם": ["ישי כוחלני", "אליהו מויאל", "נתי אורדמן", "חיים גולדמן"],
-        "יהונתן פז": ["אלחנן כהן", "נדב רובין", "ישי כוחלני", "מיכאל יעקובי"],
-        "ישי כוחלני": ["איתמר משולם", "נתי אורדמן", "חיים גולדמן"],
-        "יוסף קמחי": ["נתי אורדמן", "אוריאל אנסבכר", "נדב רובין", "מלאכי לינצר"],
-        "בן ציון קצב": ["חיים גולדמן", "מיכאל יעקובי", "נתי אורדמן", "אליהו מויאל"],
-        "נדב רובין": ["מיכאל יעקובי", "חיים גולדמן", "מלאכי לינצר", "נתי אורדמן"],
-        "יהונתן רוזן": ["אביתר עמר", "אלחנן כהן", "מיכאל יעקובי", "דניאל גוטרמן"],
-        "אברהם ריין": ["דניאל גוטרמן", "מלאכי לינצר", "מיכאל יעקובי"],
-        "אריאל שטאובר": ["אוריאל אנסבכר", "אברימי זיאת", "ישי כוחלני", "אוריה תם"],
-        "איתי שלזינגר": ["חיים גולדמן", "אליהו מויאל", "יצחק וולק", "גידי פולסקי", "מלאכי לינצר", "מוישי הריסון"],
-        "דניאל ששון": ["אוריאל אנסבכר", "אליהו מויאל", "מיכאל יעקובי"],
-        "אוריה תם": ["מלאכי לינצר", "יצחק וולק", "אליהו מויאל", "מוישי הריסון", "נדב רובין"],
-        "יצחק וולק": ["אליהו מויאל", "חיים גולדמן", "מוישי הריסון", "אוריאל אנסבכר"],
-      };
-
-      const avoid: Record<string, string[]> = {
-        "נתי אורדמן": ["איתי שלזינגר", "נדב מלול", "איתמר משולם", "יהונתן רוזן"],
-        "אוריאל אנסבכר": ["יהונתן רוזן", "נדב מלול", "ניסים דיין", "אברהם ריין"],
-        "חיים בן פורת": ["אלחנן כהן", "יהונתן רוזן", "נדב מלול", "אביתר עמר", "מאיר מיימון"],
-        "דניאל גוטרמן": ["איתי שלזינגר", "יהונתן רוזן", "יהונתן פז", "יוסף קמחי", "אביתר עמר", "נדב מלול", "אריאל שטאובר", "אלחנן כהן"],
-        "חיים גולדמן": ["אלחנן כהן", "נדב מלול", "יהונתן פז", "יהונתן רוזן", "חיים בן פורת", "אביתר עמר", "אברהם ריין", "איתמר משולם"],
-        "מוישי הריסון": ["יהונתן רוזן", "אלחנן כהן", "מאיר מיימון", "נדב מלול"],
-        "אברימי זיאת": ["יהונתן רוזן"],
-        "ציקי יורקוביץ": ["יהונתן פז", "איתי שלזינגר", "נדב מלול", "אלחנן כהן", "אביתר עמר"],
-        "מיכאל יעקובי": ["מאיר מיימון", "יוסף קמחי", "יהונתן רוזן", "נדב מלול"],
-        "אלחנן כהן": ["חיים בן פורת", "מנחם פודור", "מוישי הריסון", "יוסף קמחי", "דניאל ששון"],
-        "כתריאל לוי": ["מאיר מיימון", "נדב מלול", "אלחנן כהן"],
-        "מלאכי לינצר": ["איתי שלזינגר", "יהונתן רוזן", "נדב מלול", "מאיר מיימון", "אלחנן כהן"],
-        "אליהו מויאל": ["אלחנן כהן", "נדב מלול", "יהונתן רוזן", "אברהם ריין", "אביתר עמר"],
-        "נדב מלול": ["יהונתן רוזן", "מלאכי לינצר"],
-        "איתמר משולם": ["איתי שלזינגר", "יהונתן פז", "יהונתן רוזן", "אברהם ריין", "אלחנן כהן", "נדב מלול"],
-        "מנחם פודור": ["אלחנן כהן", "אביתר עמר", "נדב מלול", "יהונתן רוזן", "יוסף קמחי"],
-        "יהונתן פז": ["יוסף קמחי", "דניאל ששון", "אריאל שטאובר", "איתי שלזינגר", "מוישי הריסון"],
-        "ישי כוחלני": ["נדב מלול", "אלחנן כהן"],
-        "יוסף קמחי": ["אברימי זיאת", "מנחם פודור", "איתי שלזינגר", "אלחנן כהן", "דניאל ששון"],
-        "בן ציון קצב": ["אלחנן כהן", "יהונתן רוזן", "אביתר עמר", "נדב מלול"],
-        "נדב רובין": ["אלחנן כהן", "נדב מלול", "יהונתן רוזן", "איתי שלזינגר"],
-        "יהונתן רוזן": ["מוישי הריסון", "איתי שלזינגר", "יוסף קמחי", "דניאל ששון"],
-        "אברהם ריין": ["נתי אורדמן", "יהונתן פז", "גידי פולסקי", "מאיר מיימון"],
-        "אריאל שטאובר": ["יהונתן רוזן", "אלחנן כהן", "יהונתן פז", "מאיר מיימון", "אברהם ריין"],
-        "איתי שלזינגר": ["יוסף קמחי", "מאיר מיימון", "אלחנן כהן", "נדב מלול", "יהונתן רוזן", "אוריה תם", "אביתר עמר", "יהונתן פז", "ציקי יורקוביץ", "בן ציון קצב", "אוריאל אנסבכר", "איתמר משולם"],
-        "דניאל ששון": ["יהונתן רוזן", "אלחנן כהן", "נדב מלול", "איתי שלזינגר"],
-        "אוריה תם": ["יהונתן רוזן", "איתי שלזינגר", "מנחם פודור", "יוסף קמחי"],
-      };
-
-      const area_prefs: Record<string, any> = {
-        "איתמר משולם": { "row": 0, "weight": 100 },
-        "נתי אורדמן": { "row": 0, "col_range": [1, 2], "weight": 80 },
-        "מלאכי לינצר": { "row": 1, "col": 4, "weight": 200 },
-        "יהונתן רוזן": { "row": 1, "col": 7, "weight": 200 },
-        "דניאל ששון": { "row": 0, "weight": 90 },
-        "יוסף קמחי": { "row": 0, "weight": 80 },
-        "נדב מלול": { "row": 0, "weight": 70 },
-        "בן ציון קצב": { "col": 0, "weight": 50 },
-        "חיים בן פורת": { "col": 9, "weight": 50 },
-        "אריאל שטאובר": { "special": "window_or_microwave", "weight": 60 },
-        "אברימי זיאת": { "row": 3, "col_range": [4, 5], "isolated": true, "weight": 300 },
-        "אליהו מויאל": { "fixed_seat": [1, 5] },
-        "ציקי יורקוביץ": { "row": 0, "weight": 60 },
-        "ישי כוחלני": { "row": 0, "weight": 85 },
-        "מוישי הריסון": { "row": 0, "weight": 50 },
-        "נדב רובין": { "row": 0, "col_range": [2, 3], "weight": 70 },
-        "אוריאל אנסבכר": { "row": 0, "col": 0, "weight": 40 },
-        "אברהם ריין": { "row_range": [1, 2], "col_range": [4, 6], "weight": 40 },
-      };
-
-      const finalStudents = demoStudents.map(s => {
-        const studentWants = wants[s.name] || [];
-        const studentAvoid = avoid[s.name] || [];
-        
-        // Map names to IDs
-        const preferredIds = studentWants.map(name => demoStudents.find(ds => ds.name === name)?.id).filter(Boolean) as string[];
-        const forbiddenIds = studentAvoid.map(name => demoStudents.find(ds => ds.name === name)?.id).filter(Boolean) as string[];
-        
-        return {
-          ...s,
-          preferred: preferredIds,
-          forbidden: forbiddenIds,
-          areaPref: area_prefs[s.name] || {}
-        };
+      // Set some point balances
+      const student_points: Record<string, number> = {};
+      demoStudents.forEach(s => {
+        student_points[s.id] = Math.floor(Math.random() * 500);
       });
 
-      // Layout specific to demo
-      const hidden = [];
-      for (let c = 4; c < 10; c++) hidden.push(c); // Row 0 has only col 0-3
+      // Create a 6x6 grid
+      const rows = 6;
+      const cols = 6;
+      const grid = Array(rows * cols).fill(null);
+      
+      // Place students in the grid
+      demoStudents.forEach((s, i) => {
+        if (i < 30) {
+          // Fill from front to back, leaving some gaps
+          const row = Math.floor(i / 5);
+          const col = i % 5;
+          grid[row * cols + col] = s.id;
+        }
+      });
+
+      const demoCampaigns = [
+        {
+          id: 'camp-demo-1',
+          title: 'מבצע ניקיון כיתתי',
+          target: 100,
+          status: 'active',
+          type: 'points',
+          progress: {} as Record<string, number>
+        },
+        {
+          id: 'camp-demo-2',
+          title: 'אלוף הקריאה',
+          target: 50,
+          status: 'active',
+          type: 'points',
+          progress: {} as Record<string, number>
+        }
+      ];
+
+      // Add progress to some students
+      demoStudents.forEach(s => {
+        if (Math.random() > 0.5) {
+          demoCampaigns[0].progress[s.id] = Math.floor(Math.random() * 80);
+        }
+      });
+
+      const demoFurniture = [
+        { id: 'f-demo-1', type: 'board', x: 100, y: -20, width: 400, height: 100, rotation: 0 },
+        { id: 'f-demo-2', type: 'cabinet', x: -150, y: 300, width: 80, height: 150, rotation: 10 },
+        { id: 'f-demo-3', type: 'plant', x: 600, y: 100, width: 100, height: 100, rotation: 0 },
+        { id: 'f-demo-4', type: 'rug', x: 150, y: 400, width: 300, height: 200, rotation: 0 }
+      ];
+
+      const demoGroups = [
+        { id: 'קבוצת אומנות', name: 'קבוצת אומנות', constraint: 'together' },
+        { id: 'נבחרת כדורסל', name: 'נבחרת כדורסל', constraint: 'separate' }
+      ];
 
       updateCurrentConfig({
         id: Date.now().toString(),
-        name: "סימולציית דוגמה (Python)",
-        rows: 4,
-        cols: 10,
-        grid: Array(40).fill(null),
-        students: finalStudents,
-        hiddenDesks: hidden,
-        rowGaps: [],
-        columnGaps: [4],
-        groups: []
+        name: "כיתת הדגמה מקצועית",
+        rows,
+        cols,
+        grid,
+        students: demoStudents,
+        groups: demoGroups,
+        hiddenDesks: [35], // Hide bottom-right corner for example
+        rowGaps: [2],
+        columnGaps: [3],
+        campaigns: demoCampaigns,
+        furniture: demoFurniture,
+        student_points,
+        analytics_log: [
+          { type: 'points', studentId: '1', value: 50, timestamp: Date.now() - 86400000 },
+          { type: 'points', studentId: '2', value: 30, timestamp: Date.now() - 172800000 }
+        ],
+        rewards: [
+          { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
+          { id: 'rev-2', title: 'ממתק קטן', price: 50, stock: 20, icon: 'Zap' },
+          { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
+          { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
+        ]
       });
 
-      setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני הסימולציה נטענו בהצלחה!", type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני ההדגמה המלאים נטענו בהצלחה!", type: 'success' }, ...prev]);
     }
   };
+
 
   return (
     <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
@@ -5282,7 +5255,7 @@ const SettingsView = ({
             onClick={loadExampleData}
             className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100"
           >
-            טען נתוני דוגמה AI
+            טען נתוני דמו
           </button>
           <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.2.1</Badge>
         </div>
