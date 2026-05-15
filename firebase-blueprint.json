@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Config": {
+      "title": "Class Configuration",
+      "description": "A specific classroom layout and data configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "rows": { "type": "number" },
+        "cols": { "type": "number" },
+        "grid": { "type": "array", "items": { "type": "string" } },
+        "students": { "type": "array" },
+        "groups": { "type": "array" },
+        "furniture": { "type": "array" },
+        "availableLessons": { "type": "array" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/configs/{configId}": {
+      "schema": "Config",
+      "description": "Classroom layout configurations"
+    }
+  }
+}
