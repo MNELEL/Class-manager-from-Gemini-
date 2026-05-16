@@ -45,6 +45,16 @@ export interface Student {
 
 export type EditMode = 'normal' | 'structure' | 'gapCol' | 'gapRow' | 'lock' | 'obstruction';
 
+export interface ClassroomEvent {
+  id: string;
+  title: string;
+  type: 'field_trip' | 'activity' | 'meeting' | 'important_date';
+  date: string;
+  description?: string;
+  location?: string;
+  involvedStudents?: (string | number)[]; // list of student IDs
+}
+
 export interface ClassroomConfig {
   id: string;
   name: string;
@@ -68,6 +78,7 @@ export interface ClassroomConfig {
   updatedAt: number;
   themeColor?: string;
   campaigns?: Campaign[];
+  events?: ClassroomEvent[];
 }
 
 export interface Campaign {

@@ -45,6 +45,19 @@
   --color-brand-900: #263a47;
   --color-brand-950: #1a272f;
 
+  /* Adding a vibrant accent color (Indigo/Violet hybrid) */
+  --color-accent-50: #f5f3ff;
+  --color-accent-100: #ede9fe;
+  --color-accent-200: #ddd6fe;
+  --color-accent-300: #c4b5fd;
+  --color-accent-400: #a78bfa;
+  --color-accent-500: #8b5cf6;
+  --color-accent-600: #7c3aed;
+  --color-accent-700: #6d28d9;
+  --color-accent-800: #5b21b6;
+  --color-accent-900: #4c1d95;
+  --color-accent-950: #2e1065;
+
   /* Standard Tailwind colors in HEX to avoid OKLCH/OKLAB export issues */
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
@@ -439,11 +452,19 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl;
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.02];
+  }
+
+  .glass-card-accent {
+    @apply bg-brand-50/70 backdrop-blur-xl border border-brand-200/40 shadow-xl ring-1 ring-brand-500/10;
+  }
+
+  .glass-card-dark {
+    @apply bg-slate-900/70 backdrop-blur-xl border border-slate-800/40 shadow-2xl ring-1 ring-white/5;
   }
   
   .dark .glass-card {
-    @apply bg-slate-900/80 border-slate-800/50 shadow-2xl;
+    @apply bg-slate-900/60 border-slate-800/50 shadow-2xl ring-1 ring-white/5;
   }
 
   .glass-header {
