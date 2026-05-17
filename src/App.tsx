@@ -27,7 +27,7 @@ import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { LandingPage } from './components/LandingPage';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
   AlertCircle,
@@ -11307,7 +11307,7 @@ Instructions:
           className="p-3 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-100 transition-all shadow-sm border border-brand-100 dark:border-brand-800"
           title="הוסף אירוע חדש"
         >
-          <CalendarPlus className="w-5 h-5" />
+          <CalendarRange className="w-5 h-5" />
         </button>
 
         {/* Global Search Bar */}
