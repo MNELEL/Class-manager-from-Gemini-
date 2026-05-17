@@ -2,5 +2,5 @@
   "name": "ClassPro Pro-Manager",
   "description": "מערכת פדגוגית חכמה לניהול כיתה: סידור ישיבה 3D עם AI, יומן אירועים, תזכורות, ייצוא Layout, ניהול מבצעים, ציונים ונוכחות.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["AI-powered sorting", "Excel import/export", "PWA support"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API", "AI-powered sorting", "Excel import/export", "PWA support"]
 }

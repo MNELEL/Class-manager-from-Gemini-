@@ -177,6 +177,15 @@ import {
   getDocFromServer
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { 
+  initAuth, 
+  googleSignIn, 
+  logout, 
+  exportToDocs, 
+  saveToDrive, 
+  sendGmail, 
+  scheduleCalendarEvent 
+} from './lib/workspace';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -3496,7 +3505,33 @@ const StudentQuickPrefsModal = ({
   );
 };
 
-const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig, students, onSelectStudent, aiWeights, setQuickPrefsStudentId }: { student: any, currentConfig: any, onBack: () => void, updateCurrentConfig: (update: any) => void, students: any[], onSelectStudent: (id: string) => void, aiWeights: any, setQuickPrefsStudentId?: (id: string) => void }) => {
+const StudentDetailView = ({ 
+  student, 
+  currentConfig, 
+  onBack, 
+  updateCurrentConfig, 
+  students, 
+  onSelectStudent, 
+  aiWeights, 
+  setQuickPrefsStudentId,
+  googleUser,
+  handleGoogleLogin,
+  setNotifications
+}: { 
+  student: any, 
+  currentConfig: any, 
+  onBack: () => void, 
+  updateCurrentConfig: (update: any) => void, 
+  students: any[], 
+  onSelectStudent: (id: string) => void, 
+  aiWeights: any, 
+  setQuickPrefsStudentId?: (id: string) => void,
+  googleUser: any,
+  handleGoogleLogin: () => void,
+  setNotifications: any
+}) => {
+  const [selectedTab, setSelectedTab] = useState('info');
+  const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(student.name);
@@ -5176,11 +5211,70 @@ const StudentDetailView = ({ student, currentConfig, onBack, updateCurrentConfig
               {activeTab === 'communications' && (
                 <div className="lg:col-span-3">
                   <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-6 mb-8">
-                       <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[2.5rem]">
-                          <PhoneCall className="w-10 h-10 text-purple-600" />
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-6">
+                          <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[2.5rem]">
+                             <PhoneCall className="w-10 h-10 text-purple-600" />
+                          </div>
+                          <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">תקשורת עם הורים</h3>
                        </div>
-                       <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">תקשורת עם הורים</h3>
+                       
+                       <div className="flex gap-3">
+                          <button 
+                            onClick={async () => {
+                              if (!googleUser) return handleGoogleLogin();
+                              const subject = `עדכון לגבי ${student.name} - כיתה ${currentConfig.name}`;
+                              const body = `שלום הורי ${student.name},\n\nהמשך יום נעים!`;
+                              const email = prompt("הזן כתובת אימייל של ההורה:", student.parentEmail || "");
+                              if (!email) return;
+                              setIsWorkspaceActionLoading(true);
+                              try {
+                                await sendGmail(email, subject, body);
+                                setNotifications((prev: any) => [{ id: Date.now(), text: `אימייל נשלח בהצלחה ל-${email}`, type: 'success' }, ...prev]);
+                              } catch (err: any) {
+                                setNotifications((prev: any) => [{ id: Date.now(), text: `שגיאה בשליחת אימייל: ${err.message}`, type: 'error' }, ...prev]);
+                              } finally {
+                                setIsWorkspaceActionLoading(false);
+                              }
+                            }}
+                            disabled={isWorkspaceActionLoading}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-blue-700 transition-all disabled:opacity-50"
+                          >
+                             {isWorkspaceActionLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Bell className="w-4 h-4" />}
+                             שליחת אימייל
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (!googleUser) return handleGoogleLogin();
+                              const summary = `אסיפת הורים: ${student.name}`;
+                              const start = new Date();
+                              start.setDate(start.getDate() + 7); // Next week
+                              start.setHours(16, 0, 0, 0);
+                              const end = new Date(start.getTime() + 20 * 60000); // 20 mins
+                              
+                              setIsWorkspaceActionLoading(true);
+                              try {
+                                const eventLink = await scheduleCalendarEvent({
+                                  summary,
+                                  description: `פגישה פדגוגית עם הורי ${student.name}.`,
+                                  start: { dateTime: start.toISOString() },
+                                  end: { dateTime: end.toISOString() }
+                                });
+                                setNotifications((prev: any) => [{ id: Date.now(), text: 'אסיפת הורים נקבעה ביומן Google!', type: 'success' }, ...prev]);
+                                window.open(eventLink, '_blank');
+                              } catch (err: any) {
+                                setNotifications((prev: any) => [{ id: Date.now(), text: `שגיאה בקביעת תור: ${err.message}`, type: 'error' }, ...prev]);
+                              } finally {
+                                setIsWorkspaceActionLoading(false);
+                              }
+                            }}
+                            disabled={isWorkspaceActionLoading}
+                            className="flex items-center gap-2 px-6 py-3 bg-rose-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-rose-700 transition-all disabled:opacity-50"
+                          >
+                             {isWorkspaceActionLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CalendarDays className="w-4 h-4" />}
+                             קביעת אסיפה ביומן
+                          </button>
+                       </div>
                     </div>
                     {(!student.communications || student.communications.length === 0) ? (
                       <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
@@ -8403,8 +8497,9 @@ const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) 
   );
 };
 
-const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode, exportToExcel, importFromCSV }: any) => {
+const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode, exportToExcel, importFromCSV, googleUser, handleGoogleLogin, setNotifications }: any) => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
 
   const tools = [
     { id: 'groups', title: 'מחולל קבוצות אקראי', icon: <Users className="w-8 h-8 text-indigo-500" />, desc: 'יצירת קבוצות עבודה מעורבות באופן אוטומטי', status: 'פעיל' },
@@ -8415,10 +8510,44 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     { id: 'stars', title: 'חיזוקים ונקודות אור', icon: <Star className="w-8 h-8 text-yellow-500" />, desc: 'הענקת נקודות חיוביות לתלמידים במהלך היום', status: 'פעיל' },
     { id: 'birthdays', title: 'טבלת ימי הולדת', icon: <Sparkles className="w-8 h-8 text-pink-500" />, desc: 'ימי הולדת הקרובים בכתה לתכנון חגיגות', status: 'פעיל' },
     { id: 'export-excel', title: 'ייצוא גיליונות אקסל', icon: <FileText className="w-8 h-8 text-emerald-600" />, desc: 'הורדת נתוני הכיתה והציונים בקובץ נתונים', status: 'פעיל' },
+    { id: 'export-google', title: 'ייצוא ל-Google Workspace', icon: <CloudLightning className="w-8 h-8 text-brand-600" />, desc: 'ייצוא רשימת תלמידים ל-Docs או גיבוי ל-Drive', status: 'פעיל' },
     { id: 'import-csv', title: 'ייבוא תלמידים מקובץ', icon: <Upload className="w-8 h-8 text-sky-500" />, desc: 'העלאת רשימת תלמידים מקובץ Excel או CSV', status: 'פעיל' },
     { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
     { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' }
   ];
+
+  const handleExportToGoogleDocs = async () => {
+    if (!googleUser) return;
+    setIsWorkspaceActionLoading(true);
+    try {
+      const content = `רשימת תלמידים - ${currentConfig.name}\n\n` + 
+        students.map((s: any, i: number) => `${i + 1}. ${s.name}`).join('\n');
+      
+      const docUrl = await exportToDocs(`כיתת ${currentConfig.name} - רשימת תלמידים`, content);
+      setNotifications((prev: any) => [{ id: Date.now(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
+      window.open(docUrl, '_blank');
+    } catch (err: any) {
+      setNotifications((prev: any) => [{ id: Date.now(), text: `טעות בייצוא: ${err.message}`, type: 'error' }, ...prev]);
+    } finally {
+      setIsWorkspaceActionLoading(false);
+    }
+  };
+
+  const handleBackupToDrive = async () => {
+    if (!googleUser) return;
+    setIsWorkspaceActionLoading(true);
+    try {
+      const dataStr = JSON.stringify(currentConfig, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const driveUrl = await saveToDrive(`ClassPro_Backup_${currentConfig.name}_${new Date().toISOString().split('T')[0]}.json`, blob, 'application/json');
+      setNotifications((prev: any) => [{ id: Date.now(), text: 'הגיבוי נשמר ב-Google Drive בהצלחה!', type: 'success' }, ...prev]);
+      window.open(driveUrl, '_blank');
+    } catch (err: any) {
+      setNotifications((prev: any) => [{ id: Date.now(), text: `טעות בגיבוי: ${err.message}`, type: 'error' }, ...prev]);
+    } finally {
+      setIsWorkspaceActionLoading(false);
+    }
+  };
 
   if (selectedTool) {
     const tool = tools.find(t => t.id === selectedTool);
@@ -8489,6 +8618,49 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
                    <Download className="w-5 h-5" />
                    הורד קובץ Excel כעת
                  </button>
+              </div>
+            )}
+            {selectedTool === 'export-google' && (
+              <div className="text-center space-y-8 py-10">
+                 <div className="w-20 h-20 bg-brand-50 dark:bg-brand-900/20 rounded-3xl flex items-center justify-center mx-auto text-brand-600">
+                    <CloudLightning className="w-10 h-10" />
+                 </div>
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">ייצוא ל-Google Workspace</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">חיבור ישיר לשירותי הענן של Google לייצוא וגיבוי נתונים בלחיצת כפתור אחת.</p>
+                 </div>
+                 
+                 {!googleUser ? (
+                   <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-100 dark:border-amber-800 space-y-4 max-w-md mx-auto">
+                     <p className="text-sm font-bold text-amber-800 dark:text-amber-400">יש להתחבר לחשבון Google כדי להשתמש בכלים אלו.</p>
+                     <button 
+                       onClick={handleGoogleLogin}
+                       className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold shadow-md hover:bg-amber-700 transition-all flex items-center gap-2 mx-auto"
+                     >
+                       <LogIn className="w-4 h-4" />
+                       התחבר עם Google
+                     </button>
+                   </div>
+                 ) : (
+                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                     <button 
+                       onClick={handleExportToGoogleDocs}
+                       disabled={isWorkspaceActionLoading}
+                       className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                     >
+                       {isWorkspaceActionLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FileText className="w-5 h-5" />}
+                       ייצא רשימת תלמידים ל-Docs
+                     </button>
+                     <button 
+                       onClick={handleBackupToDrive}
+                       disabled={isWorkspaceActionLoading}
+                       className="w-full sm:w-auto px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-xl hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                     >
+                       {isWorkspaceActionLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
+                       גיבוי מבנה כיתה ל-Drive
+                     </button>
+                   </div>
+                 )}
               </div>
             )}
             {selectedTool === 'import-csv' && (
@@ -8566,6 +8738,43 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
 };
 
 export default function App() {
+  const [googleUser, setGoogleUser] = useState<any>(null);
+  const [workspaceToken, setWorkspaceToken] = useState<string | null>(null);
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
+
+  useEffect(() => {
+    initAuth(
+      (user, token) => {
+        setGoogleUser(user);
+        setWorkspaceToken(token);
+      },
+      () => {
+        setGoogleUser(null);
+        setWorkspaceToken(null);
+      }
+    );
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    setIsWorkspaceLoading(true);
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        setGoogleUser(result.user);
+        setWorkspaceToken(result.accessToken);
+        setNotifications(prev => [{ id: Date.now(), text: `חשבון Google חובּר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
+      }
+    } catch (err: any) {
+      setNotifications(prev => [{ id: Date.now(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
+    } finally {
+      setIsWorkspaceLoading(false);
+    }
+  };
+
+  const handleGoogleLogout = async () => {
+    await logout();
+    setNotifications(prev => [{ id: Date.now(), text: 'התנתקת מחשבון Google', type: 'info' }, ...prev]);
+  };
   const [currentConfig, setCurrentConfig] = useState({
     id: '1',
     name: 'כיתת מצוינות א׳',
@@ -8746,13 +8955,18 @@ export default function App() {
       }
     });
 
-    // Test connection as requested per constraints
+    // Test connection silently - Firestore handles offline state automatically
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
+        console.log("Firebase connection established.");
+      } catch (error: any) {
+        if (error.code === 'permission-denied') {
+          console.log("Firebase connection verified (permission denied as expected).");
+        } else if (error.message && error.message.includes('the client is offline')) {
+          console.warn("Firebase: Client is currently offline. This is usually transient and Firestore will reconnect automatically.");
+        } else {
+          console.debug("Firebase initial check:", error.message);
         }
       }
     };
@@ -10523,7 +10737,7 @@ Instructions:
           </div>
         </div>
       );
-      case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} exportToExcel={exportToExcel} importFromCSV={importFromCSV} />;
+      case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} exportToExcel={exportToExcel} importFromCSV={importFromCSV} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />;
       case 'settings': return (
         <SettingsView 
           onBack={onBackToGrid}
@@ -10563,6 +10777,9 @@ Instructions:
             onSelectStudent={setSelectedStudentId}
             aiWeights={aiWeights}
             setQuickPrefsStudentId={setQuickPrefsStudentId}
+            googleUser={googleUser}
+            handleGoogleLogin={handleGoogleLogin}
+            setNotifications={setNotifications}
           />
         ) : null;
       }
@@ -10768,6 +10985,29 @@ Instructions:
             <Zap className="w-4 h-4 fill-white animate-pulse" />
             <span className="hidden md:inline">סידור חכם</span>
           </button>
+
+          {googleUser && (
+            <button 
+              onClick={async () => {
+                setIsWorkspaceLoading(true);
+                try {
+                  const dataStr = JSON.stringify(activeConfig, null, 2);
+                  const blob = new Blob([dataStr], { type: 'application/json' });
+                  const driveUrl = await saveToDrive(`ClassPro_Layout_${activeConfig.name}_${new Date().toISOString().split('T')[0]}.json`, blob, 'application/json');
+                  setNotifications(prev => [{ id: Date.now(), text: 'הסידור נשמר ב-Google Drive!', type: 'success' }, ...prev]);
+                  window.open(driveUrl, '_blank');
+                } catch (err: any) {
+                  setNotifications(prev => [{ id: Date.now(), text: `שגיאה בשמירה: ${err.message}`, type: 'error' }, ...prev]);
+                } finally {
+                  setIsWorkspaceLoading(false);
+                }
+              }}
+              className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-all group"
+              title="גיבוי סידור ל-Google Drive"
+            >
+              <CloudLightning className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+          )}
 
           <button 
             onClick={() => {
@@ -11051,7 +11291,7 @@ Instructions:
               </span>
             )}
             
-            {viewType === nav && !isSidebarCollapsed && (
+      {viewType === nav && !isSidebarCollapsed && (
               <motion.div layoutId="sidebar-active" className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-200 rounded-r-full" />
             )}
           </button>
@@ -11059,6 +11299,71 @@ Instructions:
       </div>
 
       <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2" />
+
+      {/* Google Workspace Section */}
+      {!isSidebarCollapsed && (
+        <div className="px-6 py-4">
+          <div className="bg-brand-50 dark:bg-brand-900/10 rounded-2xl p-4 border border-brand-100 dark:border-brand-900/20">
+             <div className="flex items-center gap-3 mb-3">
+               <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                 <CloudLightning className="w-5 h-5 text-brand-600" />
+               </div>
+               <div className="text-right">
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Google Workspace</h4>
+                 <p className="text-xs font-bold text-slate-800 dark:text-slate-100">חיבור שירותים</p>
+               </div>
+             </div>
+             
+             {googleUser ? (
+               <div className="space-y-3">
+                 <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-xl border border-brand-200 dark:border-brand-800">
+                    <img src={googleUser.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+                    <div className="flex-1 text-right overflow-hidden">
+                       <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{googleUser.displayName}</p>
+                       <p className="text-[8px] text-slate-400 truncate">{googleUser.email}</p>
+                    </div>
+                    <button 
+                      onClick={handleGoogleLogout}
+                      className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                      title="התנתק"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                    </button>
+                 </div>
+                 <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-center gap-1.5 p-1.5 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <FileText className="w-3 h-3 text-blue-500" />
+                      <span className="text-[9px] font-black text-slate-500">Docs</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 p-1.5 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <CalendarDays className="w-3 h-3 text-rose-500" />
+                      <span className="text-[9px] font-black text-slate-500">Calendar</span>
+                    </div>
+                 </div>
+               </div>
+             ) : (
+               <button 
+                 onClick={handleGoogleLogin}
+                 disabled={isWorkspaceLoading}
+                 className="w-full h-10 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center gap-3 transition-all relative overflow-hidden group active:scale-95 disabled:opacity-50"
+               >
+                 {isWorkspaceLoading ? (
+                   <div className="w-4 h-4 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+                 ) : (
+                   <>
+                      <div className="w-5 h-5 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" className="w-4 h-4">
+                          <path fill="#EA4335" d="M12 11.5v3h6.5c-.3 1.5-1.5 4.5-6.5 4.5-4.3 0-7.8-3.5-7.8-7.8S7.7 3.4 12 3.4c2.4 0 4.1 1 5 1.9l2.4-2.4C17.6 1.3 15 0 12 0 5.4 0 0 5.4 0 12s5.4 12 12 12c6.9 0 11.5-4.8 11.5-11.7 0-.8-.1-1.4-.2-2H12z"/>
+                        </svg>
+                      </div>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">התחבר עם Google</span>
+                   </>
+                 )}
+               </button>
+             )}
+          </div>
+        </div>
+      )}
 
       {/* Classroom Header */}
       {!isSidebarCollapsed && (
