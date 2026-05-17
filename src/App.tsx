@@ -26,6 +26,8 @@ import {
 import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { LandingPage } from './components/LandingPage';
+import { CalendarPlus } from 'lucide-react';
 import { 
   Activity,
   AlertCircle,
@@ -861,8 +863,8 @@ const DeskCell = ({
   
   const compatibilityClass = isOver 
     ? (isCompatible 
-       ? "bg-emerald-100 border-emerald-400 ring-4 ring-emerald-200 dark:bg-emerald-900/40 dark:border-emerald-600 dark:ring-emerald-800 shadow-xl scale-105 z-50" 
-       : "bg-rose-100 border-rose-400 ring-4 ring-rose-200 dark:bg-rose-900/40 dark:border-rose-600 dark:ring-rose-800 shadow-xl scale-105 z-50") 
+       ? "bg-emerald-100 border-emerald-400 ring-8 ring-emerald-200 dark:bg-emerald-900/60 dark:border-emerald-500 dark:ring-emerald-800 shadow-2xl scale-110 z-50" 
+       : "bg-rose-100 border-rose-400 ring-8 ring-rose-200 dark:bg-rose-900/60 dark:border-rose-500 dark:ring-rose-800 shadow-2xl scale-110 z-50") 
     : (draggedStudentId && editMode === 'placement' && !isHidden && !isObstruction && !isPrinting
        ? (isCompatible
           ? "border-brand-400 border-dashed bg-brand-50/50 dark:bg-brand-900/20 ring-2 ring-brand-200 dark:ring-brand-800 shadow-sm"
@@ -1248,6 +1250,8 @@ const DeskCell = ({
           onDragStart={(e: any) => {
             if (editMode === 'placement') {
               e.dataTransfer.setData('type', 'student');
+              e.dataTransfer.setData('studentId', studentId);
+              e.dataTransfer.effectAllowed = 'move';
               if (setDraggedStudentId) setDraggedStudentId(student.id);
             }
           }}
@@ -5506,6 +5510,41 @@ const StudentDetailView = ({
   );
 };
 
+const AddEventModal = ({ onClose, onSave }: any) => {
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [type, setType] = useState('event');
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-sm w-full space-y-4 shadow-2xl">
+        <h2 className="text-xl font-black">הוסף אירוע חדש</h2>
+        <input 
+          value={title} 
+          onChange={(e) => setTitle(e.target.value)} 
+          placeholder="כותרת האירוע"
+          className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl"
+        />
+        <input 
+          type="date"
+          value={date} 
+          onChange={(e) => setDate(e.target.value)} 
+          className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl"
+        />
+        <select value={type} onChange={(e) => setType(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+          <option value="event">אירוע</option>
+          <option value="exam">מבחן</option>
+          <option value="deadline">דד-ליין</option>
+        </select>
+        <div className="flex gap-2 pt-4">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200">ביטול</button>
+          <button onClick={() => { onSave({title, date, type}); onClose(); }} className="flex-1 py-3 rounded-xl font-bold bg-brand-600 text-white hover:bg-brand-700">שמור</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DashboardView = ({ activeConfig, stats, students, onBack, updateCurrentConfig, isDarkMode, teacherProfile, setIsTeacherModalOpen, setViewType }: any) => {
   const today = new Date();
   const options = {
@@ -6283,6 +6322,19 @@ const SettingsView = ({
           target: 50,
           status: 'active',
           type: 'points',
+          progress: {} as Record<string, number>
+        },
+        {
+          id: 'camp-good-behavior',
+          title: 'Practice Good Behavior',
+          description: 'Awarding students for consistent positive behavior in class, aiming for 1000 points total.',
+          targetPoints: 1000,
+          type: 'class-wide',
+          category: 'behavior',
+          startDate: '2024-07-28',
+          endDate: '2024-12-31',
+          reward: 'Extra 15 minutes of free time',
+          status: 'active',
           progress: {} as Record<string, number>
         }
       ];
@@ -9198,7 +9250,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace'>('dashboard');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing'>('landing');
 
   const setViewTypeWithTransition = (newView: typeof viewType) => {
     setIsViewLoading(true);
@@ -9325,7 +9377,7 @@ export default function App() {
         if (error.code === 'permission-denied') {
           console.log("Firebase connection verified (permission denied as expected).");
         } else if (error.message && error.message.includes('the client is offline')) {
-          console.warn("Firebase: Client is currently offline. This is usually transient and Firestore will reconnect automatically.");
+          console.info("Firebase: Client is currently offline. This is usually transient and Firestore will reconnect automatically.");
         } else {
           console.debug("Firebase initial check:", error.message);
         }
@@ -10524,6 +10576,7 @@ Instructions:
 
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
 
   const [violations, setViolations] = useState<string[]>([]);
@@ -11064,6 +11117,7 @@ Instructions:
     const onBack = () => setViewTypeWithTransition('dashboard');
     const onBackToGrid = () => setViewTypeWithTransition('grid');
     switch (viewType) {
+      case 'landing': return <LandingPage onGetStarted={() => setViewTypeWithTransition('dashboard')} />;
       case 'dashboard': return <DashboardView activeConfig={activeConfig} stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} setViewType={setViewType} />;
       case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
@@ -11246,6 +11300,15 @@ Instructions:
         </div>
 
         <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-2 hidden lg:block" />
+        
+        {/* Add Event Button */}
+        <button 
+          onClick={() => setIsAddEventModalOpen(true)}
+          className="p-3 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-100 transition-all shadow-sm border border-brand-100 dark:border-brand-800"
+          title="הוסף אירוע חדש"
+        >
+          <CalendarPlus className="w-5 h-5" />
+        </button>
 
         {/* Global Search Bar */}
         <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 gap-3 w-80 group focus-within:ring-2 ring-brand-100 transition-all">
@@ -13830,6 +13893,17 @@ Instructions:
           furniture={activeConfig.furniture} 
           updateCurrentConfig={updateCurrentConfig} 
           onClose={() => setIsFurnitureModalOpen(false)} 
+        />
+      )}
+      {isAddEventModalOpen && (
+        <AddEventModal 
+          onClose={() => setIsAddEventModalOpen(false)} 
+          onSave={(event: any) => {
+             updateCurrentConfig((prev: any) => ({
+               ...prev,
+               events: [...(prev.events || []), { ...event, id: Date.now() }]
+             }));
+          }}
         />
       )}
     </div>
