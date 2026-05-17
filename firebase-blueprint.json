@@ -2,36 +2,53 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile information",
+      "description": "Application user",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
         "displayName": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "email"]
     },
-    "Config": {
-      "title": "Class Configuration",
-      "description": "A specific classroom layout and data configuration",
+    "ClassroomConfig": {
+      "title": "ClassroomConfig",
+      "description": "Classroom layout and student data",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "rows": { "type": "number" },
         "cols": { "type": "number" },
-        "grid": { "type": "array", "items": { "type": "string" } },
+        "grid": { "type": "array" },
         "students": { "type": "array" },
+        "hiddenDesks": { "type": "array" },
+        "rowGaps": { "type": "array" },
+        "columnGaps": { "type": "array" },
+        "teacherDesk": { "type": "object" },
         "groups": { "type": "array" },
         "furniture": { "type": "array" },
         "availableLessons": { "type": "array" },
-        "updatedAt": { "type": "number" }
+        "updatedAt": { "type": "number" },
+        "columnGapSize": { "type": "number" },
+        "rowGapSize": { "type": "number" },
+        "obstructions": { "type": "array" },
+        "lockedDesks": { "type": "array" },
+        "deskScales": { "type": "object" },
+        "colSizes": { "type": "array" },
+        "rowSizes": { "type": "array" },
+        "events": { "type": "array" },
+        "reminders": { "type": "array" },
+        "campaigns": { "type": "array" },
+        "rewards": { "type": "array" },
+        "student_points": { "type": "object" },
+        "attendance": { "type": "object" },
+        "grades": { "type": "array" },
+        "behaviorLog": { "type": "array" }
       },
-      "required": ["userId", "name"]
+      "required": ["id", "ownerId", "name", "rows", "cols", "grid", "students"]
     }
   },
   "firestore": {
@@ -40,8 +57,8 @@
       "description": "User profile data"
     },
     "/configs/{configId}": {
-      "schema": "Config",
-      "description": "Classroom layout configurations"
+      "schema": "ClassroomConfig",
+      "description": "Classroom configurations"
     }
   }
 }

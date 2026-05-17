@@ -197,6 +197,52 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // --- Logic Helpers ---
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 /** 
  * Checks if two indices in a grid are adjacent (including diagonals)
@@ -9257,6 +9303,17 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    }
+    testConnection();
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setIsAuthLoading(false);
@@ -9302,13 +9359,18 @@ export default function App() {
           await updateProfile(userCred.user, { displayName: name });
         }
         // Create user document
-        await setDoc(doc(db, 'users', userCred.user.uid), {
-          uid: userCred.user.uid,
-          email: userCred.user.email,
-          displayName: name || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
+        const path = `users/${userCred.user.uid}`;
+        try {
+          await setDoc(doc(db, 'users', userCred.user.uid), {
+            uid: userCred.user.uid,
+            email: userCred.user.email,
+            displayName: name || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, path);
+        }
       }
     } catch (err: any) {
       setAuthError(err.message);
@@ -13329,7 +13391,12 @@ Instructions:
                       onBlur={async (e) => {
                         if (currentUser && e.target.value !== currentUser.displayName) {
                           await updateProfile(currentUser, { displayName: e.target.value });
-                          await updateDoc(doc(db, 'users', currentUser.uid), { displayName: e.target.value, updatedAt: new Date().toISOString() });
+                            const path = `users/${currentUser.uid}`;
+                            try {
+                              await updateDoc(doc(db, 'users', currentUser.uid), { displayName: e.target.value, updatedAt: new Date().toISOString() });
+                            } catch (err) {
+                              handleFirestoreError(err, OperationType.UPDATE, path);
+                            }
                           setTeacherProfile(prev => ({ ...prev, name: e.target.value }));
                           setNotifications(prev => [{ id: Date.now(), text: "פרופיל עודכן", type: 'success' }, ...prev]);
                         }
