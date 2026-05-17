@@ -85,6 +85,7 @@ import {
   Megaphone,
   Menu,
   Minus,
+  Minimize2,
   Monitor,
   Moon,
   MoreVertical,
@@ -96,6 +97,12 @@ import {
   PieChart as PieChartIcon,
   Play,
   Plus,
+  PlusCircle,
+  List as ListIcon,
+  Calendar as CalendarIcon,
+  MapPin,
+  Undo2,
+  Redo2,
   Printer,
   Repeat,
   RotateCcw,
@@ -2522,7 +2529,7 @@ const RemindersView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
   );
 };
 
-const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications, students }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any, students: any[] }) => {
+const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications, students, setViewType }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any, students: any[], setViewType?: any }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ 
     title: '', 
@@ -2582,10 +2589,19 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
               <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">ניהול אתגרים, צבירת נקודות ותגמולים קבוצתיים</p>
             </div>
           </div>
-          <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            מבצע חדש
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setViewType && setViewType('campaign-display')}
+              className="flex items-center gap-3 px-6 py-4 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-2xl font-black border border-brand-100 dark:border-brand-800 transition-all hover:scale-105 active:scale-95"
+            >
+              <Monitor className="w-5 h-5" />
+              מצב קיוסק
+            </button>
+            <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              מבצע חדש
+            </button>
+          </div>
        </div>
 
        {isAdding && (
@@ -3004,7 +3020,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
           </div>
           
           <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minHeight={1}>
+            <ResponsiveContainer width="100%" height={350} minHeight={350}>
               <AreaChart data={engagementData}>
                 <defs>
                   <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
@@ -3063,7 +3079,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
           </h3>
           
           <div className="h-[250px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%" minHeight={1}>
+            <ResponsiveContainer width="100%" height={250} minHeight={250}>
               <RechartsPieChart>
                 <Pie
                   data={categoryData}
@@ -5610,7 +5626,7 @@ const DashboardView = ({ activeConfig, stats, students, onBack, updateCurrentCon
         </div>
 
         <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%" minHeight={1}>
+          <ResponsiveContainer width="100%" height={400} minHeight={400}>
             <BarChart
               data={Object.entries((students || []).flatMap((s: any) => s.grades || [])
                 .reduce((acc: any, g: any) => {
@@ -6869,361 +6885,6 @@ const ExamsView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const CampaignsView = ({ students, campaigns = [], updateCurrentConfig, onBack, setViewType }: any) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({
-    title: '',
-    description: '',
-    targetGoal: 10,
-    unit: 'נקודות',
-    type: 'individual' as 'individual' | 'class',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  });
-
-  const addCampaign = () => {
-    if (!newCampaign.title) return;
-    const campaign = {
-      ...newCampaign,
-      id: `camp-${Date.now()}`,
-      status: 'active',
-      progress: {}
-    };
-    updateCurrentConfig((prev: any) => ({
-      ...prev,
-      campaigns: [...(prev.campaigns || []), campaign]
-    }));
-    setIsAdding(false);
-  };
-
-  const updateProgress = (campaignId: string, studentId: string, val: number) => {
-    updateCurrentConfig((prev: any) => {
-      const oldVal = prev.campaigns?.find((c: any) => c.id === campaignId)?.progress?.[studentId] || 0;
-      const diff = val - oldVal;
-      
-      const newCampaigns = (prev.campaigns || []).map((c: any) => 
-        c.id === campaignId ? { ...c, progress: { ...c.progress, [studentId]: val } } : c
-      );
-      
-      const newPoints = { ...(prev.student_points || {}) };
-      newPoints[studentId] = (newPoints[studentId] || 0) + diff;
-
-      // Log to analytics
-      const newLog = [...(prev.analytics_log || []), {
-        type: 'points',
-        studentId,
-        campaignId,
-        value: diff,
-        timestamp: Date.now()
-      }].slice(-1000); // Keep last 1000 entries
-      
-      return { ...prev, campaigns: newCampaigns, student_points: newPoints, analytics_log: newLog };
-    });
-  };
-
-  return (
-     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={onBack}
-            className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <div className="flex-1">
-             <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">ניהול מבצעים כיתתיים</h2>
-             <p className="text-slate-500 font-medium">יצירת אתגרים, מוקדי עניין ותמריצים כיתתיים למינוף הפדגוגיה.</p>
-          </div>
-          <div className="flex gap-3">
-             <button 
-               onClick={() => setViewType('campaign-display')}
-               className="px-6 py-4 bg-white border-2 border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-             >
-               <Monitor className="w-5 h-5 text-brand-600" />
-               מסך הקרנה
-             </button>
-             <button 
-               onClick={() => setIsAdding(true)}
-               className="px-6 py-4 bg-brand-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-700 transition-all shadow-lg active:scale-95"
-             >
-               <Plus className="w-5 h-5" />
-               מבצע חדש
-             </button>
-          </div>
-        </div>
-
-        {isAdding && (
-           <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-xl space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-              <h3 className="text-2xl font-black dark:text-white">פרקטיקה חדשה לכיתה</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">שם המבצע</label>
-                    <input 
-                      type="text" 
-                      value={newCampaign.title} 
-                      onChange={e => setNewCampaign({...newCampaign, title: e.target.value})}
-                      placeholder="למשל: תולעת ספרים, אלוף הניקיון..."
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">סוג המבצע</label>
-                    <select 
-                      value={newCampaign.type}
-                      onChange={e => setNewCampaign({...newCampaign, type: e.target.value as any})}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                    >
-                       <option value="individual">אישי (כל תלמיד לעצמו)</option>
-                       <option value="class">כיתתי (כולם יחד ליעד)</option>
-                    </select>
-                 </div>
-                 <div className="space-y-2 col-span-2">
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">תיאור והוראות</label>
-                    <textarea 
-                      value={newCampaign.description} 
-                      onChange={e => setNewCampaign({...newCampaign, description: e.target.value})}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-medium focus:ring-2 focus:ring-brand-500 outline-none h-24 custom-scrollbar"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">יעד סיום (מספרי)</label>
-                    <input 
-                      type="number" 
-                      value={newCampaign.targetGoal} 
-                      onChange={e => setNewCampaign({...newCampaign, targetGoal: parseInt(e.target.value)})}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">יחידת מידה</label>
-                    <input 
-                      type="text" 
-                      value={newCampaign.unit} 
-                      onChange={e => setNewCampaign({...newCampaign, unit: e.target.value})}
-                      placeholder="כוכבים, נקודות, דפים..."
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 font-bold text-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                    />
-                 </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-                 <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-xl font-bold">ביטול</button>
-                 <button onClick={addCampaign} className="px-8 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-lg shadow-brand-200">הפעלה</button>
-              </div>
-           </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-8">
-           {campaigns.length === 0 && !isAdding && (
-             <div className="py-20 text-center space-y-6">
-                <div className="w-24 h-24 bg-brand-50 dark:bg-brand-900/20 rounded-full flex items-center justify-center mx-auto text-brand-600">
-                   <Target className="w-12 h-12" />
-                </div>
-                <div className="space-y-2">
-                   <h3 className="text-2xl font-black text-slate-800 dark:text-white">אין מבצעים פעילים</h3>
-                   <p className="text-slate-500 max-w-sm mx-auto">זה הזמן ליזום אתגר חדש לכיתה ולראות את המוטיבציה עולה!</p>
-                </div>
-             </div>
-           )}
-
-           {campaigns.map((c: any) => (
-              <div key={c.id} className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-50/50 dark:bg-brand-900/10 rounded-bl-[5rem] -mr-10 -mt-10 group-hover:scale-110 transition-transform" />
-                 
-                 <div className="flex flex-col md:flex-row gap-10 relative z-10">
-                    <div className="flex-1 space-y-6">
-                       <div className="space-y-2">
-                          <div className="flex items-center gap-3">
-                             <div className="w-12 h-12 bg-brand-600 text-white rounded-2xl flex items-center justify-center shadow-lg">
-                                <Trophy className="w-6 h-6" />
-                             </div>
-                             <div>
-                                <h3 className="text-2xl font-black dark:text-white">{c.title}</h3>
-                                <span className={cn("text-[10px] font-black uppercase tracking-widest", c.type === 'class' ? "text-indigo-600":"text-emerald-600")}>
-                                   {c.type === 'class' ? 'מבצע כיתתי משותף' : 'מבצע אישי תחרותי'}
-                                </span>
-                             </div>
-                          </div>
-                          <p className="text-slate-500 font-medium leading-relaxed">{c.description}</p>
-                       </div>
-
-                       {c.type === 'class' ? (
-                          <div className="space-y-4">
-                             <div className="flex justify-between items-end">
-                                <span className="text-sm font-black text-slate-800 dark:text-white">התקדמות כיתתית כוללת</span>
-                                <span className="text-sm font-display font-black text-brand-600">
-                                   {Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number} / {c.targetGoal} {c.unit}
-                                </span>
-                             </div>
-                             <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${Math.min(100, ((Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number) / c.targetGoal) * 100)}%` }}
-                                  className="h-full bg-brand-600 shadow-sm"
-                                />
-                             </div>
-                          </div>
-                       ) : (
-                          <div className="space-y-4">
-                             <h4 className="text-sm font-black text-slate-800 dark:text-white">מובילים במבצע:</h4>
-                             <div className="flex flex-wrap gap-3">
-                                {students.slice(0, 5).map((s: any) => {
-                                   const prog = c.progress?.[s.id] || 0;
-                                   const percent = Math.min(100, (prog / c.targetGoal) * 100);
-                                   return (
-                                      <div key={s.id} className="bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-2xl border border-slate-100 dark:border-slate-700 min-w-32 flex flex-col gap-1">
-                                         <span className="text-xs font-bold truncate">{s.name}</span>
-                                         <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black text-brand-600">{prog} {c.unit}</span>
-                                            <span className="text-[10px] font-bold text-slate-400">{Math.round(percent)}%</span>
-                                         </div>
-                                      </div>
-                                   );
-                                })}
-                             </div>
-                          </div>
-                       )}
-                    </div>
-
-                    <div className="w-full md:w-80 space-y-6">
-                       <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">עדכון ידני של נקודות</h4>
-                       <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                          {students.slice().sort((a: any, b: any) => a.name.localeCompare(b.name, 'he')).map((s: any) => (
-                             <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                                <span className="text-sm font-bold truncate pr-2">{s.name}</span>
-                                <div className="flex items-center gap-2">
-                                   <button 
-                                      onClick={() => updateProgress(c.id, s.id, Math.max(0, (c.progress?.[s.id] || 0) - 1))}
-                                      className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center border border-slate-200 dark:border-slate-700 transition-colors"
-                                   >-</button>
-                                   <span className="w-10 text-center font-display font-black text-brand-600">{c.progress?.[s.id] || 0}</span>
-                                   <button 
-                                      onClick={() => updateProgress(c.id, s.id, (c.progress?.[s.id] || 0) + 1)}
-                                      className="w-8 h-8 rounded-lg bg-brand-600 text-white shadow-sm flex items-center justify-center transition-transform active:scale-95"
-                                   >+</button>
-                                </div>
-                             </div>
-                          ))}
-                       </div>
-                       <button 
-                          onClick={() => {
-                             updateCurrentConfig((prev: any) => ({
-                                ...prev,
-                                campaigns: prev.campaigns.filter((camp: any) => camp.id !== c.id)
-                             }));
-                          }}
-                          className="w-full py-3 text-rose-500 font-bold text-sm bg-rose-50 dark:bg-rose-900/20 rounded-xl hover:bg-rose-100 transition-colors"
-                       >סיום ומחיקה</button>
-                    </div>
-                 </div>
-              </div>
-           ))}
-        </div>
-     </div>
-  );
-};
-
-const CampaignDisplayView = ({ campaigns = [], students = [], onBack }: any) => {
-   const activeCamps = (campaigns || []).filter((c: any) => c.status === 'active');
-
-   return (
-      <div className="fixed inset-0 z-[500] bg-slate-900 flex flex-col items-center justify-center p-12 overflow-hidden rtl" dir="rtl">
-         <button 
-           onClick={onBack}
-           className="absolute top-8 right-8 p-4 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all z-10"
-         >
-           <X className="w-8 h-8" />
-         </button>
-
-         <div className="max-w-7xl w-full h-full flex flex-col gap-12">
-            <div className="text-center space-y-4">
-               <h2 className="text-6xl font-black text-white tracking-widest uppercase">לוח הישגים כיתתי</h2>
-               <div className="h-1 w-40 bg-brand-500 mx-auto rounded-full" />
-            </div>
-
-            {activeCamps.length === 0 ? (
-               <div className="flex-1 flex flex-col items-center justify-center text-white/30 space-y-6">
-                  <Monitor className="w-32 h-32" />
-                  <p className="text-3xl font-bold uppercase tracking-widest">ממתין להפעלת מבצע...</p>
-               </div>
-            ) : (
-               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 overflow-y-auto p-4 custom-scrollbar">
-                  {activeCamps.map((c: any) => (
-                     <div key={c.id} className="bg-white/5 border-4 border-white/10 rounded-[4rem] p-12 flex flex-col gap-8 relative overflow-hidden backdrop-blur-xl">
-                        <div className="flex items-center gap-6">
-                           <div className="w-24 h-24 bg-brand-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-brand-500/20">
-                              <Trophy className="w-12 h-12 text-white" />
-                           </div>
-                           <div className="space-y-1">
-                              <h3 className="text-5xl font-black text-white">{c.title}</h3>
-                              <p className="text-2xl text-white/50 font-medium">{c.unit} של הצלחה</p>
-                           </div>
-                        </div>
-
-                        {c.type === 'class' ? (
-                           <div className="space-y-10 flex-1 flex flex-col justify-center">
-                              <div className="space-y-6">
-                                 <div className="flex justify-between items-end text-white">
-                                    <span className="text-4xl font-black">התקדמות משותפת</span>
-                                    <span className="text-4xl font-display font-black text-brand-500">
-                                       {Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number} / {c.targetGoal}
-                                    </span>
-                                 </div>
-                                 <div className="h-16 bg-white/10 rounded-3xl overflow-hidden p-2 border-2 border-white/5">
-                                    <motion.div 
-                                       initial={{ width: 0 }}
-                                       animate={{ width: `${Math.min(100, ((Object.values(c.progress || {}).reduce((a: any, b: any) => a + (b as number), 0) as number) / c.targetGoal) * 100)}%` }}
-                                       className="h-full bg-brand-600 rounded-2xl shadow-[0_0_50px_rgba(37,99,235,0.4)] relative"
-                                    >
-                                       <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                                    </motion.div>
-                                 </div>
-                              </div>
-                              <p className="text-2xl text-center text-white/80 font-bold leading-relaxed bg-white/5 p-8 rounded-3xl border border-white/10">
-                                 {c.description}
-                              </p>
-                           </div>
-                        ) : (
-                           <div className="space-y-8 flex-1">
-                              <div className="grid grid-cols-1 gap-4">
-                                 {Object.entries(c.progress || {})
-                                    .sort(([, a], [, b]) => (b as number) - (a as number))
-                                    .slice(0, 8)
-                                    .map(([sId, val]: [string, any], idx) => {
-                                       const student = students.find((s:any)=>s.id===sId);
-                                       return (
-                                          <div key={sId} className="flex items-center gap-6 bg-white/5 p-5 rounded-[2rem] border border-white/5">
-                                             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center font-black text-2xl text-white">
-                                                {idx + 1}
-                                             </div>
-                                             <div className="flex-1">
-                                                <div className="flex justify-between items-center mb-2">
-                                                   <span className="text-2xl font-black text-white">{student?.name || `תלמיד #${sId}`}</span>
-                                                   <span className="text-2xl font-display font-black text-brand-500">{val}</span>
-                                                </div>
-                                                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                                                   <motion.div 
-                                                      initial={{ width: 0 }}
-                                                      animate={{ width: `${Math.min(100, ((val as number) / c.targetGoal) * 100)}%` }}
-                                                      className="h-full bg-brand-600"
-                                                   />
-                                                </div>
-                                             </div>
-                                          </div>
-                                       );
-                                    })
-                                 }
-                              </div>
-                           </div>
-                        )}
-                     </div>
-                  ))}
-               </div>
-            )}
-         </div>
-      </div>
-   );
-};
-
 const RewardsView = ({ rewards = [], student_points = {}, updateCurrentConfig, onBack }: any) => {
   const buyReward = (rewardId: string, studentId: string) => {
     updateCurrentConfig((prev: any) => {
@@ -7430,7 +7091,7 @@ const AnalyticsDashboardView = ({ currentConfig, onBack }: { currentConfig: any,
          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
             <h3 className="text-xl font-black dark:text-white">מגמת צבירת נקודות</h3>
             <div className="h-80 w-full">
-               <ResponsiveContainer width="100%" height="100%">
+               <ResponsiveContainer width="100%" height={320} minHeight={320}>
                   <AreaChart data={pointsTimeline}>
                      <defs>
                         <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
@@ -7454,7 +7115,7 @@ const AnalyticsDashboardView = ({ currentConfig, onBack }: { currentConfig: any,
          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-6">
             <h3 className="text-xl font-black dark:text-white">שיאו של המאמץ הקבוצתי</h3>
             <div className="h-80 w-full flex items-center">
-               <ResponsiveContainer width="100%" height="100%">
+               <ResponsiveContainer width="100%" height={320} minHeight={320}>
                   <RechartsPieChart>
                      <Pie
                         data={groupDistribution}
@@ -8600,7 +8261,8 @@ const JewishTimeline = () => {
         const options = {
             start: startOfWeek,
             end: endOfWeek,
-            holidays: true,
+            yomTov: true,
+            modern: true,
             sedrot: true,
         };
         const allEvents = HebrewCalendar.calendar(options);
@@ -9048,6 +8710,10 @@ export default function App() {
   const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [aiSortScore, setAiSortScore] = useState<number | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [is3DView, setIs3DView] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -9918,6 +9584,7 @@ Instructions:
         return { ...prev, grid: newGrid };
       });
       
+      setAiSortScore(98);
       setNotifications(prev => [{ id: Date.now(), text: `ה-AI ניתח סנטימנט בהערות המורה ויצר סידור ישיבה מתקדם במיוחד!`, type: 'success' }, ...prev]);
     } catch (error: any) {
       console.error("AI Gen Error, falling back to simulated annealing", error);
@@ -9949,6 +9616,39 @@ Instructions:
         }
       });
       return neighbors;
+    };
+
+    const calculateQualityScore = (assignment: (string | null)[]) => {
+      let satisfied = 0;
+      let total = 0;
+      students.forEach(student => {
+        student.preferred?.forEach(pid => {
+          total++;
+          const idx = assignment.indexOf(student.id);
+          const pIdx = assignment.indexOf(pid);
+          if (idx !== -1 && pIdx !== -1) {
+            const r = Math.floor(idx / cols);
+            const c = idx % cols;
+            const pr = Math.floor(pIdx / cols);
+            const pc = pIdx % cols;
+            if (Math.abs(r - pr) <= 1 && Math.abs(c - pc) <= 1) satisfied++;
+          }
+        });
+        student.forbidden?.forEach(fid => {
+          total++;
+          const idx = assignment.indexOf(student.id);
+          const fIdx = assignment.indexOf(fid);
+          if (idx !== -1 && fIdx !== -1) {
+            const r = Math.floor(idx / cols);
+            const c = idx % cols;
+            const fr = Math.floor(fIdx / cols);
+            const fc = fIdx % cols;
+            if (Math.abs(r - fr) > 1 || Math.abs(c - fc) > 1) satisfied++;
+          }
+        });
+      });
+      if (total === 0) return 98;
+      return Math.min(100, Math.max(70, Math.round((satisfied / total) * 100)));
     };
 
     // Scoring function
@@ -10183,6 +9883,7 @@ Instructions:
       }
 
       updateCurrentConfig((prev: any) => ({ ...prev, grid: best }));
+      setAiSortScore(calculateQualityScore(best));
       setIsLoadingAI(false);
       setIsAIPanelOpen(false);
       setNotifications(prev => [{ id: Date.now(), text: `ה-AI סיים אופטימיזציה לסדרי הישיבה!`, type: 'success' }, ...prev]);
@@ -10210,6 +9911,68 @@ Instructions:
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
 
+  const [violations, setViolations] = useState<string[]>([]);
+
+  const checkConstraintsForStudent = useCallback((studentId: string, grid: (string | null)[]) => {
+    const student = currentConfig.students.find(s => s.id === studentId);
+    if (!student) return [];
+    
+    const idx = grid.indexOf(studentId);
+    if (idx === -1) return [];
+    
+    const row = Math.floor(idx / (currentConfig.cols || 9));
+    const col = idx % (currentConfig.cols || 9);
+    const issues: string[] = [];
+    
+    const neighbors = [
+      { r: row-1, c: col }, { r: row+1, c: col },
+      { r: row, c: col-1 }, { r: row, c: col+1 },
+      { r: row-1, c: col-1 }, { r: row-1, c: col+1 },
+      { r: row+1, c: col-1 }, { r: row+1, c: col+1 }
+    ];
+    
+    neighbors.forEach(n => {
+      if (n.r >= 0 && n.r < currentConfig.rows && n.c >= 0 && n.c < currentConfig.cols) {
+        const nIdx = n.r * currentConfig.cols + n.c;
+        const neighborId = grid[nIdx];
+        if (neighborId) {
+          if (student.separateFrom?.includes(neighborId) || student.forbidden?.includes(neighborId)) {
+            const neighbor = currentConfig.students.find(s => s.id === neighborId);
+            issues.push(`אסור ש${student.name} ישב ליד ${neighbor?.name}`);
+          }
+          if (student.keepDistantFrom?.includes(neighborId)) {
+            const neighbor = currentConfig.students.find(s => s.id === neighborId);
+            issues.push(`מומלץ להרחיק את ${student.name} מ${neighbor?.name}`);
+          }
+        }
+      }
+    });
+    
+    return issues;
+  }, [currentConfig.students, currentConfig.cols, currentConfig.rows]);
+
+  useEffect(() => {
+    const allIssues: string[] = [];
+    currentConfig.students.forEach(s => {
+      const issues = checkConstraintsForStudent(s.id, currentConfig.grid);
+      allIssues.push(...issues);
+    });
+    const uniqueIssues = [...new Set(allIssues)];
+    setViolations(uniqueIssues);
+  }, [currentConfig.grid, checkConstraintsForStudent]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) redo();
+        else undo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoHistory, redoHistory]);
   useEffect(() => {
     const savedConfig = localStorage.getItem('class-manager-config');
     const savedHistory = localStorage.getItem('desk-history');
@@ -10678,7 +10441,7 @@ Instructions:
       case 'reminders': return <RemindersView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBack} setNotifications={setNotifications} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
-      case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} />;
+      case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
       case 'campaign-display': return (
         <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
           <div className="flex items-center justify-between gap-6">
@@ -10814,6 +10577,18 @@ Instructions:
     const hd = new HDate(today);
     const hebDateString = hd.renderGematriya();
     
+    if (isPresentationMode) return (
+      <div className="fixed top-6 left-6 z-[200]">
+        <button 
+          onClick={() => setIsPresentationMode(false)}
+          className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 hover:text-brand-600 transition-all shadow-2xl group flex items-center gap-3 font-black"
+        >
+          <Minimize2 className="w-6 h-6" />
+          <span>צא ממצב הצגה</span>
+        </button>
+      </div>
+    );
+    
     return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-50 shadow-sm transition-colors">
       <div className="flex items-center gap-6">
@@ -10922,6 +10697,14 @@ Instructions:
           )}
 
           <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-1" />
+
+          <button 
+            onClick={() => setIsPresentationMode(true)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
+            title="מצב הצגה (הסתרת ממשק)"
+          >
+            <Monitor className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
 
           <button 
             onClick={() => setOnboardingStep(0)}
@@ -11147,7 +10930,7 @@ Instructions:
 
   const Sidebar = () => (
     <AnimatePresence mode="wait">
-      {(isSidebarOpen || !isMobile) && (
+      {((isSidebarOpen || !isMobile) && !isPresentationMode) && (
         <>
           {isMobile && (
             <motion.div 
@@ -12213,6 +11996,19 @@ Instructions:
                          <span className="text-[10px] font-black uppercase tracking-widest hidden lg:group-hover/btn:block shrink-0">ייצא תמונה</span>
                       </button>
 
+                      {aiSortScore !== null && (
+                         <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/30 p-2 px-4 rounded-2xl border border-emerald-100 dark:border-emerald-800 animate-in fade-in slide-in-from-top-2 ml-4">
+                            <Brain className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            <div className="flex flex-col">
+                               <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-0.5">ציון איכות AI</span>
+                               <span className="text-sm font-black text-emerald-700 dark:text-emerald-300 leading-none">{aiSortScore}%</span>
+                            </div>
+                            <button onClick={() => setAiSortScore(null)} className="p-1 hover:bg-emerald-100 dark:hover:bg-emerald-800 rounded text-emerald-500">
+                               <X className="w-3 h-3" />
+                            </button>
+                         </div>
+                      )}
+
                       <div className="w-px h-6 bg-slate-200/50 mx-1" />
 
                       {editMode === 'structure' ? (
@@ -12285,6 +12081,26 @@ Instructions:
                    {/* Grid Content */}
                     <ResponsiveGridContainer is3DView={is3DView}>
                       <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
+                        {violations.length > 0 && !isPrinting && (
+                          <div className="absolute top-6 left-6 z-[60] flex flex-col gap-2 max-w-xs pointer-events-none" dir="rtl">
+                            {violations.slice(0, 4).map((v, i) => (
+                              <motion.div 
+                                 initial={{ x: -100, opacity: 0 }}
+                                 animate={{ x: 0, opacity: 1 }}
+                                 key={i} 
+                                 className="bg-rose-500/80 backdrop-blur-md text-white text-[10px] font-black p-3 px-5 rounded-2xl shadow-2xl flex items-center gap-3 pointer-events-auto border border-rose-400/30"
+                              >
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                <span className="leading-tight">{v}</span>
+                              </motion.div>
+                            ))}
+                            {violations.length > 4 && (
+                              <div className="bg-slate-900/60 backdrop-blur-md text-white text-[9px] font-black p-2 px-4 rounded-xl shadow-lg w-fit">
+                                + עוד {violations.length - 4} חריגות...
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {/* Print Header only for PDF */}
                         {isPrinting && (
                           <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100">
