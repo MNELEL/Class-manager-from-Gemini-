@@ -27,10 +27,13 @@ import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { LandingPage } from './components/LandingPage';
+import { NoteEditor } from './components/NoteEditor';
+import { ReminderManager } from './components/ReminderManager';
 import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
   AlertCircle,
+  ArrowLeft,
   BarChart3,
   ArrowRight,
   ArrowRightLeft,
@@ -1307,26 +1310,37 @@ const DeskCell = ({
                         </p>
                       )}
                       
-                      <div className="flex gap-2.5 mt-3 pt-3 border-t border-white/10">
-                         {student.preferred?.length > 0 && (
-                           <div className="flex items-center gap-1 group/tooltip">
-                             <Heart className="w-3 h-3 text-emerald-400 fill-emerald-400" />
-                             <span className="text-[9px]">{student.preferred.length}</span>
-                           </div>
-                         )}
-                         {student.forbidden?.length > 0 && (
-                           <div className="flex items-center gap-1">
-                             <Ban className="w-3 h-3 text-rose-400" />
-                             <span className="text-[9px]">{student.forbidden.length}</span>
-                           </div>
-                         )}
-                         {student.separateFrom?.length > 0 && (
-                           <div className="flex items-center gap-1">
-                             <ShieldAlert className="w-3 h-3 text-amber-400" />
-                             <span className="text-[9px]">{student.separateFrom.length}</span>
-                           </div>
-                         )}
-                         {student.height === 'short' && <Eye className="w-3 h-3 text-sky-400" />}
+                      <div className="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-white/10">
+                        {student.preferred?.length > 0 && (
+                          <div className="flex items-center gap-1 group/tooltip">
+                            <Heart className="w-3 h-3 text-emerald-400 fill-emerald-400" />
+                            <span className="text-[9px]">{student.preferred.length}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black text-slate-400 uppercase">מרווח:</span>
+                           <input 
+                               type="range" 
+                               min="0" 
+                               max="100" 
+                               value={activeConfig.columnGapSize || 40} 
+                               onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Number(e.target.value), rowGapSize: Number(e.target.value) }))}
+                               className="w-20"
+                           />
+                        </div>
+                        {student.forbidden?.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Ban className="w-3 h-3 text-rose-400" />
+                            <span className="text-[9px]">{student.forbidden.length}</span>
+                          </div>
+                        )}
+                        {student.separateFrom?.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <ShieldAlert className="w-3 h-3 text-amber-400" />
+                            <span className="text-[9px]">{student.separateFrom.length}</span>
+                          </div>
+                        )}
+                        {student.height === 'short' && <Eye className="w-3 h-3 text-sky-400" />}
                       </div>
                     </div>
                     <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 rotate-45 w-3 h-3 bg-slate-900 dark:bg-black border-r border-b border-slate-700/50" />
@@ -3487,7 +3501,7 @@ const StudentDetailView = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState('info');
   const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(student.name);
   
@@ -3560,6 +3574,7 @@ const StudentDetailView = ({
     { id: 'lessons', label: 'שיעורים ומערכת', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'tasks', label: 'משימות ורשימות', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'pedagogy', label: 'פדגוגיה', icon: <FileText className="w-4 h-4" /> },
+    { id: 'reminders', label: 'תזכורות', icon: <Bell className="w-4 h-4" /> },
     { id: 'academic', label: 'הישגים', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'rewards', label: 'נקודות ופרסים', icon: <Trophy className="w-4 h-4" /> },
     { id: 'attendance', label: 'נוכחות', icon: <Calendar className="w-4 h-4" /> },
@@ -3944,6 +3959,27 @@ const StudentDetailView = ({
                 </>
               )}
 
+              {activeTab === 'pedagogy' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem]">
+                      <NoteEditor studentId={student.id} />
+                  </div>
+                </div>
+              )}
+              
+              {activeTab === 'reminders' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem]">
+                      <ReminderManager student={student} onUpdateStudent={(updatedStudent) => {
+                        updateCurrentConfig((prev: any) => ({
+                            ...prev,
+                            students: prev.students.map((s: any) => s.id === student.id ? updatedStudent : s)
+                        }));
+                      }} />
+                  </div>
+                </div>
+              )}
+              
               {activeTab === 'ai' && (
                 <div className="lg:col-span-3">
                    <div className="glass-card p-12 rounded-[4rem] space-y-12">
@@ -6483,6 +6519,66 @@ const SettingsView = ({
           </div>
         </div>
 
+        {/* Privacy Settings */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800">הגדרות פרטיות ומידע</h3>
+          </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, shareWithColleagues: !prev.privacy?.shareWithColleagues } }))}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                currentConfig.privacy?.shareWithColleagues ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+              )}
+            >
+              שיתוף נתונים עם עמיתים
+              {currentConfig.privacy?.shareWithColleagues ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+            </button>
+            <button 
+              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, anonymizeNames: !prev.privacy?.anonymizeNames } }))}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                currentConfig.privacy?.anonymizeNames ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+              )}
+            >
+              הצגת שמות תלמידים (אנונימיזציה)
+              {currentConfig.privacy?.anonymizeNames ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Privacy Settings */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800">הגדרות פרטיות ומידע</h3>
+          </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, shareWithColleagues: !prev.privacy?.shareWithColleagues } }))}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                currentConfig.privacy?.shareWithColleagues ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+              )}
+            >
+              שיתוף נתונים עם עמיתים
+              {currentConfig.privacy?.shareWithColleagues ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+            </button>
+            <button 
+              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, anonymizeNames: !prev.privacy?.anonymizeNames } }))}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
+                currentConfig.privacy?.anonymizeNames ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+              )}
+            >
+              הצגת שמות תלמידים (אנונימיזציה)
+              {currentConfig.privacy?.anonymizeNames ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
+            </button>
+          </div>
+        </div>
+
         {/* Accessibility & Theme */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3">
@@ -6524,6 +6620,64 @@ const SettingsView = ({
             updateCurrentConfig={updateCurrentConfig}
             setNotifications={setNotifications} 
           />
+        </div>
+
+        {/* Classroom Spacing */}
+        <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40 border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+             <LayoutGrid className="w-6 h-6 text-brand-500" />
+             <h3 className="text-lg font-black text-slate-800">סידור מעברים בכיתה</h3>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-3">
+              <span className="text-xs font-black text-slate-400">מעברים בין טורים (עמודות)</span>
+              <div className="flex items-center gap-2">
+                {[...Array(Math.max(0, currentConfig.cols - 1))].map((_, i) => (
+                    <button
+                        key={`col-${i}`}
+                        onClick={() => {
+                            updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                columnGaps: prev.columnGaps.includes(i) 
+                                    ? prev.columnGaps.filter((g: number) => g !== i)
+                                    : [...prev.columnGaps, i]
+                            }));
+                        }}
+                        className={cn(
+                            "w-12 h-12 rounded-xl flex items-center justify-center font-black transition-all",
+                            currentConfig.columnGaps.includes(i) ? "bg-brand-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        )}
+                    >
+                        {i + 1}
+                    </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <span className="text-xs font-black text-slate-400">מעברים בין שורות</span>
+              <div className="flex items-center gap-2">
+                {[...Array(Math.max(0, currentConfig.rows - 1))].map((_, i) => (
+                    <button
+                        key={`row-${i}`}
+                        onClick={() => {
+                            updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                rowGaps: prev.rowGaps.includes(i) 
+                                    ? prev.rowGaps.filter((g: number) => g !== i)
+                                    : [...prev.rowGaps, i]
+                            }));
+                        }}
+                        className={cn(
+                            "w-12 h-12 rounded-xl flex items-center justify-center font-black transition-all",
+                            currentConfig.rowGaps.includes(i) ? "bg-brand-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        )}
+                    >
+                        {i + 1}
+                    </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40">
@@ -9250,14 +9404,26 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing'>('landing');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar'>('landing');
+  const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
-  const setViewTypeWithTransition = (newView: typeof viewType) => {
+  const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
     setIsViewLoading(true);
     setTimeout(() => {
+      if (!isBackAction) {
+        setViewHistory(prev => [...prev, viewType]);
+      }
       setViewType(newView);
       setIsViewLoading(false);
     }, 400);
+  };
+  
+  const goBack = () => {
+    if (viewHistory.length > 0) {
+      const previousView = viewHistory[viewHistory.length - 1];
+      setViewHistory(prev => prev.slice(0, -1));
+      setViewTypeWithTransition(previousView, true);
+    }
   };
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [cameraAngle, setCameraAngle] = useState<'standard' | 'birdsEye' | 'studentLevel' | 'free'>('standard');
@@ -11288,6 +11454,16 @@ Instructions:
         >
           <Menu className={cn("w-5 h-5 transition-transform stroke-[2.5px]", isSidebarOpen && "rotate-90 text-brand-600")} />
         </button>
+        
+        {viewHistory.length > 0 && (
+          <button 
+            onClick={goBack}
+            className="p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-800"
+            title="חזור לדף הקודם"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         
         {/* Global Toolbar Brand */}
         <div className="flex items-center gap-3">

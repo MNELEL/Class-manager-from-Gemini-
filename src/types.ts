@@ -31,6 +31,7 @@ export interface Student {
   documents?: { id: string, title: string, url: string, date: string, type: 'image' | 'pdf' | 'other' }[];
   pastHistory?: { year: string, teacher: string, summary: string, gradesAvg: number }[];
   tasks?: { id: string, title: string, description: string, dueDate: string, status: 'pending' | 'completed', category: 'homework' | 'project' | 'study' | 'other', priority: 'low' | 'medium' | 'high' }[];
+  pedagogicalReminders?: { id: string, note: string, dueDate: string, completed: boolean }[];
   lessons?: { id: string, name: string, day: string, time: string, room?: string }[];
   
   // New fields from prompt
