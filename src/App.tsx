@@ -9303,16 +9303,6 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
-    async function testConnection() {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
-        }
-      }
-    }
-    testConnection();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -9327,7 +9317,7 @@ export default function App() {
     });
 
     // Test connection silently - Firestore handles offline state automatically
-    const testConnection = async () => {
+    const checkFirebaseConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
         console.log("Firebase connection established.");
@@ -9341,7 +9331,7 @@ export default function App() {
         }
       }
     };
-    testConnection();
+    checkFirebaseConnection();
 
     return () => unsubscribe();
   }, []);
