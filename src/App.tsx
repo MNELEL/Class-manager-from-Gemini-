@@ -34,6 +34,7 @@ import {
   ArrowRightLeft,
   Ban,
   Bell,
+  BellRing,
   Bookmark,
   BookOpen,
   Box,
@@ -51,12 +52,14 @@ import {
   ChevronUp,
   ClipboardList,
   Clock,
+  Cloud as CloudIcon,
   CloudLightning,
   Columns,
   Computer,
   CreditCard,
   Download,
   Edit3,
+  ExternalLink,
   Eye,
   FileDown,
   FileText,
@@ -66,6 +69,7 @@ import {
   GraduationCap,
   Grid3X3,
   GripVertical,
+  HardDrive,
   Heart,
   HelpCircle,
   History,
@@ -78,6 +82,7 @@ import {
   ListChecks,
   ListPlus,
   LogOut,
+  Mail,
   Palette,
   Lock,
   LockOpen,
@@ -1154,7 +1159,10 @@ const DeskCell = ({
                     ...prev,
                     hiddenDesks: [...prev.hiddenDesks, idx],
                     lockedDesks: prev.lockedDesks?.filter((i: number) => i !== idx),
-                    grid: prev.grid.map((val: any, i: number) => i === idx ? null : val)
+                    grid: prev.grid.map((row: any[]) => row.map((val: any, i: number) => {
+                      const currentIdx = prev.grid.indexOf(row) * prev.cols + i;
+                      return currentIdx === idx ? null : val;
+                    }))
                   }));
                 }}
                 className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/30 shadow-sm flex items-center justify-center text-rose-400 opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all border border-rose-100 dark:border-rose-800"
@@ -1546,7 +1554,7 @@ const StudentPickerGrid = ({
   onSort, 
   isPracticeMode 
 }: any) => {
-  const studentsInPool = students.filter((s: any) => !currentConfig.grid.includes(s.id));
+  const studentsInPool = students.filter((s: any) => !currentConfig.grid.flat().includes(s.id));
   const filteredStudents = studentsInPool.filter((s: any) => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -2434,109 +2442,6 @@ const BEHAVIOR_CATEGORIES = [
   { id: 'violence', label: 'אלימות', icon: '🚫', color: 'text-red-600', points: -50 },
   { id: 'missing_task', label: 'אי ביצוע משימה', icon: '❌', color: 'text-slate-500', points: -10 },
 ];
-
-const RemindersView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any }) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newReminder, setNewReminder] = useState({ title: '', time: '', date: new Date().toISOString().split('T')[0], notify: true });
-  const reminders = currentConfig.reminders || [];
-
-  const addReminder = () => {
-    if (!newReminder.title || !newReminder.time) return;
-    const item = { ...newReminder, id: Date.now().toString() };
-    updateCurrentConfig((prev: any) => ({
-      ...prev,
-      reminders: [...(prev.reminders || []), item]
-    }));
-    
-    if (newReminder.notify) {
-      setNotifications((prev: any) => [{ id: Date.now(), text: `תזכורת הוגדרה: ${newReminder.title} ל-${newReminder.time}`, type: 'success' }, ...prev]);
-    }
-
-    setIsAdding(false);
-    setNewReminder({ title: '', time: '', date: new Date().toISOString().split('T')[0], notify: true });
-  };
-
-  return (
-    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
-       <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm">
-              <ChevronLeft className="w-7 h-7" />
-            </button>
-            <div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">תזכורות ופעולות קרובות</h2>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">ניהול לו"ז כיתתי ותזכורות פדגוגיות</p>
-            </div>
-          </div>
-          <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            תזכורת חדשה
-          </button>
-       </div>
-
-       {isAdding && (
-         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               <div className="space-y-2 lg:col-span-2">
-                 <label className="text-xs font-black text-slate-500 uppercase">מה להזכיר?</label>
-                 <input value={newReminder.title} onChange={e => setNewReminder({...newReminder, title: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" placeholder="למשל: ישיבת צוות שכבתית, הכנת חומרים לשיעור חשבון..." />
-               </div>
-               <div className="space-y-2">
-                 <label className="text-xs font-black text-slate-500 uppercase">תאריך</label>
-                 <input type="date" value={newReminder.date} onChange={e => setNewReminder({...newReminder, date: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" />
-               </div>
-               <div className="space-y-2">
-                 <label className="text-xs font-black text-slate-500 uppercase">שעה</label>
-                 <input type="time" value={newReminder.time} onChange={e => setNewReminder({...newReminder, time: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 outline-none" />
-               </div>
-               <div className="flex items-center gap-3 pt-6">
-                  <input type="checkbox" checked={newReminder.notify} onChange={e => setNewReminder({...newReminder, notify: e.target.checked})} className="w-5 h-5 rounded-lg text-brand-600 focus:ring-brand-500 border-slate-300" id="notify-check" />
-                  <label htmlFor="notify-check" className="text-sm font-bold text-slate-600 cursor-pointer">שלח התראה בזמן המתאים</label>
-               </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-               <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black">ביטול</button>
-               <button onClick={addReminder} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black shadow-lg">קבע תזכורת</button>
-            </div>
-         </div>
-       )}
-
-       <div className="max-w-4xl space-y-4">
-          {reminders.length === 0 ? (
-             <div className="py-20 text-center opacity-50 space-y-4">
-                <Calendar className="w-16 h-16 mx-auto" />
-                <p className="text-xl font-black text-slate-500">יומן התזכורות ריק</p>
-             </div>
-          ) : (
-            reminders.sort((a: any, b: any) => (a.date + a.time).localeCompare(b.date + b.time)).map((r: any) => (
-              <div key={r.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border-2 border-slate-100 dark:border-slate-800 flex items-center justify-between gap-6 group hover:translate-x-2 transition-transform">
-                 <div className="flex items-center gap-6">
-                    <div className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 min-w-20 shadow-sm">
-                       <span className="text-[10px] font-black text-brand-600 uppercase tracking-tighter">{new Date(r.date).toLocaleDateString('he-IL', { weekday: 'short' })}</span>
-                       <span className="text-lg font-black text-slate-800 dark:text-white leading-none mt-1">{new Date(r.date).getDate()}</span>
-                    </div>
-                    <div>
-                       <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight">{r.title}</h3>
-                       <div className="flex items-center gap-2 mt-1">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-sm font-bold text-slate-500">{r.time}</span>
-                          {r.notify && <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full ml-2">התראה פעילה</span>}
-                       </div>
-                    </div>
-                 </div>
-                 <button 
-                  onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, reminders: prev.reminders.filter((rem: any) => rem.id !== r.id) }))}
-                  className="p-3 text-rose-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
-                 >
-                    <Trash2 className="w-5 h-5" />
-                 </button>
-              </div>
-            ))
-          )}
-       </div>
-    </div>
-  );
-};
 
 const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications, students, setViewType }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any, students: any[], setViewType?: any }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -3734,7 +3639,7 @@ const StudentDetailView = ({
                   updateCurrentConfig((prev: any) => ({ 
                     ...prev, 
                     students: prev.students.filter((s:any) => s.id !== student.id),
-                    grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+                    grid: prev.grid.map((row: any[]) => row.map((id: string | null) => id === student.id ? null : id))
                   }));
                   onBack();
                 }
@@ -4127,18 +4032,111 @@ const StudentDetailView = ({
                 </div>
               )}
 
-              {activeTab === 'pedagogy' && (
-                <div className="lg:col-span-3">
-                   <div className="glass-card p-12 rounded-[4rem] space-y-10">
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-6">
-                            <div className="p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-[2.5rem]">
-                               <FileText className="w-10 h-10 text-emerald-600" />
-                            </div>
-                            <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">הערות ותיעוד פדגוגי</h3>
+        {activeTab === 'pedagogy' && (
+          <div className="lg:col-span-3 space-y-10">
+            <div className="glass-card p-12 rounded-[4rem] space-y-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-[2.5rem]">
+                    <FileText className="w-10 h-10 text-emerald-600" />
+                  </div>
+                  <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">הערות ותיעוד פדגוגי</h3>
+                </div>
+                <div className="text-sm font-black text-slate-400 tracking-widest uppercase">מעודכן לאחרונה: היום</div>
+              </div>
+
+              {/* Reminders Section for Student */}
+              <div className="bg-amber-50 dark:bg-amber-900/10 p-8 rounded-[3rem] border border-amber-200 dark:border-amber-900/50 space-y-6">
+                 <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-black text-amber-900 dark:text-amber-100 flex items-center gap-3">
+                       <Bell className="w-6 h-6" />
+                       תזכורות פדגוגיות אישיות
+                    </h4>
+                 </div>
+                 <div className="flex gap-4">
+                    <input 
+                      type="text"
+                      id="std-reminder-input"
+                      placeholder="הוסף תזכורת (למשל: לבדוק שיפור בקריאה עד סוף השבוע)"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const val = (e.target as HTMLInputElement).value;
+                          if (!val.trim()) return;
+                          const reminder = {
+                            id: `rem-${Date.now()}`,
+                            text: val,
+                            studentId: student.id,
+                            date: new Date().toISOString(),
+                            completed: false
+                          };
+                          updateCurrentConfig((prev: any) => ({
+                            ...prev,
+                            reminders: [reminder, ...(prev.reminders || [])]
+                          }));
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }}
+                      className="flex-1 p-4 bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-800 rounded-2xl outline-none font-bold"
+                    />
+                    <button 
+                      onClick={() => {
+                        const input = document.getElementById('std-reminder-input') as HTMLInputElement;
+                        const val = input.value;
+                        if (!val.trim()) return;
+                        const reminder = {
+                          id: `rem-${Date.now()}`,
+                          text: val,
+                          studentId: student.id,
+                          date: new Date().toISOString(),
+                          completed: false
+                        };
+                        updateCurrentConfig((prev: any) => ({
+                          ...prev,
+                          reminders: [reminder, ...(prev.reminders || [])]
+                        }));
+                        input.value = '';
+                      }}
+                      className="px-6 bg-amber-600 text-white rounded-2xl font-black shadow-lg"
+                    >
+                      הוסף
+                    </button>
+                 </div>
+                 
+                 <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                    {(currentConfig.reminders || []).filter((r:any) => r.studentId === student.id).map((r: any) => (
+                      <div key={r.id} className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center justify-between group">
+                         <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => {
+                                updateCurrentConfig((prev: any) => ({
+                                  ...prev,
+                                  reminders: prev.reminders.map((rem: any) => rem.id === r.id ? { ...rem, completed: !rem.completed } : rem)
+                                }));
+                              }}
+                              className={cn("w-6 h-6 rounded-lg border-2 flex items-center justify-center", r.completed ? "bg-amber-600 border-amber-600 text-white" : "border-amber-200")}
+                            >
+                               {r.completed && <Check className="w-3 h-3" />}
+                            </button>
+                            <span className={cn("font-bold text-sm", r.completed ? "text-slate-400 line-through" : "text-amber-900 dark:text-amber-100")}>{r.text}</span>
                          </div>
-                         <div className="text-sm font-black text-slate-400 tracking-widest uppercase">מעודכן לאחרונה: היום</div>
+                         <button 
+                           onClick={() => {
+                              updateCurrentConfig((prev: any) => ({
+                                ...prev,
+                                reminders: prev.reminders.filter((rem: any) => rem.id !== r.id)
+                              }));
+                           }}
+                           className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                         >
+                            <Trash2 className="w-4 h-4" />
+                         </button>
                       </div>
+                    ))}
+                    {(currentConfig.reminders || []).filter((r:any) => r.studentId === student.id).length === 0 && (
+                      <p className="text-center py-6 text-amber-600/40 font-bold italic text-sm">אין תזכורות פדגוגיות לתלמיד זה.</p>
+                    )}
+                 </div>
+              </div>
 
                       <div className="space-y-8 w-full mt-8">
                         <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border border-slate-100 dark:border-slate-800">
@@ -6042,7 +6040,7 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
                    updateCurrentConfig((prev: any) => ({ 
                      ...prev, 
                      students: prev.students.filter((s:any) => s.id !== student.id),
-                     grid: prev.grid.map((id: string | null) => id === student.id ? null : id)
+                     grid: prev.grid.map((row: any[]) => row.map((id: string | null) => id === student.id ? null : id))
                    }));
                    setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
                  }
@@ -6923,7 +6921,7 @@ const SettingsView = ({
                     updateCurrentConfig((prev: any) => ({ 
                       ...prev, 
                       students: prev.students.filter((s:any) => s.id !== studentToDelete.id),
-                      grid: prev.grid.map((id: string | null) => id === studentToDelete.id ? null : id)
+                      grid: prev.grid.map((row: any[]) => row.map((id: string | null) => id === studentToDelete.id ? null : id))
                     }));
                     setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${studentToDelete.name} נמחק`, type: 'info' }, ...prev]);
                     setStudentToDelete(null);
@@ -8497,6 +8495,322 @@ const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) 
   );
 };
 
+const RemindersView = ({ config, updateConfig, students, onBack }: any) => {
+  const [newReminder, setNewReminder] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const reminders = config.reminders || [];
+
+  const addReminder = () => {
+    if (!newReminder.trim()) return;
+    const reminder = {
+      id: `rem-${Date.now()}`,
+      text: newReminder,
+      studentId: selectedStudentId,
+      date: new Date().toISOString(),
+      completed: false
+    };
+    updateConfig((prev: any) => ({
+      ...prev,
+      reminders: [reminder, ...(prev.reminders || [])]
+    }));
+    setNewReminder('');
+    setSelectedStudentId(null);
+  };
+
+  const toggleReminder = (id: string) => {
+    updateConfig((prev: any) => ({
+      ...prev,
+      reminders: prev.reminders.map((r: any) => r.id === id ? { ...r, completed: !r.completed } : r)
+    }));
+  };
+
+  const deleteReminder = (id: string) => {
+    updateConfig((prev: any) => ({
+      ...prev,
+      reminders: prev.reminders.filter((r: any) => r.id !== id)
+    }));
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto w-full space-y-10 py-10 px-6 text-right" dir="rtl">
+      <div className="flex items-center justify-between mb-4">
+         <div className="space-y-1">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+               <Bell className="w-8 h-8 text-amber-500" />
+               תזכורות פדגוגיות ושוטפות
+            </h2>
+            <p className="text-slate-500 font-medium">נהלו את המשימות והתזכורות שלכם למעקב אישי וצוותי.</p>
+         </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-slate-100 dark:border-slate-800 shadow-xl space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mr-2">תוכן התזכורת</label>
+              <input 
+                type="text"
+                value={newReminder}
+                onChange={(e) => setNewReminder(e.target.value)}
+                placeholder="למה תרצה שנזכיר לך? (למשל: לבדוק התקדמות עם שירה)"
+                className="w-full p-5 bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-brand-500 rounded-2xl outline-none font-bold transition-all"
+              />
+           </div>
+           <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mr-2">שייך לתלמיד (אופציונלי)</label>
+              <select 
+                value={selectedStudentId || ''}
+                onChange={(e) => setSelectedStudentId(e.target.value || null)}
+                className="w-full p-5 bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-brand-500 rounded-2xl outline-none font-bold transition-all appearance-none"
+              >
+                <option value="">כללי (ללא תלמיד ספציפי)</option>
+                {students.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+           </div>
+        </div>
+        <button 
+          onClick={addReminder}
+          className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black shadow-lg shadow-brand-100 hover:bg-brand-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
+        >
+          <Plus className="w-6 h-6" />
+          הוסף תזכורת חדשה
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {reminders.length === 0 ? (
+          <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
+             <BellRing className="w-16 h-16 text-slate-300 mx-auto mb-4 opacity-20" />
+             <p className="text-slate-400 font-bold">אין תזכורות פעילות כרגע. קדימה, הוסיפו את הראשונה!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {reminders.map((r: any) => {
+              const student = students.find((s: any) => s.id === r.studentId);
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  key={r.id} 
+                  className={cn(
+                    "bg-white dark:bg-slate-900 p-6 rounded-3xl border transition-all flex items-center justify-between gap-6 shadow-sm group",
+                    r.completed ? "border-slate-100 dark:border-slate-800 opacity-60" : "border-slate-200 dark:border-slate-800 hover:border-brand-300"
+                  )}
+                >
+                  <div className="flex items-center gap-6">
+                    <button 
+                      onClick={() => toggleReminder(r.id)}
+                      className={cn(
+                        "w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all",
+                        r.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 hover:border-brand-500"
+                      )}
+                    >
+                      {r.completed && <Check className="w-6 h-6" />}
+                    </button>
+                    <div>
+                      <p className={cn("text-xl font-bold transition-all", r.completed ? "text-slate-400 line-through" : "text-slate-800 dark:text-white")}>
+                        {r.text}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1.5">
+                         {student && (
+                            <Badge className="bg-brand-50 text-brand-600 border-brand-100 text-[10px] font-black uppercase">
+                               לגבי: {student.name}
+                            </Badge>
+                         )}
+                         <span className="text-[10px] font-bold text-slate-400">
+                            {new Date(r.date).toLocaleDateString('he-IL')} • {new Date(r.date).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                         </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => deleteReminder(r.id)}
+                    className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GoogleWorkspaceView = ({ googleUser, token, onBack }: { googleUser: any, token: string | null, onBack: () => void }) => {
+  const [activeTab, setActiveTab] = useState<'drive' | 'gmail' | 'calendar'>('drive');
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      fetchData();
+    }
+  }, [token, activeTab]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      if (activeTab === 'drive') {
+        const res = await fetch('https://www.googleapis.com/drive/v3/files?pageSize=10&fields=files(id,name,mimeType,iconLink,webViewLink)', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        setData(json.files || []);
+      } else if (activeTab === 'gmail') {
+        const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        const messages = await Promise.all((json.messages || []).map(async (m: any) => {
+          const detailRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          return detailRes.json();
+        }));
+        setData(messages);
+      } else if (activeTab === 'calendar') {
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${new Date().toISOString()}&maxResults=10`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        setData(json.items || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!token) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-10 space-y-6 text-center">
+        <div className="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center">
+          <CloudIcon className="w-10 h-10 text-brand-600" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white">חיבור ל-Google Workspace</h2>
+        <p className="text-slate-500 max-w-md">התחבר לחשבון ה-Google שלך כדי לגשת לקבצים, מיילים ופגישות ישירות מכאן.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors rtl" dir="rtl">
+       <div className="p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-6">
+             <div className="p-4 bg-brand-600 rounded-2xl text-white shadow-lg">
+                <CloudLightning className="w-8 h-8" />
+             </div>
+             <div>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white">Workspace</h2>
+                <p className="text-sm font-bold text-slate-400">מרכז הכלים הפדגוגיים של Google</p>
+             </div>
+          </div>
+          <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+             <button 
+               onClick={() => setActiveTab('drive')} 
+               className={cn("px-6 py-3 rounded-xl text-sm font-black transition-all", activeTab === 'drive' ? "bg-white dark:bg-slate-700 text-brand-600 shadow-xl" : "text-slate-500 hover:text-slate-700")}
+             >
+                <div className="flex items-center gap-2">
+                   <HardDrive className="w-4 h-4" />
+                   Drive & Docs
+                </div>
+             </button>
+             <button 
+               onClick={() => setActiveTab('gmail')} 
+               className={cn("px-6 py-3 rounded-xl text-sm font-black transition-all", activeTab === 'gmail' ? "bg-white dark:bg-slate-700 text-brand-600 shadow-xl" : "text-slate-500 hover:text-slate-700")}
+             >
+                <div className="flex items-center gap-2">
+                   <Mail className="w-4 h-4" />
+                   Gmail
+                </div>
+             </button>
+             <button 
+               onClick={() => setActiveTab('calendar')} 
+               className={cn("px-6 py-3 rounded-xl text-sm font-black transition-all", activeTab === 'calendar' ? "bg-white dark:bg-slate-700 text-brand-600 shadow-xl" : "text-slate-500 hover:text-slate-700")}
+             >
+                <div className="flex items-center gap-2">
+                   <CalendarDays className="w-4 h-4" />
+                   Calendar
+                </div>
+             </button>
+          </div>
+       </div>
+
+       <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+          <div className="max-w-5xl mx-auto">
+             {loading ? (
+                <div className="flex flex-col items-center justify-center py-40 gap-4">
+                   <div className="w-12 h-12 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+                   <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">טוען נתונים מ-Google...</p>
+                </div>
+             ) : (
+               <motion.div 
+                 key={activeTab}
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="grid grid-cols-1 gap-4"
+               >
+                  {activeTab === 'drive' && (data || []).map((file: any) => (
+                    <a key={file.id} href={file.webViewLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-transparent hover:border-brand-500 transition-all shadow-sm group">
+                       <div className="flex items-center gap-6">
+                          <img src={file.iconLink} alt="" className="w-10 h-10" />
+                          <div>
+                             <p className="text-xl font-bold text-slate-800 dark:text-white group-hover:text-brand-600 transition-colors">{file.name}</p>
+                             <p className="text-xs font-medium text-slate-400">{file.mimeType.split('.').pop()?.toUpperCase() || 'File'}</p>
+                          </div>
+                       </div>
+                       <ExternalLink className="w-6 h-6 text-slate-300 group-hover:text-brand-500" />
+                    </a>
+                  ))}
+
+                  {activeTab === 'gmail' && (data || []).map((msg: any) => {
+                    const subject = msg.payload.headers.find((h: any) => h.name === 'Subject')?.value || 'No Subject';
+                    const from = msg.payload.headers.find((h: any) => h.name === 'From')?.value || 'Unknown';
+                    return (
+                      <div key={msg.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all">
+                         <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs font-black text-brand-600 bg-brand-50 dark:bg-brand-900/20 px-3 py-1 rounded-full">{from.split('<')[0]}</span>
+                            <span className="text-[10px] font-bold text-slate-400">{new Date(parseInt(msg.internalDate)).toLocaleDateString('he-IL')}</span>
+                         </div>
+                         <h4 className="text-lg font-black text-slate-800 dark:text-white mb-2">{subject}</h4>
+                         <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">{msg.snippet}</p>
+                      </div>
+                    );
+                  })}
+
+                  {activeTab === 'calendar' && (data || []).map((event: any) => (
+                    <div key={event.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2.5rem] border-r-8 border-brand-600 shadow-sm flex items-center justify-between">
+                       <div className="flex items-center gap-6">
+                          <div className="text-center bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl min-w-[70px]">
+                             <p className="text-xs font-black text-slate-400 uppercase leading-none">{new Date(event.start?.dateTime || event.start?.date).toLocaleDateString('he-IL', { month: 'short' })}</p>
+                             <p className="text-2xl font-black text-brand-600 leading-none mt-1">{new Date(event.start?.dateTime || event.start?.date).getDate()}</p>
+                          </div>
+                          <div>
+                             <h4 className="text-xl font-bold text-slate-800 dark:text-white">{event.summary}</h4>
+                             <p className="text-sm font-medium text-slate-400">
+                                {event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : 'All Day'}
+                                {event.location && ` • ${event.location}`}
+                             </p>
+                          </div>
+                       </div>
+                       <div className="bg-brand-50 text-brand-600 p-3 rounded-2xl">
+                          <CalendarDays className="w-6 h-6" />
+                       </div>
+                    </div>
+                  ))}
+               </motion.div>
+             )}
+          </div>
+       </div>
+    </div>
+  );
+};
+
 const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDarkMode, exportToExcel, importFromCSV, googleUser, handleGoogleLogin, setNotifications }: any) => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
@@ -8780,7 +9094,7 @@ export default function App() {
     name: 'כיתת מצוינות א׳',
     rows: 6,
     cols: 9,
-    grid: Array(54).fill(null) as (string | null)[],
+    grid: Array(6).fill(null).map(() => Array(9).fill(null)) as (string | null)[][],
     students: [
       { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '', birthday: '2015-05-14' },
       { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '', birthday: '2015-06-20' },
@@ -8838,7 +9152,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog'>('dashboard');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace'>('dashboard');
 
   const setViewTypeWithTransition = (newView: typeof viewType) => {
     setIsViewLoading(true);
@@ -8854,7 +9168,7 @@ export default function App() {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(0.9);
-  const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood'>('default');
+  const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood' | 'matte_green' | 'glowing_yellow' | 'festive_stars'>('default');
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -9204,53 +9518,53 @@ export default function App() {
 
   const dashboardStats = useMemo(() => {
     const studentCount = activeConfig.students.length;
-    const placedCount = activeConfig.grid.filter(s => s !== null).length;
+    const placedCount = activeConfig.grid.flat().filter(s => s !== null).length;
     
     // Conflict calculation
     let conflictCount = 0;
-    activeConfig.grid.forEach((sid, idx) => {
-      if (!sid) return;
-      const student = activeConfig.students.find(s => s.id === sid);
-      if (!student || !student.forbidden) return;
-      const r = Math.floor(idx / activeConfig.cols);
-      const c = idx % activeConfig.cols;
-      [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
-          const neighborId = activeConfig.grid[nr * activeConfig.cols + nc];
-          if (neighborId && student.forbidden.includes(neighborId)) conflictCount++;
-        }
+    activeConfig.grid.forEach((row, r) => {
+      row.forEach((sid, c) => {
+        if (!sid) return;
+        const student = activeConfig.students.find(s => s.id === sid);
+        if (!student || !student.forbidden) return;
+        [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+            const neighborId = activeConfig.grid[nr][nc];
+            if (neighborId && student.forbidden.includes(neighborId)) conflictCount++;
+          }
+        });
       });
     });
 
     // Satisfaction calculation (simplified normalization of scoring)
     let totalScore = 0;
-    const activeStudents = activeConfig.grid.filter(s => s !== null);
+    const activeStudents = activeConfig.grid.flat().filter(s => s !== null);
     if (activeStudents.length > 0) {
-      activeConfig.grid.forEach((sid, idx) => {
-        if (!sid) return;
-        const student = activeConfig.students.find(s => s.id === sid);
-        if (!student) return;
-        const r = Math.floor(idx / activeConfig.cols);
-        const c = idx % activeConfig.cols;
-        
-        let sScore = 100; // Base score
-        // Height check
-        if (student.height === 'short' && r >= 2) sScore -= 40;
-        // Preferred check (very simple)
-        const neighbors = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dr, dc]) => {
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
-            return activeConfig.grid[nr * activeConfig.cols + nc];
-          }
-          return null;
+      activeConfig.grid.forEach((row, r) => {
+        row.forEach((sid, c) => {
+          if (!sid) return;
+          const student = activeConfig.students.find(s => s.id === sid);
+          if (!student) return;
+          
+          let sScore = 100; // Base score
+          // Height check
+          if (student.height === 'short' && r >= 2) sScore -= 40;
+          // Preferred check (very simple)
+          const neighbors: (string|null)[] = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dr, dc]) => {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+              return activeConfig.grid[nr][nc];
+            }
+            return null;
+          });
+          if (student.preferred?.some(id => neighbors.includes(id))) sScore += 20;
+          if (student.forbidden?.some(id => neighbors.includes(id))) sScore -= 60;
+          
+          totalScore += sScore;
         });
-        if (student.preferred?.some(id => neighbors.includes(id))) sScore += 20;
-        if (student.forbidden?.some(id => neighbors.includes(id))) sScore -= 60;
-        
-        totalScore += sScore;
       });
     }
     const satisfaction = activeStudents.length > 0 ? Math.min(100, Math.max(0, Math.round(totalScore / activeStudents.length))) : 0;
@@ -9267,7 +9581,8 @@ export default function App() {
   const aiInsights = useMemo(() => {
     if (!activeConfig.grid) return [];
     const insights = [];
-    const studentCount = activeConfig.grid.filter((s: any) => s !== null).length;
+    const flatGrid = activeConfig.grid.flat();
+    const studentCount = flatGrid.filter((s: any) => s !== null).length;
     
     if (studentCount > 0) {
       insights.push({ 
@@ -9277,11 +9592,14 @@ export default function App() {
     }
 
     const shortCount = activeConfig.students.filter(s => s.height === 'short').length;
-    const shortInFront = activeConfig.grid.filter((sid: any, idx: number) => {
-      if (!sid) return false;
-      const s = activeConfig.students.find(st => st.id === sid);
-      return s?.height === 'short' && Math.floor(idx / activeConfig.cols) < 2;
-    }).length;
+    let shortInFront = 0;
+    activeConfig.grid.forEach((row, r) => {
+      row.forEach((sid) => {
+        if (!sid) return;
+        const s = activeConfig.students.find(st => st.id === sid);
+        if (s?.height === 'short' && r < 2) shortInFront++;
+      });
+    });
 
     if (shortCount > 0) {
       const percentage = Math.round((shortInFront / shortCount) * 100);
@@ -9293,23 +9611,22 @@ export default function App() {
 
     // Social Conflict Check
     let conflicts = 0;
-    activeConfig.grid.forEach((sid: any, idx: number) => {
-      if (!sid) return;
-      const student = activeConfig.students.find(s => s.id === sid);
-      if (!student || !student.forbidden) return;
+    activeConfig.grid.forEach((row, r) => {
+      row.forEach((sid, c) => {
+        if (!sid) return;
+        const student = activeConfig.students.find(s => s.id === sid);
+        if (!student || !student.forbidden) return;
 
-      const r = Math.floor(idx / activeConfig.cols);
-      const c = idx % activeConfig.cols;
-      
-      [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
-          const neighborId = activeConfig.grid[nr * activeConfig.cols + nc];
-          if (neighborId && student.forbidden.includes(neighborId)) {
-            conflicts++;
+        [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
+            const neighborId = activeConfig.grid[nr][nc];
+            if (neighborId && student.forbidden.includes(neighborId)) {
+              conflicts++;
+            }
           }
-        }
+        });
       });
     });
 
@@ -9401,7 +9718,7 @@ export default function App() {
 
       e.preventDefault();
 
-      const studentIdsInGrid = activeConfig.grid.filter((id: string | null) => id !== null) as string[];
+      const studentIdsInGrid = activeConfig.grid.flat().filter((id: string | null) => id !== null) as string[];
       if (studentIdsInGrid.length === 0) return;
 
       if (!selectedStudentId) {
@@ -9409,16 +9726,23 @@ export default function App() {
         return;
       }
 
-      const currentIdx = activeConfig.grid.indexOf(selectedStudentId);
-      if (currentIdx === -1) return;
+      let r = -1, c = -1;
+      for (let i = 0; i < activeConfig.rows; i++) {
+        for (let j = 0; j < activeConfig.cols; j++) {
+          if (activeConfig.grid[i][j] === selectedStudentId) {
+            r = i;
+            c = j;
+            break;
+          }
+        }
+        if (r !== -1) break;
+      }
+
+      if (r === -1) return;
 
       const rows = activeConfig.rows;
       const cols = activeConfig.cols;
-      const r = Math.floor(currentIdx / cols);
-      const c = currentIdx % cols;
 
-      let nextIdx = currentIdx;
-      
       if (e.key === 'Tab') {
         const currentIdxInPlaced = studentIdsInGrid.indexOf(selectedStudentId);
         let nextPlacedIdx = 0;
@@ -9432,44 +9756,63 @@ export default function App() {
       }
 
       if (e.key === 'ArrowRight') {
-        // Move right, find next student
-        for (let i = currentIdx + 1; i < activeConfig.grid.length; i++) {
-          if (activeConfig.grid[i]) {
-            nextIdx = i;
+        // Move right
+        let found = false;
+        for (let j = c + 1; j < cols; j++) {
+          if (activeConfig.grid[r][j]) {
+            setSelectedStudentId(activeConfig.grid[r][j]);
+            found = true;
             break;
           }
         }
+        if (!found) { // Try next rows
+          for (let i = r + 1; i < rows && !found; i++) {
+            for (let j = 0; j < cols; j++) {
+              if (activeConfig.grid[i][j]) {
+                setSelectedStudentId(activeConfig.grid[i][j]);
+                found = true;
+                break;
+              }
+            }
+          }
+        }
       } else if (e.key === 'ArrowLeft') {
-        // Move left, find prev student
-        for (let i = currentIdx - 1; i >= 0; i--) {
-          if (activeConfig.grid[i]) {
-            nextIdx = i;
+        // Move left
+        let found = false;
+        for (let j = c - 1; j >= 0; j--) {
+          if (activeConfig.grid[r][j]) {
+            setSelectedStudentId(activeConfig.grid[r][j]);
+            found = true;
             break;
+          }
+        }
+        if (!found) { // Try prev rows
+          for (let i = r - 1; i >= 0 && !found; i--) {
+            for (let j = cols - 1; j >= 0; j--) {
+              if (activeConfig.grid[i][j]) {
+                setSelectedStudentId(activeConfig.grid[i][j]);
+                found = true;
+                break;
+              }
+            }
           }
         }
       } else if (e.key === 'ArrowDown') {
         // Move down row
         for (let row = r + 1; row < rows; row++) {
-          const targetIdx = row * cols + c;
-          if (activeConfig.grid[targetIdx]) {
-            nextIdx = targetIdx;
+          if (activeConfig.grid[row][c]) {
+            setSelectedStudentId(activeConfig.grid[row][c]);
             break;
           }
-          // Scan row for nearest student if target is empty? For now just direct check
         }
       } else if (e.key === 'ArrowUp') {
         // Move up row
         for (let row = r - 1; row >= 0; row--) {
-          const targetIdx = row * cols + c;
-          if (activeConfig.grid[targetIdx]) {
-            nextIdx = targetIdx;
+          if (activeConfig.grid[row][c]) {
+            setSelectedStudentId(activeConfig.grid[row][c]);
             break;
           }
         }
-      }
-
-      if (nextIdx !== currentIdx) {
-        setSelectedStudentId(activeConfig.grid[nextIdx]);
       }
     };
 
@@ -9758,20 +10101,19 @@ Instructions:
       const assignments = JSON.parse(responseText);
       
       updateCurrentConfig((prev: any) => {
-        const newGrid = Array(prev.rows * prev.cols).fill(null);
+        const newGridFlat = Array(prev.rows * prev.cols).fill(null);
         
         // Apply locked first
         Object.entries(lockedAssignments).forEach(([idx, sid]) => {
-          newGrid[Number(idx)] = sid;
+          newGridFlat[Number(idx)] = sid;
         });
 
         let placedCount = Object.keys(lockedAssignments).length;
         
         assignments.forEach((assignment: any) => {
           if (assignment.seatIndex !== undefined && assignment.studentId && validSeats.includes(assignment.seatIndex)) {
-             // Don't overwrite locked seats (AI should respect prompt but safety first)
-             if (newGrid[assignment.seatIndex] === null) {
-               newGrid[assignment.seatIndex] = assignment.studentId;
+             if (newGridFlat[assignment.seatIndex] === null) {
+               newGridFlat[assignment.seatIndex] = assignment.studentId;
                placedCount++;
              }
           }
@@ -9779,20 +10121,25 @@ Instructions:
         
         // Safety: If AI failed to place someone, place them in empty valid seats
         if (placedCount < prev.students.length) {
-           const currentlyPlacedIds = newGrid.filter(id => id !== null);
+           const currentlyPlacedIds = newGridFlat.filter(id => id !== null);
            const unplaced = prev.students.filter((s:any) => !currentlyPlacedIds.includes(s.id));
            let emptyIdx = 0;
            unplaced.forEach((s:any) => {
-              while (emptyIdx < prev.rows * prev.cols && (!validSeats.includes(emptyIdx) || newGrid[emptyIdx] !== null)) {
+              while (emptyIdx < prev.rows * prev.cols && (!validSeats.includes(emptyIdx) || newGridFlat[emptyIdx] !== null)) {
                 emptyIdx++;
               }
               if (emptyIdx < prev.rows * prev.cols) {
-                newGrid[emptyIdx] = s.id;
+                newGridFlat[emptyIdx] = s.id;
               }
            });
         }
         
-        return { ...prev, grid: newGrid };
+        // Convert to 2D
+        const newGrid2D = Array(prev.rows).fill(null).map((_, r) => 
+          Array(prev.cols).fill(null).map((_, c) => newGridFlat[r * prev.cols + c])
+        );
+
+        return { ...prev, grid: newGrid2D };
       });
       
       setAiSortScore(98);
@@ -10093,7 +10440,12 @@ Instructions:
         temp *= 0.999;
       }
 
-      updateCurrentConfig((prev: any) => ({ ...prev, grid: best }));
+      // Convert back to 2D
+      const best2D = Array(rows).fill(null).map((_, r) => 
+        Array(cols).fill(null).map((_, c) => best[r * cols + c])
+      );
+
+      updateCurrentConfig((prev: any) => ({ ...prev, grid: best2D }));
       setAiSortScore(calculateQualityScore(best));
       setIsLoadingAI(false);
       setIsAIPanelOpen(false);
@@ -10124,15 +10476,21 @@ Instructions:
 
   const [violations, setViolations] = useState<string[]>([]);
 
-  const checkConstraintsForStudent = useCallback((studentId: string, grid: (string | null)[]) => {
+  const checkConstraintsForStudent = useCallback((studentId: string, grid: (string | null)[][]) => {
     const student = currentConfig.students.find(s => s.id === studentId);
     if (!student) return [];
     
-    const idx = grid.indexOf(studentId);
-    if (idx === -1) return [];
+    let row = -1, col = -1;
+    for (let r = 0; r < grid.length; r++) {
+      const cIdx = grid[r].indexOf(studentId);
+      if (cIdx !== -1) {
+        row = r;
+        col = cIdx;
+        break;
+      }
+    }
+    if (row === -1) return [];
     
-    const row = Math.floor(idx / (currentConfig.cols || 9));
-    const col = idx % (currentConfig.cols || 9);
     const issues: string[] = [];
     
     const neighbors = [
@@ -10144,8 +10502,7 @@ Instructions:
     
     neighbors.forEach(n => {
       if (n.r >= 0 && n.r < currentConfig.rows && n.c >= 0 && n.c < currentConfig.cols) {
-        const nIdx = n.r * currentConfig.cols + n.c;
-        const neighborId = grid[nIdx];
+        const neighborId = grid[n.r][n.c];
         if (neighborId) {
           if (student.separateFrom?.includes(neighborId) || student.forbidden?.includes(neighborId)) {
             const neighbor = currentConfig.students.find(s => s.id === neighborId);
@@ -10190,6 +10547,13 @@ Instructions:
     if (savedConfig) {
       try {
         const config = JSON.parse(savedConfig);
+        // Migration: Convert flat grid to 2D if needed
+        if (config && Array.isArray(config.grid) && config.grid.length > 0 && !Array.isArray(config.grid[0])) {
+          const flat = config.grid;
+          config.grid = Array(config.rows || 6).fill(null).map((_, r) => 
+            Array(config.cols || 9).fill(null).map((_, c) => flat[r * (config.cols || 9) + c] || null)
+          );
+        }
         setCurrentConfig(config);
       } catch (e) { console.error("Error loading config", e); }
     }
@@ -10206,7 +10570,7 @@ Instructions:
   }, [currentConfig, deskHistory]);
 
   const studentsInPool = useMemo(() => currentConfig.students.filter(s => {
-    const isPlaced = currentConfig.grid.includes(s.id);
+    const isPlaced = currentConfig.grid.flat().includes(s.id);
     const matchesFilter = selectedGroups.length === 0 || (s.groups && s.groups.some((g: string) => selectedGroups.includes(g)));
     return !isPlaced && matchesFilter;
   }), [currentConfig.students, currentConfig.grid, selectedGroups]);
@@ -10214,6 +10578,9 @@ Instructions:
   const handleDrop = (deskIdx: number) => {
     if (!draggedStudentId) return;
     
+    const rT = Math.floor(deskIdx / activeConfig.cols);
+    const cT = deskIdx % activeConfig.cols;
+
     const student = activeConfig.students.find(s => s.id === draggedStudentId);
     if (student) {
       setDeskHistory(prev => ({
@@ -10223,30 +10590,35 @@ Instructions:
     }
 
     updateCurrentConfig((prev: any) => {
-      // Prevent dropping into a locked desk
       if (prev.lockedDesks?.includes(deskIdx)) {
         setNotifications((prevN: any) => [{ id: Date.now(), text: "המקום הזה נעול לשינויים", type: 'error' }, ...prevN]);
         return prev;
       }
 
-      const newGrid = [...prev.grid];
-      const oldIdx = newGrid.indexOf(draggedStudentId);
-      
-      // Prevent moving out of a locked desk
-      if (oldIdx !== -1 && prev.lockedDesks?.includes(oldIdx)) {
+      const newGrid = prev.grid.map((row: any[]) => [...row]);
+      let oldPos = null;
+      for (let r = 0; r < prev.rows; r++) {
+        for (let c = 0; c < prev.cols; c++) {
+          if (newGrid[r][c] === draggedStudentId) {
+            oldPos = { r, c };
+            break;
+          }
+        }
+        if (oldPos) break;
+      }
+
+      if (oldPos && prev.lockedDesks?.includes(oldPos.r * prev.cols + oldPos.c)) {
         setNotifications((prevN: any) => [{ id: Date.now(), text: "לא ניתן להזיז תלמיד ממקום נעול", type: 'error' }, ...prevN]);
         return prev;
       }
 
-      const studentAtTarget = newGrid[deskIdx];
+      const studentAtTarget = newGrid[rT][cT];
       
-      if (oldIdx !== -1) {
-        // Swap between two desks
-        newGrid[oldIdx] = studentAtTarget;
-        newGrid[deskIdx] = draggedStudentId;
+      if (oldPos) {
+        newGrid[oldPos.r][oldPos.c] = studentAtTarget;
+        newGrid[rT][cT] = draggedStudentId;
       } else {
-        // From pool
-        newGrid[deskIdx] = draggedStudentId;
+        newGrid[rT][cT] = draggedStudentId;
       }
       return { ...prev, grid: newGrid };
     });
@@ -10308,7 +10680,12 @@ Instructions:
                 preferred: (s.preferred || []).map((p: any) => p?.toString()).filter(Boolean),
                 forbidden: (s.forbidden || []).map((f: any) => f?.toString()).filter(Boolean),
               })),
-              grid: json.grid.map((g: any) => g?.toString() || null)
+              grid: Array(json.rows || 6).fill(null).map((_, r) => 
+                Array(json.cols || 9).fill(null).map((_, c) => {
+                  const idx = r * (json.cols || 9) + c;
+                  return json.grid[idx]?.toString() || null;
+                })
+              )
             });
           } else if (json.students) {
             // Format 1: Teacher + students list
@@ -10424,41 +10801,38 @@ Instructions:
     const grid = currentConfig.grid;
     const students = currentConfig.students;
     const newNotifications: any[] = [];
-    const cols = currentConfig.cols;
 
-    grid.forEach((sid, idx) => {
-      if (!sid) return;
-      const student = students.find(s => s.id === sid);
-      if (!student) return;
+    grid.forEach((row, r) => {
+      row.forEach((sid, c) => {
+        if (!sid) return;
+        const student = students.find(s => s.id === sid);
+        if (!student) return;
 
-      const r = Math.floor(idx / cols);
-      const c = idx % cols;
+        // Check adjacent
+        const neighbors = [
+          [r, c-1], [r, c+1], [r-1, c], [r+1, c],
+          [r-1, c-1], [r-1, c+1], [r+1, c-1], [r+1, c+1]
+        ];
 
-      // Check adjacent
-      const neighbors = [
-        [r, c-1], [r, c+1], [r-1, c], [r+1, c],
-        [r-1, c-1], [r-1, c+1], [r+1, c-1], [r+1, c+1]
-      ];
+        neighbors.forEach(([nr, nc]) => {
+          if (nr < 0 || nr >= currentConfig.rows || nc < 0 || nc >= currentConfig.cols) return;
+          const nSid = grid[nr][nc];
+          if (!nSid) return;
+          const neighbor = students.find(s => s.id === nSid);
+          if (!neighbor) return;
 
-      neighbors.forEach(([nr, nc]) => {
-        if (nr < 0 || nr >= currentConfig.rows || nc < 0 || nc >= currentConfig.cols) return;
-        const nIdx = nr * cols + nc;
-        const nSid = grid[nIdx];
-        if (!nSid) return;
-        const neighbor = students.find(s => s.id === nSid);
-        if (!neighbor) return;
+          const isForbidden = 
+            (student.forbidden && student.forbidden.includes(nSid)) || 
+            (student.separateFrom && student.separateFrom.includes(nSid));
 
-        const isForbidden = 
-          (student.forbidden && student.forbidden.includes(nSid)) || 
-          (student.separateFrom && student.separateFrom.includes(nSid));
-
-        if (isForbidden) {
-          newNotifications.push({ 
-            id: `v-${sid}-${nSid}`, 
-            text: `אזהרה: ${student.name} ו-${neighbor.name} קרובים מדי!`,
-            type: 'error'
-          });
-        }
+          if (isForbidden) {
+            newNotifications.push({ 
+              id: `v-${sid}-${nSid}`, 
+              text: `אזהרה: ${student.name} ו-${neighbor.name} קרובים מדי!`,
+              type: 'error'
+            });
+          }
+        });
       });
     });
 
@@ -10586,15 +10960,13 @@ Instructions:
       
       const newRows = type === 'rows' ? newVal : prev.rows;
       const newCols = type === 'cols' ? newVal : prev.cols;
-      const newGridSize = newRows * newCols;
-      const newGrid = Array(newGridSize).fill(null);
       
-      // Preserve students based on their old visual coordinates
+      const newGrid = Array(newRows).fill(null).map(() => Array(newCols).fill(null));
+      
+      // Preserve students based on their old coordinates
       for (let r = 0; r < Math.min(prev.rows, newRows); r++) {
         for (let c = 0; c < Math.min(prev.cols, newCols); c++) {
-          const oldIdx = r * prev.cols + c;
-          const newIdx = r * newCols + c;
-          newGrid[newIdx] = prev.grid[oldIdx];
+          newGrid[r][c] = prev.grid[r][c];
         }
       }
 
@@ -10606,7 +10978,6 @@ Instructions:
         if (tr >= newRows || tc >= newCols) {
           teacherDesk.index = (Math.min(tr, newRows - 1) * newCols) + Math.min(tc, newCols - 1);
         } else {
-          // Recalculate index for new width
           teacherDesk.index = tr * newCols + tc;
         }
       }
@@ -10614,7 +10985,6 @@ Instructions:
       const newHiddenDesks: number[] = [];
       const newObstructions: number[] = [];
       const newLockedDesks: number[] = [];
-      const newDeskScales: Record<number, number> = {};
 
       for (let r = 0; r < Math.min(prev.rows, newRows); r++) {
         for (let c = 0; c < Math.min(prev.cols, newCols); c++) {
@@ -10623,7 +10993,6 @@ Instructions:
           if (prev.hiddenDesks.includes(oldIdx)) newHiddenDesks.push(newIdx);
           if (prev.obstructions?.includes(oldIdx)) newObstructions.push(newIdx);
           if (prev.lockedDesks?.includes(oldIdx)) newLockedDesks.push(newIdx);
-          if (prev.deskScales?.[oldIdx]) newDeskScales[newIdx] = prev.deskScales[oldIdx];
         }
       }
       
@@ -10634,8 +11003,7 @@ Instructions:
         teacherDesk,
         hiddenDesks: newHiddenDesks,
         obstructions: newObstructions,
-        lockedDesks: newLockedDesks,
-        deskScales: newDeskScales
+        lockedDesks: newLockedDesks
       };
     });
   };
@@ -10649,7 +11017,7 @@ Instructions:
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'events': return <EventsView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBack} />;
-      case 'reminders': return <RemindersView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBack} setNotifications={setNotifications} />;
+      case 'reminders': return <RemindersView config={activeConfig} updateConfig={updateCurrentConfig} students={activeConfig.students} onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
@@ -10737,6 +11105,7 @@ Instructions:
           </div>
         </div>
       );
+      case 'workspace': return <GoogleWorkspaceView googleUser={googleUser} token={workspaceToken} onBack={onBackToGrid} />;
       case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} exportToExcel={exportToExcel} importFromCSV={importFromCSV} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />;
       case 'settings': return (
         <SettingsView 
@@ -11238,7 +11607,7 @@ Instructions:
         {!isSidebarCollapsed && (
           <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2 text-right">ניהול ראשי</h3>
         )}
-        {(['dashboard', 'grid', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools'] as const).map(nav => (
+        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewTypeWithTransition(nav)}
@@ -11257,6 +11626,7 @@ Instructions:
             )}>
               {nav === 'dashboard' && <PieChartIcon className="w-5 h-5" />}
               {nav === 'grid' && <LayoutGrid className="w-5 h-5" />}
+              {nav === 'workspace' && <CloudLightning className="w-5 h-5" />}
               {nav === 'behaviorLog' && <ClipboardList className="w-5 h-5" />}
               {nav === 'attendance' && <Calendar className="w-5 h-5" />}
               {nav === 'grades' && <GraduationCap className="w-5 h-5" />}
@@ -11275,6 +11645,7 @@ Instructions:
               <span className="truncate flex-1 text-right">
                 {nav === 'dashboard' && 'ראשי'}
                 {nav === 'grid' && 'מרחב כיתה'}
+                {nav === 'workspace' && 'Workspace'}
                 {nav === 'behaviorLog' && 'יומן התנהגות'}
                 {nav === 'attendance' && 'נוכחות'}
                 {nav === 'grades' && 'ציונים'}
@@ -11933,10 +12304,15 @@ Instructions:
         className={cn(
         "flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans rtl selection:bg-brand-100 transition-colors",
         isDarkMode && "dark",
-        accessibility.highContrast && "high-contrast grayscale"
+        accessibility.highContrast && "high-contrast grayscale",
+        theme === 'matte_green' && "data-theme-matte_green",
+        theme === 'glowing_yellow' && "data-theme-glowing_yellow",
+        theme === 'festive_stars' && "data-theme-festive_stars"
       )} 
+      data-theme={theme}
       style={{ 
-        '--app-font-size': accessibility.fontSize === 'small' ? '16px' : accessibility.fontSize === 'large' ? '26px' : '19px' 
+        '--app-font-size': accessibility.fontSize === 'small' ? '14px' : accessibility.fontSize === 'large' ? '20px' : '16px',
+        fontSize: 'var(--app-font-size)'
       } as React.CSSProperties}
       dir="rtl"
     >
@@ -11944,19 +12320,19 @@ Instructions:
 
       <div className="flex flex-1 overflow-hidden relative">
         {currentUser ? Sidebar() : (
-          <div className="fixed inset-0 z-[300] bg-slate-900 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[300] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 overflow-hidden">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-slate-800 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-8"
+              className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-8 border-4 border-white dark:border-slate-800"
               dir="rtl"
             >
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <School className="w-10 h-10 text-brand-600" />
+                <div className="w-16 h-16 bg-brand-100 dark:bg-brand-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-200 dark:border-brand-800">
+                  <School className="w-10 h-10 text-brand-600 dark:text-brand-400" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white">ברוכים הבאים</h2>
-                <p className="text-slate-500 font-bold">{authMode === 'login' ? 'התחבר למערכת CLASSFLOW' : 'צור חשבון חדש ב-CLASSFLOW'}</p>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">ברוכים הבאים</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">{authMode === 'login' ? 'התחבר למערכת CLASSFLOW' : 'צור חשבון חדש ב-CLASSFLOW'}</p>
               </div>
 
               <form onSubmit={(e) => {
@@ -11965,23 +12341,23 @@ Instructions:
               }} className="space-y-4">
                 {authMode === 'signup' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">שם מלא</label>
-                    <input name="name" required type="text" className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold" placeholder="ישראל ישראלי" />
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">שם מלא</label>
+                    <input name="name" required type="text" className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="ישראל ישראלי" />
                   </div>
                 )}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">אימייל</label>
-                  <input name="email" required type="email" className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold" placeholder="name@school.org" />
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">אימייל</label>
+                  <input name="email" required type="email" className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700/50 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-800 shadow-inner" placeholder="name@school.org" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">סיסמה</label>
-                  <input name="password" required type="password" className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold" placeholder="••••••••" />
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">סיסמה</label>
+                  <input name="password" required type="password" className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700/50 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-800 shadow-inner" placeholder="••••••••" />
                 </div>
                 {authError && <p className="text-rose-500 text-xs font-bold px-2">{authError}</p>}
                 <button 
                   type="submit" 
                   disabled={isAuthLoading}
-                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl shadow-brand-100 flex items-center justify-center gap-2 hover:bg-brand-700 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-brand-600 dark:bg-brand-500 text-white rounded-2xl font-black shadow-xl shadow-brand-100 dark:shadow-none flex items-center justify-center gap-2 hover:bg-brand-700 dark:hover:bg-brand-400 transition-all disabled:opacity-50"
                 >
                   {isAuthLoading ? 'בטעינה...' : (authMode === 'login' ? 'התחברות' : 'הרשמה')}
                   <LogIn className="w-5 h-5" />
@@ -11991,9 +12367,9 @@ Instructions:
               <div className="text-center pt-4">
                 <button 
                   onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-                  className="text-brand-600 font-black text-sm hover:underline"
+                  className="text-brand-600 dark:text-brand-400 font-black text-sm hover:underline"
                 >
-                  {authMode === 'login' ? 'אין לך חשבון? הירשם עכשיו' : 'כבר יש לך חשבון? התחבר'}
+                  {authMode === 'login' ? 'אין לך חשבון? הירשם עכשיו' : 'כבר יש לך חשבון? התחבר' }
                 </button>
               </div>
             </motion.div>
@@ -12399,10 +12775,10 @@ Instructions:
                      )}
                    </div>
 
-                   {/* Grid Content */}
-                    <ResponsiveGridContainer is3DView={is3DView}>
-                      <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
-                        {violations.length > 0 && !isPrinting && (
+                      {/* Grid Content */}
+                     <ResponsiveGridContainer is3DView={is3DView}>
+                       <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
+                         {violations.length > 0 && !isPrinting && (
                           <div className="absolute top-6 left-6 z-[60] flex flex-col gap-2 max-w-xs pointer-events-none" dir="rtl">
                             {violations.slice(0, 4).map((v, i) => (
                               <motion.div 
@@ -12612,8 +12988,8 @@ Instructions:
                         {...activeConfig.teacherDesk}
                         totalCols={activeConfig.cols}
                         totalRows={activeConfig.rows}
-                        colPos={(activeConfig.teacherDesk.index % activeConfig.cols) + 1 + activeConfig.columnGaps.filter(g => g < (activeConfig.teacherDesk.index % activeConfig.cols)).length}
-                        rowPos={Math.floor(activeConfig.teacherDesk.index / activeConfig.cols) + 1 + activeConfig.rowGaps.filter(g => g < Math.floor(activeConfig.teacherDesk.index / activeConfig.cols)).length}
+                        colPos={(activeConfig.teacherDesk.index % activeConfig.cols) + 1 + activeConfig.columnGaps.filter((g: number) => g < (activeConfig.teacherDesk.index % activeConfig.cols)).length}
+                        rowPos={Math.floor(activeConfig.teacherDesk.index / activeConfig.cols) + 1 + activeConfig.rowGaps.filter((g: number) => g < Math.floor(activeConfig.teacherDesk.index / activeConfig.cols)).length}
                         editMode={editMode}
                         updateCurrentConfig={updateCurrentConfig}
                         is3DView={is3DView}
@@ -12782,10 +13158,9 @@ Instructions:
                       </>
                     )}
 
-                    {Array.from({ length: activeConfig.rows }).map((_, r) => (
-                      Array.from({ length: activeConfig.cols }).map((_, c) => {
+                    {activeConfig.grid.map((row, r) => (
+                      row.map((studentId: string | null, c: number) => {
                         const idx = r * activeConfig.cols + c;
-                        const studentId = activeConfig.grid[idx];
                         const student = activeConfig.students.find(s => s.id === studentId);
                         const isHidden = activeConfig.hiddenDesks.includes(idx);
                         
@@ -12795,7 +13170,7 @@ Instructions:
 
                         return (
                           <DeskCell
-                            key={idx}
+                            key={`${r}-${c}`}
                             idx={idx}
                             studentId={studentId}
                             student={student}

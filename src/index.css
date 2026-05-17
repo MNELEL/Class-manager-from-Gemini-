@@ -246,6 +246,45 @@
   --theme-royal-900: #312e81;
   --theme-royal-950: #1e1b4b;
 
+  /* Theme: Matte Green */
+  --theme-matte_green-50: #f0fdf4;
+  --theme-matte_green-100: #dcfce7;
+  --theme-matte_green-200: #bbf7d0;
+  --theme-matte_green-300: #86efac;
+  --theme-matte_green-400: #4ade80;
+  --theme-matte_green-500: #22c55e;
+  --theme-matte_green-600: #16a34a;
+  --theme-matte_green-700: #15803d;
+  --theme-matte_green-800: #166534;
+  --theme-matte_green-900: #14532d;
+  --theme-matte_green-950: #052e16;
+
+  /* Theme: Glowing Yellow */
+  --theme-glowing_yellow-50: #fffbeb;
+  --theme-glowing_yellow-100: #fef3c7;
+  --theme-glowing_yellow-200: #fde68a;
+  --theme-glowing_yellow-300: #fcd34d;
+  --theme-glowing_yellow-400: #fbbf24;
+  --theme-glowing_yellow-500: #f59e0b;
+  --theme-glowing_yellow-600: #d97706;
+  --theme-glowing_yellow-700: #b45309;
+  --theme-glowing_yellow-800: #92400e;
+  --theme-glowing_yellow-900: #78350f;
+  --theme-glowing_yellow-950: #451a03;
+
+  /* Theme: Festive Stars */
+  --theme-festive_stars-50: #faf5ff;
+  --theme-festive_stars-100: #f3e8ff;
+  --theme-festive_stars-200: #e9d5ff;
+  --theme-festive_stars-300: #d8b4fe;
+  --theme-festive_stars-400: #c084fc;
+  --theme-festive_stars-500: #a855f7;
+  --theme-festive_stars-600: #9333ea;
+  --theme-festive_stars-700: #7e22ce;
+  --theme-festive_stars-800: #6b21a8;
+  --theme-festive_stars-900: #581c87;
+  --theme-festive_stars-950: #3b0764;
+
   /* Theme: Wood (Amber/Brown) */
   --theme-wood-50: #fffbeb;
   --theme-wood-100: #fef3c7;
@@ -330,6 +369,48 @@
   --color-brand-950: var(--theme-royal-950);
 }
 
+[data-theme='matte_green'] {
+  --color-brand-50: var(--theme-matte_green-50);
+  --color-brand-100: var(--theme-matte_green-100);
+  --color-brand-200: var(--theme-matte_green-200);
+  --color-brand-300: var(--theme-matte_green-300);
+  --color-brand-400: var(--theme-matte_green-400);
+  --color-brand-500: var(--theme-matte_green-500);
+  --color-brand-600: var(--theme-matte_green-600);
+  --color-brand-700: var(--theme-matte_green-700);
+  --color-brand-800: var(--theme-matte_green-800);
+  --color-brand-900: var(--theme-matte_green-900);
+  --color-brand-950: var(--theme-matte_green-950);
+}
+
+[data-theme='glowing_yellow'] {
+  --color-brand-50: var(--theme-glowing_yellow-50);
+  --color-brand-100: var(--theme-glowing_yellow-100);
+  --color-brand-200: var(--theme-glowing_yellow-200);
+  --color-brand-300: var(--theme-glowing_yellow-300);
+  --color-brand-400: var(--theme-glowing_yellow-400);
+  --color-brand-500: var(--theme-glowing_yellow-500);
+  --color-brand-600: var(--theme-glowing_yellow-600);
+  --color-brand-700: var(--theme-glowing_yellow-700);
+  --color-brand-800: var(--theme-glowing_yellow-800);
+  --color-brand-900: var(--theme-glowing_yellow-900);
+  --color-brand-950: var(--theme-glowing_yellow-950);
+}
+
+[data-theme='festive_stars'] {
+  --color-brand-50: var(--theme-festive_stars-50);
+  --color-brand-100: var(--theme-festive_stars-100);
+  --color-brand-200: var(--theme-festive_stars-200);
+  --color-brand-300: var(--theme-festive_stars-300);
+  --color-brand-400: var(--theme-festive_stars-400);
+  --color-brand-500: var(--theme-festive_stars-500);
+  --color-brand-600: var(--theme-festive_stars-600);
+  --color-brand-700: var(--theme-festive_stars-700);
+  --color-brand-800: var(--theme-festive_stars-800);
+  --color-brand-900: var(--theme-festive_stars-900);
+  --color-brand-950: var(--theme-festive_stars-950);
+}
+
 @layer components {
   .classroom-floor {
     background-color: #f1f5f9;
@@ -338,6 +419,32 @@
       linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(203, 213, 225, 0.1) 1px, transparent 1px);
     background-size: 20px 20px, 100px 100px, 100px 100px;
+  }
+
+  [data-theme='matte_green'] .classroom-floor {
+    background-color: #14532d;
+    background-image: 
+      radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  [data-theme='glowing_yellow'] .classroom-floor {
+    background-color: #78350f;
+    background-image: 
+      radial-gradient(ellipse at center, rgba(251, 191, 36, 0.2), transparent);
+    background-size: 100% 100%;
+  }
+
+  [data-theme='festive_stars'] .classroom-floor {
+    background-color: #3b0764;
+    background-image: 
+       radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+       radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+       radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+       radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+       radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0)),
+       radial-gradient(2px 2px at 160px 120px, #ddd, rgba(0,0,0,0));
+    background-size: 200px 200px;
   }
 
   [data-theme='wood'] .classroom-floor {
