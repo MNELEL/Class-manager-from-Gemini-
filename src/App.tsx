@@ -26,6 +26,7 @@ import {
 import { GoogleGenAI } from "@google/genai";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { ContentManagementView } from './components/ContentManagementView';
 import { LandingPage } from './components/LandingPage';
 import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
@@ -3548,7 +3549,7 @@ const StudentDetailView = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState('info');
   const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history' | 'pedagogical_adjustments'>('info');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(student.name);
   
@@ -3556,6 +3557,64 @@ const StudentDetailView = ({
     setTempName(student.name);
   }, [student.id]);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isAnalyzingNotes, setIsAnalyzingNotes] = useState(false);
+
+  const analyzeNotes = async () => {
+    if (!student.notes || isAnalyzingNotes) return;
+    setIsAnalyzingNotes(true);
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const prompt = `
+נתח את ההערות הבאות שכתב מורה על תלמיד בשם ${student.name}.
+ההערות: "${student.notes}"
+
+המשימות שלך:
+1. בצע ניתוח סנטימנט (חיובי, ניטרלי, שלילי, מעורב).
+2. חלץ תובנות פדגוגיות (חוזקות, אתגרים, נקודות לשיפור).
+3. הצע תגיות קצרות וקולעות (עד 3 מילים לתגית) המתארות את המצב הלימודי או ההתנהגותי (למשל: "שיפור בקריאה", "קושי חברתי", "מתמיד").
+
+החזר את התשובה בפורמט JSON בלבד:
+{
+  "sentiment": "...",
+  "insights": "...",
+  "tags": ["תגית1", "תגית2", "תגית3"]
+}
+השב בעברית בלבד (פרט למפתח ה-JSON).`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+      });
+
+      const text = response.text || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const result = JSON.parse(jsonMatch[0]);
+        
+        // Update tags
+        const currentTags = student.noteTags || [];
+        const newTags = result.tags.filter((t: string) => !currentTags.includes(t));
+        if (newTags.length > 0) {
+          updateStudent('noteTags', [...currentTags, ...newTags]);
+        }
+        
+        // Update pedagogy recommendation or a new field
+        const analysisText = `🤖 ניתוח AI (${new Date().toLocaleDateString('he-IL')}):
+סנטימנט: ${result.sentiment}
+תובנות: ${result.insights}`;
+        
+        updateStudent('ai_pedagogy_recommendation', analysisText);
+        setNotifications((prev: any) => [{ id: Date.now(), text: `ההערות נותחו ותויגו בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
+      }
+    } catch (error) {
+      console.error("AI Analysis Error:", error);
+      setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה בניתוח הערות באמצעות AI", type: 'error' }, ...prev]);
+    } finally {
+      setIsAnalyzingNotes(false);
+    }
+  };
+
   const [isAddingDiag, setIsAddingDiag] = useState(false);
   const [newDiag, setNewDiag] = useState({ type: '', date: '', description: '', accommodations: '' });
 
@@ -3622,6 +3681,7 @@ const StudentDetailView = ({
     { id: 'academic', label: 'הישגים', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'rewards', label: 'נקודות ופרסים', icon: <Trophy className="w-4 h-4" /> },
     { id: 'attendance', label: 'נוכחות', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'pedagogical_adjustments', label: 'התאמות פדגוגיות', icon: <GraduationCap className="w-4 h-4" /> },
     { id: 'diagnostics', label: 'אבחונים והתאמות', icon: <Stethoscope className="w-4 h-4" /> },
     { id: 'communications', label: 'קשר הורים', icon: <PhoneCall className="w-4 h-4" /> },
     { id: 'history', label: 'יומן התנהגות', icon: <History className="w-4 h-4" /> },
@@ -3793,6 +3853,100 @@ const StudentDetailView = ({
               transition={{ duration: 0.2 }}
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
             >
+              {activeTab === 'pedagogical_adjustments' && (
+                <div className="lg:col-span-3">
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-6 mb-8">
+                      <div className="p-5 bg-brand-50 dark:bg-brand-900/20 rounded-[2.5rem]">
+                        <GraduationCap className="w-10 h-10 text-brand-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">התאמות פדגוגיות וקשיי למידה</h3>
+                        <p className="text-slate-500 font-medium">הגדרת קשיים והתאמות שיסייעו ל-AI בקבלת החלטות שיבוץ.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-8">
+                       <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[3rem] border border-slate-100 dark:border-slate-700 space-y-6">
+                          <h4 className="text-lg font-black text-slate-800 dark:text-white">קשיים ואבחנות (Diagnoses)</h4>
+                          <div className="flex flex-wrap gap-3">
+                             {[
+                               { id: 'adhd', label: 'הפרעת קשב וריכוז (ADD/ADHD)', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                               { id: 'dyslexia', label: 'דיסלקציה / קשיי קריאה', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                               { id: 'dyscalculia', label: 'דיסקלקוליה / קשיי חשבון', color: 'bg-rose-100 text-rose-700 border-rose-200' },
+                               { id: 'social_anxiety', label: 'חרדה חברתית', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+                               { id: 'vision', label: 'לקות ראייה', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                               { id: 'hearing', label: 'לקות שמיעה', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+                               { id: 'asd', label: 'על הרצף האוטיסטי', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+                             ].map((diag) => {
+                               const isSelected = (student.pedagogicalDiagnoses || []).includes(diag.id);
+                               return (
+                                 <button
+                                   key={diag.id}
+                                   onClick={() => {
+                                     const current = student.pedagogicalDiagnoses || [];
+                                     updateStudent('pedagogicalDiagnoses', isSelected ? current.filter((id: string) => id !== diag.id) : [...current, diag.id]);
+                                   }}
+                                   className={cn(
+                                     "px-6 py-3 rounded-2xl border-2 font-bold transition-all text-sm h-14 flex items-center justify-center",
+                                     isSelected ? diag.color : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200"
+                                   )}
+                                 >
+                                   {diag.label}
+                                 </button>
+                               );
+                             })}
+                          </div>
+                       </div>
+
+                       <div className="space-y-4">
+                          <label className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest block">התאמות לימודיות ספציפיות</label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             {[
+                               { id: 'extra_time', label: 'תוספת זמן במבחנים' },
+                               { id: 'oral_exam', label: 'בחינה בעל פה' },
+                               { id: 'dictation', label: 'הכתבת תשובות' },
+                               { id: 'separate_room', label: 'חדר נפרד' },
+                               { id: 'calculator', label: 'שימוש במחשבון' },
+                               { id: 'dictionary', label: 'שימוש במילונית' },
+                             ].map((acc) => {
+                               const isSelected = (student.learningAccommodations || []).includes(acc.id);
+                               return (
+                                 <button
+                                   key={acc.id}
+                                   onClick={() => {
+                                     const current = student.learningAccommodations || [];
+                                     updateStudent('learningAccommodations', isSelected ? current.filter((id: string) => id !== acc.id) : [...current, acc.id]);
+                                   }}
+                                   className={cn(
+                                     "flex items-center gap-4 p-6 rounded-[2rem] border-2 text-right transition-all",
+                                     isSelected ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400"
+                                   )}
+                                 >
+                                   <div className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all", isSelected ? "bg-indigo-600 border-indigo-600 text-white shadow-lg" : "border-slate-200")}>
+                                      {isSelected && <Check className="w-3 h-3" />}
+                                   </div>
+                                   <span className="font-bold">{acc.label}</span>
+                                 </button>
+                               );
+                             })}
+                          </div>
+                       </div>
+
+                       <div className="p-8 bg-brand-50 dark:bg-brand-900/10 rounded-[3rem] border border-brand-100 dark:border-brand-900/30 flex items-center gap-6">
+                         <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center text-brand-600 shadow-sm border border-brand-100">
+                           <Layout className="w-8 h-8" />
+                         </div>
+                         <div>
+                            <h4 className="text-xl font-black text-brand-900 dark:text-brand-100">השפעה על הסידור האוטומטי</h4>
+                            <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mt-1">ה-AI משתמש במידע זה כדי לתת עדיפות למיקומים ספציפיים (למשל: תלמידי ADHD יקבלו עדיפות לשורות קדמיות הרחק מהסחות דעת).</p>
+                         </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'info' && (
                 <>
                   <div className="lg:col-span-2 space-y-8">
@@ -4480,6 +4634,21 @@ const StudentDetailView = ({
                                     <Brain className="w-3 h-3" />
                                   )}
                                   {isGeneratingAI ? 'מפיק המלצה...' : 'הפק המלצת AI'}
+                                </button>
+                                <button
+                                  disabled={isAnalyzingNotes || !student.notes}
+                                  onClick={analyzeNotes}
+                                  className={cn(
+                                    "px-4 py-2 text-white rounded-xl transition-all font-black text-[10px] flex items-center gap-2 shadow-sm",
+                                    isAnalyzingNotes || !student.notes ? "bg-slate-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
+                                  )}
+                                >
+                                  {isAnalyzingNotes ? (
+                                    <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                  ) : (
+                                    <Wand2 className="w-3 h-3" />
+                                  )}
+                                  {isAnalyzingNotes ? 'מנתח...' : 'ניתוח ותיוג אוטומטי (AI)'}
                                 </button>
                               </div>
                             </label>
@@ -6104,6 +6273,8 @@ const SettingsView = ({
   setAccessibility, 
   theme,
   setTheme,
+  accentColor,
+  setAccentColor,
   currentConfig, 
   updateCurrentConfig, 
   setNotifications,
@@ -6304,6 +6475,41 @@ const SettingsView = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Theme Configuration */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Palette className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800">ערכות נושא וצבעים</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              {(['default', 'nature', 'ocean', 'sunset', 'royal'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
+                    theme === t ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 uppercase">צבע מבטא (Accent Color)</label>
+              <input 
+                type="color" 
+                value={accentColor} 
+                onChange={(e) => setAccentColor(e.target.value)}
+                className="w-full h-10 rounded-xl cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* AI Parameters */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3">
@@ -9260,7 +9466,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar'>('landing');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management'>('landing');
   const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
   const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
@@ -9289,6 +9495,7 @@ export default function App() {
   const [panY, setPanY] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(0.9);
   const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood' | 'matte_green' | 'glowing_yellow' | 'festive_stars'>('default');
+  const [accentColor, setAccentColor] = useState('#6366f1');
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -10189,12 +10396,23 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
         const successes = s.successes || 'None mentioned';
         const notes = s.notes || 'No further notes';
         const noteTags = s.noteTags?.length > 0 ? s.noteTags.join(', ') : 'None';
+        const diagnoses = s.pedagogicalDiagnoses?.length > 0 ? s.pedagogicalDiagnoses.join(', ') : 'None';
+        const accommodations = s.learningAccommodations?.length > 0 ? s.learningAccommodations.join(', ') : 'None';
 
-        return `- ID: ${s.id}, Name: ${s.name}, Height: ${height} (Short means must be rows 0-1), RowPreference: ${rowPref}, CornerPreference: ${cornerPref}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}, Successes: ${successes}, Teacher Notes: ${notes}, Note Tags: ${noteTags}`;
+        return `- ID: ${s.id}, Name: ${s.name}, Height: ${height} (Short means must be rows 0-1), RowPreference: ${rowPref}, CornerPreference: ${cornerPref}, Friends: ${friends}, Conflicts: ${conflicts}, Groups: ${groups}, ${interest}, ${support}, ${envPrefs}, ${gradesAvg}, Successes: ${successes}, Teacher Notes: ${notes}, Note Tags: ${noteTags}, Pedagogical Diagnoses: ${diagnoses}, Learning Accommodations: ${accommodations}`;
       }).join('\n');
 
-      const prompt = `You are an expert AI pedagogical advisor and classroom manager. You need to assign an optimal seating arrangement for a classroom.
+      const prompt = `${aiWeights.customSystemPrompt || 'You are an expert AI pedagogical advisor and classroom manager.'}
+You need to assign an optimal seating arrangement for a classroom.
 There are ${rows} rows and ${cols} columns.
+
+AI STRATEGY WEIGHTS (0-10, where 10 is maximum importance):
+- Social Importance: ${aiWeights.socialWeight} (Weight for friends/conflicts)
+- Spatial/Pedagogical Importance: ${aiWeights.spatialWeight} (Weight for height/front-row needs)
+- Preference for Friends: ${aiWeights.preferred}
+- Effort to avoid Conflicts: ${aiWeights.forbidden}
+- Physical Distance Effort: ${aiWeights.separateFrom}
+
 Available seats (MUST USE ONLY THESE):
 ${seatsDescription}
 
@@ -10216,12 +10434,17 @@ Instructions:
    - Support Needed: Students with 'high' support needed MUST be in the front (Row 0-1).
    - Interest/Engagement: Strategically place students with 'low' interest closer to the teacher (front) or amongst 'high' interest peers to boost engagement.
    - Environment Preferences: If a student prefers 'quiet', place them away from high-traffic indices. If they prefer 'near window', assume columns near index ${cols - 1} are windows.
-   - Clinical/Behavioral Cues: Analyze 'Teacher Notes' and 'Note Tags' for any additional location requirements mentioned by the teacher (e.g., "must sit near board", "needs easy access to teacher").
+   - Clinical/Behavioral Cues: Analyze 'Pedagogical Diagnoses' and 'Learning Accommodations' if present. 
+     - ADHD: Place in front rows, away from windows and doors.
+     - Vision/Hearing: MUST be in front row (Row 0).
+     - Social Anxiety: Avoid placing in center of class, prefer edges.
+   - Analyze 'Teacher Notes' and 'Note Tags' for any additional location requirements mentioned by the teacher.
 6. Social Constraints:
    - Near Friends: Group students with their 'preferred' friends.
    - Far from Conflicts: Ensure students are NOT adjacent (including diagonals) to their 'forbidden' peers.
    - Groups: Keep students of the same group in the same general area of the grid.
-7. Return ONLY a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
+7. Balance: Adjust the strictness of these rules based on the provided AI STRATEGY WEIGHTS.
+8. Return ONLY a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -11156,6 +11379,7 @@ Instructions:
       case 'reminders': return <RemindersView config={activeConfig} updateConfig={updateCurrentConfig} students={activeConfig.students} onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
+      case 'content-management': return <ContentManagementView onBack={onBackToGrid} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
       case 'toolkit': return <TeacherToolkit students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaign-display': return (
@@ -11254,6 +11478,8 @@ Instructions:
           setAccessibility={setAccessibility}
           theme={theme}
           setTheme={setTheme}
+          accentColor={accentColor}
+          setAccentColor={setAccentColor}
           currentConfig={currentConfig}
           updateCurrentConfig={updateCurrentConfig}
           setNotifications={setNotifications}
@@ -11778,7 +12004,7 @@ Instructions:
         {!isSidebarCollapsed && (
           <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2 text-right">ניהול ראשי</h3>
         )}
-        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools'] as const).map(nav => (
+        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools', 'content-management'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewTypeWithTransition(nav)}
@@ -11810,6 +12036,7 @@ Instructions:
               {nav === 'analytics' && <BarChart3 className="w-5 h-5" />}
               {nav === 'progress' && <LineChart className="w-5 h-5" />}
               {nav === 'exams' && <Bookmark className="w-5 h-5" />}
+              {nav === 'content-management' && <BookOpen className="w-5 h-5" />}
               {nav === 'tools' && <Wrench className="w-5 h-5" />}
             </div>
             {!isSidebarCollapsed && (
@@ -11829,6 +12056,7 @@ Instructions:
                 {nav === 'analytics' && 'אנליטיקה'}
                 {nav === 'progress' && 'התקדמות'}
                 {nav === 'exams' && 'מבחנים'}
+                {nav === 'content-management' && 'ניהול תוכן'}
                 {nav === 'tools' && 'ארגז כלים'}
               </span>
             )}
@@ -12481,6 +12709,9 @@ Instructions:
         theme === 'festive_stars' && "data-theme-festive_stars"
       )} 
       data-theme={theme}
+      style={{ 
+        '--accent-color': accentColor
+      } as React.CSSProperties}
       dir="rtl"
     >
       {Header()}
