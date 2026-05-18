@@ -29,6 +29,8 @@ import { jsPDF } from 'jspdf';
 import { LandingPage } from './components/LandingPage';
 import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
+import { TeacherToolkit } from './components/TeacherToolkit';
+import { LessonsManager } from './components/LessonsManager';
 import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
@@ -1323,7 +1325,7 @@ const DeskCell = ({
                                type="range" 
                                min="0" 
                                max="100" 
-                               value={activeConfig.columnGapSize || 40} 
+                               value={currentConfig.columnGapSize || 40} 
                                onChange={(e) => updateCurrentConfig((prev: any) => ({ ...prev, columnGapSize: Number(e.target.value), rowGapSize: Number(e.target.value) }))}
                                className="w-20"
                            />
@@ -2655,24 +2657,49 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.type === 'class-wide' ? 'מבצע כיתתי' : 'מבצע אישי'}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            const pts = prompt("הזן נקודות להוספה (ניתן להזין מינוס להפחתה):", "10");
-                            if (pts && !isNaN(parseInt(pts))) {
-                              updateCurrentConfig((prev: any) => ({
-                                ...prev,
-                                campaigns: prev.campaigns.map((camp: any) => 
-                                  camp.id === c.id ? { ...camp, currentPoints: Math.max(0, camp.currentPoints + parseInt(pts)) } : camp
-                                )
-                              }));
-                            }
-                          }}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 rounded-xl transition-all" 
-                          title="הוסף נקודות"
-                        >
-                          <PlusCircle className="w-5 h-5" />
-                        </button>
+                    <div className="flex gap-2">
+                         <button 
+                           onClick={() => {
+                             if (c.type === 'individual') {
+                               const studentId = prompt("הזן מזהה תלמיד (או השתמש בתצוגת הפירוט):");
+                               if (!studentId) return;
+                               const pts = prompt("הזן נקודות להוספה:", "10");
+                               if (pts && !isNaN(parseInt(pts))) {
+                                 updateCurrentConfig((prev: any) => ({
+                                   ...prev,
+                                   campaigns: prev.campaigns.map((camp: any) => 
+                                     camp.id === c.id ? { 
+                                       ...camp, 
+                                       progress: { 
+                                         ...(camp.progress || {}), 
+                                         [studentId]: (camp.progress?.[studentId] || 0) + parseInt(pts) 
+                                       },
+                                       currentPoints: Math.max(0, camp.currentPoints + parseInt(pts))
+                                     } : camp
+                                   ),
+                                   student_points: {
+                                      ...(prev.student_points || {}),
+                                      [studentId]: (prev.student_points?.[studentId] || 0) + parseInt(pts)
+                                   }
+                                 }));
+                               }
+                             } else {
+                               const pts = prompt("הזן נקודות להוספה לכיתה:", "10");
+                               if (pts && !isNaN(parseInt(pts))) {
+                                 updateCurrentConfig((prev: any) => ({
+                                   ...prev,
+                                   campaigns: prev.campaigns.map((camp: any) => 
+                                     camp.id === c.id ? { ...camp, currentPoints: Math.max(0, camp.currentPoints + parseInt(pts)) } : camp
+                                   )
+                                 }));
+                               }
+                             }
+                           }}
+                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 rounded-xl transition-all" 
+                           title="הוסף נקודות"
+                         >
+                           <PlusCircle className="w-5 h-5" />
+                         </button>
                         <button 
                           onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, campaigns: prev.campaigns.filter((camp: any) => camp.id !== c.id) }))}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-xl transition-all" 
@@ -2703,6 +2730,26 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
                          />
                       </div>
                    </div>
+
+                   {c.type === 'individual' && c.progress && Object.keys(c.progress).length > 0 && (
+                     <div className="mt-6 space-y-2">
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">מובילים במבצע:</span>
+                       <div className="grid grid-cols-2 gap-2">
+                         {Object.entries(c.progress)
+                           .sort(([, a], [, b]) => (b as number) - (a as number))
+                           .slice(0, 4)
+                           .map(([sId, sProgress]) => {
+                             const studentInfo = students.find(s => s.id.toString() === sId.toString());
+                             return (
+                               <div key={sId} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-[10px]">
+                                 <span className="font-bold text-slate-600 dark:text-slate-300 truncate max-w-[80px]">{studentInfo?.name || sId}</span>
+                                 <span className="font-black text-brand-600">{sProgress as number} נק'</span>
+                                </div>
+                             );
+                           })}
+                       </div>
+                     </div>
+                   )}
 
                    {c.reward && (
                      <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -3511,9 +3558,6 @@ const StudentDetailView = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isAddingDiag, setIsAddingDiag] = useState(false);
   const [newDiag, setNewDiag] = useState({ type: '', date: '', description: '', accommodations: '' });
-
-  const [isAddingLesson, setIsAddingLesson] = useState(false);
-  const [newLesson, setNewLesson] = useState({ name: '', day: 'א', time: '08:00', room: '', category: 'regular' as any });
 
   const availableLessons = currentConfig.availableLessons || [];
 
@@ -4655,240 +4699,16 @@ const StudentDetailView = ({
 
               {activeTab === 'lessons' && (
                 <div className="lg:col-span-3">
-                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between mb-8">
-                       <div className="flex items-center gap-6">
-                         <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2.5rem]">
-                            <BookOpen className="w-10 h-10 text-indigo-600" />
-                         </div>
-                         <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">שיעורים ומערכת שעות אישית</h3>
-                       </div>
-                       <button 
-                         onClick={() => setIsAddingLesson(!isAddingLesson)}
-                         className="px-5 py-3 bg-indigo-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors"
-                       >
-                         {isAddingLesson ? <X className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}
-                         {isAddingLesson ? 'ביטול' : 'הוספת שיעור'}
-                       </button>
-                    </div>
-
-                    {isAddingLesson && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-indigo-100 dark:border-indigo-900 shadow-xl space-y-6"
-                      >
-                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                            <h4 className="text-xl font-black text-slate-800 dark:text-white">שיבוץ לשיעור או הקבצה</h4>
-                            <div className="flex gap-2">
-                               {availableLessons.length > 0 && (
-                                  <select 
-                                    onChange={(e) => {
-                                       const selectedId = e.target.value;
-                                       if (!selectedId) return;
-                                       const lesson = availableLessons.find((l: any) => l.id === selectedId);
-                                       if (lesson) {
-                                          setNewLesson({ 
-                                             name: lesson.name, 
-                                             day: lesson.day, 
-                                             time: lesson.time, 
-                                             room: lesson.room || '', 
-                                             category: lesson.category || 'regular' 
-                                          });
-                                       }
-                                    }}
-                                    className="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border-2 border-indigo-100 dark:border-indigo-800 font-bold text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                                  >
-                                    <option value="">בחירה משיעורי המערכת...</option>
-                                    {availableLessons.map((l: any) => <option key={l.id} value={l.id}>{l.name} (יום {l.day}, {l.time})</option>)}
-                                  </select>
-                               )}
-                            </div>
-                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שם השיעור / הקבצה</label>
-                               <input 
-                                 value={newLesson.name}
-                                 onChange={e => setNewLesson(prev => ({...prev, name: e.target.value}))}
-                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
-                                 placeholder="למשל: תגבור מתמטיקה"
-                               />
-                            </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">יום בשבוע</label>
-                               <select 
-                                 value={newLesson.day}
-                                 onChange={e => setNewLesson(prev => ({...prev, day: e.target.value}))}
-                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
-                               >
-                                 {['א', 'ב', 'ג', 'ד', 'ה', 'ו'].map(d => <option key={d} value={d}>יום {d}</option>)}
-                               </select>
-                            </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שעה</label>
-                               <input 
-                                 type="time"
-                                 value={newLesson.time}
-                                 onChange={e => setNewLesson(prev => ({...prev, time: e.target.value}))}
-                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
-                               />
-                            </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">קטגוריה</label>
-                               <select 
-                                 value={newLesson.category}
-                                 onChange={e => setNewLesson(prev => ({...prev, category: e.target.value as any}))}
-                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
-                               >
-                                 {lessonCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
-                               </select>
-                            </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">חדר / מיקום (אופציונלי)</label>
-                               <input 
-                                 value={newLesson.room}
-                                 onChange={e => setNewLesson(prev => ({...prev, room: e.target.value}))}
-                                 className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-none font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 ring-indigo-500 transition-all shadow-sm"
-                                 placeholder="למשל: ספריה"
-                               />
-                            </div>
-                         </div>
-                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <button 
-                              onClick={() => {
-                                if (!newLesson.name) return;
-                                const existsGlobally = availableLessons.some((l: any) => l.name === newLesson.name && l.day === newLesson.day && l.time === newLesson.time);
-                                 if (!existsGlobally) {
-                                    if (confirm("האם ברצונך לשמור את השיעור הזה כשיעור זמין לכלל התלמידים במערכת?")) {
-                                       updateCurrentConfig((prev: any) => ({
-                                          ...prev,
-                                          availableLessons: [...(prev.availableLessons || []), { ...newLesson, id: Date.now().toString() }]
-                                       }));
-                                    }
-                                 }
-                                 const lessonToSave = { ...newLesson, id: Date.now().toString() };
-                                updateStudent('lessons', [...(student.lessons || []), lessonToSave]);
-                                setIsAddingLesson(false);
-                                setNewLesson({ name: '', day: 'א', time: '08:00', room: '', category: 'regular' });
-                              }}
-                              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-indigo-700 transition-all"
-                            >
-                              שמירת שיעור ושיבוץ
-                            </button>
-                         </div>
-                      </motion.div>
-                    )}
-
-                    {(!student.lessons || student.lessons.length === 0) ? (
-                      <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
-                        התלמיד עדיין לא משובץ לשיעורים או הקבצות ספציפיות.
-                      </div>
-                    ) : (
-                      <div className="space-y-12">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {student.lessons.map((lesson: any) => {
-                             const category = lessonCategories.find(c => c.id === (lesson.category || 'regular'));
-                             return (
-                               <div key={lesson.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm relative group overflow-hidden transition-all hover:shadow-md">
-                                 <div className={cn("absolute top-0 right-0 w-16 h-1", category?.color || "bg-indigo-500")} />
-                                 <div className="flex items-start justify-between mb-4">
-                                   <h4 className="font-black text-lg text-slate-800 dark:text-white leading-tight">{lesson.name}</h4>
-                                   {category && (
-                                     <span className={cn("px-2 py-1 rounded-lg text-[8px] font-black uppercase", category.bgColor, category.textColor)}>
-                                       {category.label}
-                                     </span>
-                                   )}
-                                 </div>
-                                 <div className="flex items-center gap-4 text-sm text-slate-500 font-bold">
-                                   <div className="flex items-center gap-1.5">
-                                     <CalendarDays className="w-4 h-4 text-slate-400" />
-                                     יום {lesson.day}
-                                   </div>
-                                   <div className="flex items-center gap-1.5">
-                                     <Clock className="w-4 h-4 text-slate-400" />
-                                     {lesson.time}
-                                   </div>
-                                    {lesson.room && (
-                                       <div className="flex items-center gap-1.5">
-                                         <div className="w-1 h-1 rounded-full bg-slate-300" />
-                                         <span className="text-slate-400">{lesson.room}</span>
-                                       </div>
-                                    )}
-                                 </div>
-                                 <button 
-                                   onClick={() => updateStudent('lessons', student.lessons.filter((l: any) => l.id !== lesson.id))}
-                                   className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
-                                 >
-                                   <Trash2 className="w-4 h-4" />
-                                 </button>
-                               </div>
-                             );
-                          })}
-                        </div>
-
-                        {/* Visual Schedule Grid */}
-                        <div className="space-y-6">
-                           <h4 className="text-xl font-black text-slate-800 dark:text-white opacity-80 flex items-center gap-3">
-                              <Calendar className="w-6 h-6 text-indigo-500" />
-                              מבט שבועי
-                           </h4>
-                           <div className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-x-auto">
-                              <div className="min-w-[600px] grid grid-cols-6 gap-4">
-                                 <div className="col-span-1" /> {/* Spacer for time column */}
-                                 {['א', 'ב', 'ג', 'ד', 'ה'].map(day => (
-                                    <div key={day} className="text-center font-black text-slate-400 uppercase tracking-widest text-xs py-2">
-                                       יום {day}
-                                    </div>
-                                 ))}
-
-                                 {/* Example Time Slots */}
-                                 {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00'].map(time => (
-                                    <React.Fragment key={time}>
-                                       <div className="flex flex-col justify-center text-[10px] font-black text-slate-400 border-r border-slate-200 dark:border-slate-800 pr-4">
-                                          {time}
-                                       </div>
-                                       {['א', 'ב', 'ג', 'ד', 'ה'].map(day => {
-                                          const lessonAtTime = student.lessons?.find((l: any) => l.day === day && l.time.startsWith(time.split(':')[0]));
-                                          const category = lessonAtTime ? lessonCategories.find(c => c.id === (lessonAtTime.category || 'regular')) : null;
-                                          
-                                          return (
-                                             <div key={day} className="min-h-[60px] bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 p-2 flex items-center justify-center relative group">
-                                                {lessonAtTime ? (
-                                                   <motion.div 
-                                                      initial={{ scale: 0.9, opacity: 0 }}
-                                                      animate={{ scale: 1, opacity: 1 }}
-                                                      className={cn(
-                                                         "w-full h-full rounded-xl flex flex-col items-center justify-center text-center p-1.5 shadow-sm border",
-                                                         category?.bgColor || "bg-indigo-50",
-                                                         category?.textColor || "text-indigo-700",
-                                                         "border-white/50 dark:border-slate-800/50"
-                                                      )}
-                                                   >
-                                                      <span className="text-[10px] font-black leading-tight mb-0.5">{lessonAtTime.name}</span>
-                                                      <span className="text-[8px] font-bold opacity-60 leading-none">{lessonAtTime.time}</span>
-                                                   </motion.div>
-                                                ) : (
-                                                   <button 
-                                                      onClick={() => {
-                                                         setIsAddingLesson(true);
-                                                         setNewLesson({ name: '', day, time, category: 'regular' });
-                                                      }}
-                                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-300 hover:text-indigo-500"
-                                                   >
-                                                      <Plus className="w-4 h-4" />
-                                                   </button>
-                                                )}
-                                             </div>
-                                          );
-                                       })}
-                                    </React.Fragment>
-                                 ))}
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="glass-card p-12 rounded-[4rem]">
+                    <LessonsManager 
+                      student={student} 
+                      onUpdateStudent={(updatedStudent) => {
+                        updateCurrentConfig((prev: any) => ({
+                          ...prev,
+                          students: prev.students.map((s: any) => s.id === student.id ? updatedStudent : s)
+                        }));
+                      }} 
+                    />
                   </div>
                 </div>
               )}
@@ -5028,12 +4848,44 @@ const StudentDetailView = ({
                          <div className="space-y-3">
                            {(currentConfig.campaigns || []).filter((c: any) => c.status === 'active').map((c: any) => {
                              const progress = c.progress?.[student.id] || 0;
-                             const percent = Math.min(100, (progress / c.target) * 100);
+                             const target = c.targetPoints || c.targetGoal || 1000;
+                             const percent = Math.min(100, (progress / target) * 100);
                              return (
                                <div key={c.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                                  <div className="flex justify-between items-center mb-2">
-                                   <span className="font-bold text-sm dark:text-white">{c.title}</span>
-                                   <span className="text-[10px] font-black text-slate-400">{progress} / {c.target}</span>
+                                   <div className="flex flex-col">
+                                     <span className="font-bold text-sm dark:text-white">{c.title}</span>
+                                     <span className="text-[10px] font-black text-slate-400 capitalize">{c.type === 'class-wide' ? 'כיתתי' : 'אישי'}</span>
+                                   </div>
+                                   <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-black text-slate-400">{progress} / {target}</span>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const pts = prompt(`הזן נקודות להוספה ל${student.name} במבצע ${c.title}:`, "10");
+                                          if (pts && !isNaN(parseInt(pts))) {
+                                            const val = parseInt(pts);
+                                            updateCurrentConfig((prev: any) => {
+                                              const newCampaigns = prev.campaigns.map((camp: any) => 
+                                                camp.id === c.id ? { 
+                                                  ...camp, 
+                                                  progress: { 
+                                                    ...(camp.progress || {}), 
+                                                    [student.id]: (camp.progress?.[student.id] || 0) + val 
+                                                  },
+                                                  currentPoints: Math.max(0, camp.currentPoints + (c.type === 'individual' ? val : val)) // update total too
+                                                } : camp
+                                              );
+                                              const newPoints = { ...prev.student_points, [student.id]: (prev.student_points[student.id] || 0) + val };
+                                              return { ...prev, campaigns: newCampaigns, student_points: newPoints };
+                                            });
+                                          }
+                                        }}
+                                        className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-brand-600 transition-colors"
+                                      >
+                                        <PlusCircle className="w-4 h-4" />
+                                      </button>
+                                   </div>
                                  </div>
                                  <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                     <div className="h-full bg-brand-600 transition-all" style={{ width: `${percent}%` }} />
@@ -6250,6 +6102,8 @@ const SettingsView = ({
   setAiWeights, 
   accessibility, 
   setAccessibility, 
+  theme,
+  setTheme,
   currentConfig, 
   updateCurrentConfig, 
   setNotifications,
@@ -6549,36 +6403,6 @@ const SettingsView = ({
           </div>
         </div>
 
-        {/* Privacy Settings */}
-        <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
-            <Shield className="w-6 h-6 text-brand-500" />
-            <h3 className="text-lg font-black text-slate-800">הגדרות פרטיות ומידע</h3>
-          </div>
-          <div className="space-y-4">
-            <button 
-              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, shareWithColleagues: !prev.privacy?.shareWithColleagues } }))}
-              className={cn(
-                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                currentConfig.privacy?.shareWithColleagues ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
-              )}
-            >
-              שיתוף נתונים עם עמיתים
-              {currentConfig.privacy?.shareWithColleagues ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
-            </button>
-            <button 
-              onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, anonymizeNames: !prev.privacy?.anonymizeNames } }))}
-              className={cn(
-                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                currentConfig.privacy?.anonymizeNames ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
-              )}
-            >
-              הצגת שמות תלמידים (אנונימיזציה)
-              {currentConfig.privacy?.anonymizeNames ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
-            </button>
-          </div>
-        </div>
-
         {/* Accessibility & Theme */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3">
@@ -6596,19 +6420,51 @@ const SettingsView = ({
               ניגודיות גבוהה
               {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5 text-brand-400" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
             </button>
-            <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100">
-               {(['small', 'medium', 'large'] as const).map(size => (
-                 <button 
-                   key={size}
-                   onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
-                   className={cn(
-                     "flex-1 py-4 rounded-xl text-sm font-black transition-all",
-                     accessibility.fontSize === size ? "bg-white text-brand-600 shadow-sm border border-slate-100" : "text-slate-500"
-                   )}
-                 >
-                   {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
-                 </button>
-               ))}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">גודל גופן כללי</label>
+              <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                {(['small', 'medium', 'large'] as const).map(size => (
+                  <button 
+                    key={size}
+                    onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
+                    className={cn(
+                      "flex-1 py-4 rounded-xl text-sm font-black transition-all",
+                      accessibility.fontSize === size ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm border border-slate-100 dark:border-slate-800" : "text-slate-500"
+                    )}
+                  >
+                    {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium px-2 italic">שינוי זה ישפיע על כל התצוגה באפליקציה.</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 pt-2 block">ערכת נושא (פלטת צבעים)</label>
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
+                 {[
+                  { id: 'default', color: 'bg-slate-400', name: 'קלאסי' },
+                  { id: 'wood', color: 'bg-amber-600', name: 'עץ' },
+                  { id: 'nature', color: 'bg-emerald-500', name: 'טבע' },
+                  { id: 'ocean', color: 'bg-sky-500', name: 'אוקיינוס' },
+                  { id: 'sunset', color: 'bg-rose-500', name: 'שקיעה' },
+                  { id: 'royal', color: 'bg-indigo-500', name: 'מלכותי' },
+                  { id: 'matte_green', color: 'bg-green-700', name: 'ירוק מט' },
+                  { id: 'glowing_yellow', color: 'bg-yellow-400', name: 'צהוב זוהר' },
+                  { id: 'festive_stars', color: 'bg-purple-600', name: 'כוכבים חגיגיים' },
+                ].map((t: any) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTheme(t.id)}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
+                      theme === t.id ? "bg-white dark:bg-slate-700 border-brand-500 shadow-md ring-1 ring-brand-100" : "bg-slate-50 dark:bg-slate-800 border-transparent hover:border-slate-200"
+                    )}
+                  >
+                    <div className={cn("w-6 h-6 rounded-lg shadow-sm", t.color)} />
+                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{t.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -9433,6 +9289,7 @@ export default function App() {
   const [panY, setPanY] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(0.9);
   const [theme, setTheme] = useState<'default' | 'nature' | 'ocean' | 'sunset' | 'royal' | 'wood' | 'matte_green' | 'glowing_yellow' | 'festive_stars'>('default');
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -9507,6 +9364,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
   const [accessibility, setAccessibility] = useState({ highContrast: false, fontSize: 'medium' });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const size = accessibility.fontSize === 'small' ? '14px' : accessibility.fontSize === 'large' ? '20px' : '16px';
+    root.style.fontSize = size;
+  }, [accessibility.fontSize]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -10838,6 +10701,7 @@ Instructions:
   useEffect(() => {
     localStorage.setItem('class-manager-config', JSON.stringify(currentConfig));
     localStorage.setItem('desk-history', JSON.stringify(deskHistory));
+    setLastSaved(Date.now());
   }, [currentConfig, deskHistory]);
 
   const studentsInPool = useMemo(() => currentConfig.students.filter(s => {
@@ -11293,6 +11157,7 @@ Instructions:
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
+      case 'toolkit': return <TeacherToolkit students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaign-display': return (
         <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
           <div className="flex items-center justify-between gap-6">
@@ -11387,6 +11252,8 @@ Instructions:
           setAiWeights={setAiWeights}
           accessibility={accessibility}
           setAccessibility={setAccessibility}
+          theme={theme}
+          setTheme={setTheme}
           currentConfig={currentConfig}
           updateCurrentConfig={updateCurrentConfig}
           setNotifications={setNotifications}
@@ -11506,6 +11373,16 @@ Instructions:
            <span className="text-[13px] font-bold tracking-tight">{hebDateString}</span>
         </div>
 
+        {lastSaved && (
+          <div className="hidden lg:flex items-center gap-2 text-slate-400">
+             <div className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+             <span className="text-[10px] font-black uppercase tracking-tighter">
+               נשמר לאחרונה: {new Date(lastSaved).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+             </span>
+             <Save className="w-3 h-3 text-emerald-500 opacity-60" />
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           {/* Action Buttons */}
           <button 
@@ -11585,7 +11462,7 @@ Instructions:
             className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
             title="סיור מודרך"
           >
-            <HelpCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <Map className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
 
           <div className="hidden xl:flex items-center gap-1 bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -11596,6 +11473,9 @@ Instructions:
               { id: 'ocean', color: 'bg-sky-500', name: 'אוקיינוס' },
               { id: 'sunset', color: 'bg-rose-500', name: 'שקיעה' },
               { id: 'royal', color: 'bg-indigo-500', name: 'מלכותי' },
+              { id: 'matte_green', color: 'bg-green-700', name: 'ירוק מט' },
+              { id: 'glowing_yellow', color: 'bg-yellow-400', name: 'צהוב זוהר' },
+              { id: 'festive_stars', color: 'bg-purple-600', name: 'כוכבים חגיגיים' },
             ].map((t: any) => (
               <button
                 key={t.id}
@@ -12601,10 +12481,6 @@ Instructions:
         theme === 'festive_stars' && "data-theme-festive_stars"
       )} 
       data-theme={theme}
-      style={{ 
-        '--app-font-size': accessibility.fontSize === 'small' ? '14px' : accessibility.fontSize === 'large' ? '20px' : '16px',
-        fontSize: 'var(--app-font-size)'
-      } as React.CSSProperties}
       dir="rtl"
     >
       {Header()}
@@ -12752,6 +12628,14 @@ Instructions:
                        title="חזרה לראשי"
                      >
                        <PieChartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                     </button>
+
+                     <button 
+                       onClick={() => setViewTypeWithTransition('toolkit')}
+                       className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-brand-600 rounded-xl transition-all shadow-sm group"
+                       title="ארגז כלים למורה"
+                     >
+                       <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
                      </button>
 
                      <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />

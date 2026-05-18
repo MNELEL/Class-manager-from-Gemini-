@@ -80,6 +80,8 @@ export interface ClassroomConfig {
   themeColor?: string;
   campaigns?: Campaign[];
   events?: ClassroomEvent[];
+  student_points?: Record<string, number>;
+  analytics_log?: any[];
 }
 
 export interface Campaign {
