@@ -3,6 +3,7 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
+process.env.NODE_ENV = process.env.NODE_ENV || "production";
 dotenv.config();
 
 async function startServer() {
@@ -42,11 +43,11 @@ async function startServer() {
 
   app.post("/api/ai/generate", async (req, res) => {
     try {
-      const { prompt, systemInstruction } = req.body;
+      const { prompt, systemInstruction, model } = req.body;
       const ai = getGenAI();
       
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: model || "gemini-1.5-flash",
         contents: prompt,
         config: {
           systemInstruction: systemInstruction || "You are a helpful assistant for teachers."
@@ -86,7 +87,7 @@ async function startServer() {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt
       });
 

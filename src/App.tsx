@@ -23,7 +23,7 @@ import {
   PieChart as RechartsPieChart,
   Pie
 } from 'recharts';
-import { GoogleGenAI } from "@google/genai";
+import { generateContent, generateLessonPlan } from './lib/ai';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { ContentManagementView } from './components/ContentManagementView';
@@ -3569,7 +3569,6 @@ const StudentDetailView = ({
     setIsAnalyzingNotes(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
       const prompt = `
 נתח את ההערות הבאות שכתב מורה על תלמיד בשם ${student.name}.
 ההערות: "${student.notes}"
@@ -3587,12 +3586,7 @@ const StudentDetailView = ({
 }
 השב בעברית בלבד (פרט למפתח ה-JSON).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-      });
-
-      const text = response.text || '';
+      const text = await generateContent(prompt);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const result = JSON.parse(jsonMatch[0]);
@@ -4595,7 +4589,6 @@ const StudentDetailView = ({
                                     const notes = student.notes || 'אין הערות נוספות';
   
                                     try {
-                                      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
                                       const prompt = `${aiWeights.customSystemPrompt || 'אתה יועץ פדגוגי מומחה ומלווה מקצועי של צוותי הוראה.'} 
 משוב פדגוגי והמלצות לקידום אישי עבור התלמיד/ה: ${student.name}.
 
@@ -4614,13 +4607,8 @@ const StudentDetailView = ({
 התייחס ספציפית לשילוב בין רמת העניין, הצורך בתמיכה והעדפות הסביבה כדי לייצר אסטרטגיית למידה אופטימלית.
 השב בעברית בלבד.`;
   
-                                      const response = await ai.models.generateContent({
-                                        model: "gemini-3-flash-preview",
-                                        contents: [{ parts: [{ text: prompt }] }],
-                                      });
-  
-                                      const rec = response.text || 'מצטערים, לא ניתן היה להפיק המלצה ברגע זה. נסה שנית.';
-                                      updateStudent('ai_pedagogy_recommendation', rec);
+                                      const text = await generateContent(prompt, aiWeights.customSystemPrompt);
+                                      updateStudent('ai_pedagogy_recommendation', text);
                                     } catch (error) {
                                       console.error("AI Error:", error);
                                       updateStudent('ai_pedagogy_recommendation', '❌ חלה שגיאה בחיבור ל-AI. אנא ודא שהמערכת מחוברת לאינטרנט ונסה שוב.');
@@ -8586,17 +8574,13 @@ const AIAppGenerator = ({ students }: any) => {
     if (!prompt) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const fullPrompt = `You are a pedagogical assistant for a teacher.
       The teacher wants: ${prompt}
       The class has ${students.length} students: ${students.map((s:any)=>s.name).join(', ')}.
       Generate a professional classroom task or material in Hebrew. Use markdown formatting if needed.`;
       
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: fullPrompt
-      });
-      setResult(response.text || "לא התקבל תוכן.");
+      const text = await generateContent(fullPrompt);
+      setResult(text || "לא התקבל תוכן.");
     } catch (error) {
       console.error("AI Generation failed", error);
       setResult("מצטערים, אך אירעה שגיאה בייצור התוכן. אנא בדקו את חיבור האינטרנט או נסו שנית מאוחר יותר.");
@@ -10203,7 +10187,6 @@ export default function App() {
 
   const handleAICommand = async (text: string) => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
       const prompt = `
 אתה עוזר וירטואלי חכם למורה בבית הספר. קרא את הפקודה של המורה הבאה:
 "${text}"
@@ -10225,15 +10208,10 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
 אם הפקודה לא מובנת, החזר מערך ריק והוסף showToast עם שגיאה שיאמר למורה שלא הבנת.
 הקפד להחזיר JSON תקין בלבד (ללא ציטוט סוג).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-      });
-
-      let responseText = response.text || "[]";
-      responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const responseText = await generateContent(prompt);
+      let cleanJSON = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      const commands = JSON.parse(responseText);
+      const commands = JSON.parse(cleanJSON);
       let acted = false;
       let replyMessage = "הפעולות בוצעו בהצלחה!";
 
@@ -10382,8 +10360,6 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      
       const seatsDescription = validSeats.map(idx => {
         const r = Math.floor(idx / cols);
         const c = idx % cols;
@@ -10467,15 +10443,10 @@ Instructions:
 7. Balance: Adjust the strictness of these rules based on the provided AI STRATEGY WEIGHTS.
 8. Return ONLY a JSON array: [ { "studentId": "...", "seatIndex": ... } ]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-      });
-
-      let responseText = response.text || "[]";
-      responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const responseText = await generateContent(prompt, aiWeights.customSystemPrompt);
+      const cleanJSON = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      const assignments = JSON.parse(responseText);
+      const assignments = JSON.parse(cleanJSON);
       
       updateCurrentConfig((prev: any) => {
         const newGridFlat = Array(prev.rows * prev.cols).fill(null);
@@ -10830,15 +10801,11 @@ Instructions:
       
       // Request Gemini explanation in background
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
         const prompt = `אתה יועץ פדגוגי. הכיתה הרגע סודרה מחדש באמצעות אלגוריתם (Simulated Annealing) בהתחשב באילוצים החברתיים והלימודיים.
 אנא כתוב משפט אחד קצרצר ומעודד בלבד שיקפוץ למורה ויאמר שהסידור בוצע בהצלחה ולקח בחשבון את העדפות התלמידים.`;
-        ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
-          contents: prompt
-        }).then(res => {
-          if (res.text) {
-             setNotifications(prev => [{ id: Date.now() + 1, text: res.text as string, type: 'info' }, ...prev]);
+        generateContent(prompt, undefined, "gemini-1.5-flash").then(text => {
+          if (text) {
+             setNotifications(prev => [{ id: Date.now() + 1, text: text as string, type: 'info' }, ...prev]);
           }
         }).catch(err => console.error(err));
       } catch (e) {
