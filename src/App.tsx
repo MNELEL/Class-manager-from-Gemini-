@@ -8959,7 +8959,7 @@ const RemindersView = ({ config, updateConfig, students, onBack }: any) => {
   );
 };
 
-const GoogleWorkspaceView = ({ googleUser, token, onBack }: { googleUser: any, token: string | null, onBack: () => void }) => {
+const GoogleWorkspaceView = ({ googleUser, token, onBack, setViewType }: { googleUser: any, token: string | null, onBack: () => void, setViewType: (v: any) => void }) => {
   const [activeTab, setActiveTab] = useState<'drive' | 'gmail' | 'calendar'>('drive');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -9029,7 +9029,17 @@ const GoogleWorkspaceView = ({ googleUser, token, onBack }: { googleUser: any, t
                 <p className="text-sm font-bold text-slate-400">מרכז הכלים הפדגוגיים של Google</p>
              </div>
           </div>
-          <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+          <div className="flex items-center gap-3">
+             {activeTab === 'drive' && (
+                <button 
+                  onClick={() => setViewType('tools')}
+                  className="px-6 py-3 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-2xl font-black text-sm flex items-center gap-2 border border-brand-100 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  דו״ח חדש
+                </button>
+             )}
+             <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
              <button 
                onClick={() => setActiveTab('drive')} 
                className={cn("px-6 py-3 rounded-xl text-sm font-black transition-all", activeTab === 'drive' ? "bg-white dark:bg-slate-700 text-brand-600 shadow-xl" : "text-slate-500 hover:text-slate-700")}
@@ -9059,6 +9069,7 @@ const GoogleWorkspaceView = ({ googleUser, token, onBack }: { googleUser: any, t
              </button>
           </div>
        </div>
+    </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
           <div className="max-w-5xl mx-auto">
@@ -9153,10 +9164,15 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     if (!googleUser) return;
     setIsWorkspaceActionLoading(true);
     try {
-      const content = `רשימת תלמידים - ${currentConfig.name}\n\n` + 
-        students.map((s: any, i: number) => `${i + 1}. ${s.name}`).join('\n');
+      const content = `דוח כיתה: ${currentConfig.name}\n` +
+        `תאריך הפקה: ${new Date().toLocaleDateString('he-IL')}\n\n` +
+        `רשימת תלמידים:\n` +
+        students.map((s: any, i: number) => {
+          const groupName = currentConfig.groups?.find((g: any) => s.groups?.includes(g.id))?.name;
+          return `${i + 1}. ${s.name}${s.nickname ? ` (${s.nickname})` : ''}${groupName ? ` - קבוצה: ${groupName}` : ''}`;
+        }).join('\n');
       
-      const docUrl = await exportToDocs(`כיתת ${currentConfig.name} - רשימת תלמידים`, content);
+      const docUrl = await exportToDocs(`דוח כיתה ${currentConfig.name} - ${new Date().toLocaleDateString('he-IL')}`, content);
       setNotifications((prev: any) => [{ id: Date.now(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
       window.open(docUrl, '_blank');
     } catch (err: any) {
@@ -11471,7 +11487,7 @@ Instructions:
           </div>
         </div>
       );
-      case 'workspace': return <GoogleWorkspaceView googleUser={googleUser} token={workspaceToken} onBack={onBackToGrid} />;
+      case 'workspace': return <GoogleWorkspaceView googleUser={googleUser} token={workspaceToken} onBack={onBackToGrid} setViewType={setViewType} />;
       case 'tools': return <ToolsView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} exportToExcel={exportToExcel} importFromCSV={importFromCSV} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />;
       case 'settings': return (
         <SettingsView 

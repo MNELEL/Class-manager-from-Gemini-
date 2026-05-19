@@ -18,7 +18,14 @@ async function startServer() {
       if (!apiKey) {
         throw new Error("GEMINI_API_KEY environment variable is required");
       }
-      genAI = new GoogleGenAI({ apiKey });
+      genAI = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
     }
     return genAI;
   };
@@ -99,8 +106,11 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server is listening on 0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch(error => {
+  console.error("CRITICAL: Failed to start server:", error);
+  process.exit(1);
+});
