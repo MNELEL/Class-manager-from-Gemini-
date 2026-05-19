@@ -162,7 +162,7 @@ import {
   Edit2,
   Archive,
   Image as ImageIcon,
-  Map,
+  Map as MapIcon,
   Trash2 as TrashIcon
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -199,6 +199,8 @@ import {
   sendGmail, 
   scheduleCalendarEvent 
 } from './lib/workspace';
+
+import { Student, ClassroomConfig, ClassroomEvent } from './types.ts';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -708,6 +710,7 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 
 // --- Helper Components ---
 
+
 const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView, totalCols, totalRows, isLocked = false }: any) => {
   return (
     <motion.div
@@ -723,10 +726,12 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
         } : {})
       }}
       draggable={editMode === 'structure' && !isLocked}
-      onDragStart={(e) => {
+      onDragStart={(e: any) => {
         if (editMode === 'structure' && !isLocked) {
-          e.dataTransfer.setData('type', 'teacher-desk');
-          e.dataTransfer.setData('index', index.toString());
+          if (e.dataTransfer) {
+            e.dataTransfer.setData('type', 'teacher-desk');
+            e.dataTransfer.setData('index', index.toString());
+          }
         }
       }}
       className={cn(
@@ -956,7 +961,7 @@ const DeskCell = ({
       layoutId={`desk-${idx}`}
       data-student-id={studentId || undefined}
       draggable={(editMode === 'structure' && !isHidden) || (editMode === 'placement' && !!studentId)}
-      onDragStart={(e) => {
+      onDragStart={(e: any) => {
         if (editMode === 'structure') handleDeskDragStart(e);
         else if (editMode === 'placement' && studentId) {
           setDraggedStudentId(studentId);
@@ -980,7 +985,7 @@ const DeskCell = ({
       }}
       whileHover={is3DView ? { scale: (currentConfig.deskScales?.[idx] || 1) * 1.05, y: -15, rotateX: 5, rotateY: -2 } : { scale: (currentConfig.deskScales?.[idx] || 1) * 1.05, y: -4 }}
       whileTap={{ scale: (currentConfig.deskScales?.[idx] || 1) * 0.98 }}
-      animate={isSelected ? { scale: (currentConfig.deskScales?.[idx] || 1) * 1.1, y: -15, z: 60, shadow: "0 30px 60px rgba(0,0,0,0.3)" } : { scale: currentConfig.deskScales?.[idx] || 1, y: 0, z: 0 }}
+      animate={isSelected ? { scale: (currentConfig.deskScales?.[idx] || 1) * 1.1, y: -15, z: 60, boxShadow: "0 30px 60px rgba(0,0,0,0.3)" } : { scale: currentConfig.deskScales?.[idx] || 1, y: 0, z: 0 }}
       transition={{ type: "spring", stiffness: 350, damping: 20 }}
       style={{ 
         gridColumn: colPos, 
@@ -1958,7 +1963,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
                     />
                     <Tooltip 
                       cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSze: '12px', fontWeight: 'bold' }}
+                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
                     />
                     <Bar 
                       dataKey="average" 
@@ -2226,7 +2231,7 @@ const EventsView = ({ currentConfig, updateCurrentConfig, onBack }: { currentCon
 
   const eventTypes: any = {
     activity: { label: 'פעילות מיוחדת', color: 'from-indigo-500 to-blue-600', textColor: 'text-indigo-600', borderColor: 'border-indigo-100', icon: <Sparkles className="w-4 h-4" /> },
-    field_trip: { label: 'טיול/סיור', color: 'from-emerald-500 to-teal-600', textColor: 'text-emerald-600', borderColor: 'border-emerald-100', icon: <Map className="w-4 h-4" /> },
+    field_trip: { label: 'טיול/סיור', color: 'from-emerald-500 to-teal-600', textColor: 'text-emerald-600', borderColor: 'border-emerald-100', icon: <MapIcon className="w-4 h-4" /> },
     meeting: { label: 'אסיפת הורים/פגישה', color: 'from-amber-500 to-orange-600', textColor: 'text-amber-600', borderColor: 'border-amber-100', icon: <Users className="w-4 h-4" /> },
     important_date: { label: 'תאריך חשוב', color: 'from-rose-500 to-pink-600', textColor: 'text-rose-600', borderColor: 'border-rose-100', icon: <CalendarDays className="w-4 h-4" /> },
     other: { label: 'אחר', color: 'from-slate-500 to-slate-600', textColor: 'text-slate-600', borderColor: 'border-slate-100', icon: <Info className="w-4 h-4" /> }
@@ -3159,7 +3164,7 @@ const ProgressView = ({ onBack }: { onBack: () => void }) => {
                   "w-12 h-12 rounded-2xl flex items-center justify-center mb-2",
                   `bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`
                 )}>
-                  {React.cloneElement(card.icon as React.ReactElement, { className: "w-6 h-6" })}
+                  {React.cloneElement(card.icon as React.ReactElement<any>, { className: "w-6 h-6" })}
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{card.label}</h4>
@@ -3549,7 +3554,7 @@ const StudentDetailView = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState('info');
   const [isWorkspaceActionLoading, setIsWorkspaceActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history' | 'pedagogical_adjustments'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'rewards' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history' | 'pedagogical_adjustments'>('info');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(student.name);
   
@@ -5079,7 +5084,7 @@ const StudentDetailView = ({
                                      <div className="p-2 bg-brand-50 dark:bg-brand-900/20 rounded-xl text-brand-600">
                                         {r.icon === 'Clock' && <Clock className="w-4 h-4" />}
                                         {r.icon === 'Zap' && <Zap className="w-4 h-4" />}
-                                        {r.icon === 'Map' && <Map className="w-4 h-4" />}
+                                        {r.icon === 'Map' && <MapIcon className="w-4 h-4" />}
                                         {r.icon === 'CheckCircle2' && <CheckCircle2 className="w-4 h-4" />}
                                      </div>
                                      <span className="font-bold dark:text-white text-sm">{r.title}</span>
@@ -5665,7 +5670,7 @@ const DashboardView = ({ activeConfig, stats, students, onBack, updateCurrentCon
                 "p-4 rounded-2xl border shadow-inner",
                 `bg-${card.color}-100 dark:bg-${card.color}-900/20 border-${card.color}-200 dark:border-${card.color}-800`
               )}>
-                {React.cloneElement(card.icon as React.ReactElement, { className: `w-8 h-8 text-${card.color}-700 dark:text-${card.color}-400` })}
+                {React.cloneElement(card.icon as React.ReactElement<any>, { className: `w-8 h-8 text-${card.color}-700 dark:text-${card.color}-400` })}
               </div>
               {card.badge && (
                 <Badge className={cn(
@@ -7327,7 +7332,7 @@ const RewardsView = ({ rewards = [], student_points = {}, updateCurrentConfig, o
             <div className="absolute top-0 right-0 w-24 h-24 bg-brand-50/50 dark:bg-brand-900/10 rounded-bl-[4rem] flex items-center justify-center -mr-4 -mt-4">
                {r.icon === 'Clock' && <Clock className="w-8 h-8 text-brand-600" />}
                {r.icon === 'Zap' && <Zap className="w-8 h-8 text-brand-600" />}
-               {r.icon === 'Map' && <Map className="w-8 h-8 text-brand-600" />}
+               {r.icon === 'Map' && <MapIcon className="w-8 h-8 text-brand-600" />}
                {r.icon === 'CheckCircle2' && <CheckCircle2 className="w-8 h-8 text-brand-600" />}
             </div>
             
@@ -7344,7 +7349,7 @@ const RewardsView = ({ rewards = [], student_points = {}, updateCurrentConfig, o
             <div className="space-y-4">
                <p className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">בחרו תלמיד למימוש:</p>
                <div className="max-h-40 overflow-y-auto custom-scrollbar flex flex-wrap gap-2">
-                  {Object.entries(student_points).filter(([, p]) => (p as number) >= r.price).map(([sId, p]) => (
+                  {Object.entries(student_points).filter(([, p]) => (p as number) >= r.price).map(([sId, p]: [string, any]) => (
                     <button 
                       key={sId}
                       onClick={() => buyReward(r.id, sId)}
@@ -8811,7 +8816,7 @@ const EventLog = ({ config, updateConfig }: { config: any, updateConfig: any }) 
 
 const RemindersView = ({ config, updateConfig, students, onBack }: any) => {
   const [newReminder, setNewReminder] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | number | null>(null);
   const reminders = config.reminders || [];
 
   const addReminder = () => {
@@ -9201,7 +9206,7 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
 
         <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 min-h-[600px] flex flex-col items-center shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-             {React.cloneElement(tool?.icon as React.ReactElement, { className: "w-64 h-64" })}
+             {React.cloneElement(tool?.icon as React.ReactElement<any>, { className: "w-64 h-64" })}
           </div>
           
           <div className="w-full relative z-10">
@@ -9413,7 +9418,7 @@ export default function App() {
       { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '', birthday: '2015-05-14' },
       { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '', birthday: '2015-06-20' },
       { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'], notes: '', birthday: '2015-12-10' }
-    ],
+    ] as Student[],
     hiddenDesks: [] as number[],
     rowGaps: [] as number[],
     columnGaps: [] as number[],
@@ -9466,7 +9471,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management'>('landing');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management'>('landing');
   const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
   const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
@@ -9556,7 +9561,7 @@ export default function App() {
   const [quickAddHeight, setQuickAddHeight] = useState('medium');
   const [quickAddGroups, setQuickAddGroups] = useState<string[]>([]);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<(string | number)[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
@@ -9579,7 +9584,7 @@ export default function App() {
   }, [accessibility.fontSize]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | number | null>(null);
   const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' });
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
@@ -9983,7 +9988,7 @@ export default function App() {
   useEffect(() => {
     if (selectedStudentId && viewType === 'grid') {
       const timer = setTimeout(() => {
-        const deskElement = document.querySelector(`[data-student-id="${selectedStudentId}"]`);
+        const deskElement = document.querySelector(`[data-student-id="${String(selectedStudentId)}"]`);
         if (deskElement) {
           deskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -10084,7 +10089,7 @@ export default function App() {
       const cols = activeConfig.cols;
 
       if (e.key === 'Tab') {
-        const currentIdxInPlaced = studentIdsInGrid.indexOf(selectedStudentId);
+        const currentIdxInPlaced = studentIdsInGrid.indexOf(selectedStudentId as any);
         let nextPlacedIdx = 0;
         if (e.shiftKey) {
           nextPlacedIdx = (currentIdxInPlaced - 1 + studentIdsInGrid.length) % studentIdsInGrid.length;
@@ -10334,7 +10339,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
     const rows = activeConfig.rows;
     const cols = activeConfig.cols;
     const validSeats: number[] = [];
-    const lockedAssignments: Record<number, string> = {};
+    const lockedAssignments: Record<number, any> = {};
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -11688,7 +11693,7 @@ Instructions:
             className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
             title="סיור מודרך"
           >
-            <Map className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <MapIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
 
           <div className="hidden xl:flex items-center gap-1 bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -13640,7 +13645,7 @@ Instructions:
                            <button 
                              onClick={() => {
                                const category = BEHAVIOR_CATEGORIES[0];
-                               selectedStudentIds.forEach(id => {
+                               selectedStudentIds.forEach((id: any) => {
                                  handleUpdatePoints(id, category.points, category.label, category.id);
                                });
                                setSelectedStudentIds([]);
@@ -13655,7 +13660,7 @@ Instructions:
                            <button 
                              onClick={() => {
                                const category = BEHAVIOR_CATEGORIES[4]; 
-                               selectedStudentIds.forEach(id => {
+                               selectedStudentIds.forEach((id: any) => {
                                  handleUpdatePoints(id, category.points, category.label, category.id);
                                });
                                setSelectedStudentIds([]);

@@ -10,14 +10,15 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends (Component as any) {
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null
+  };
+
   constructor(props: Props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null
-    };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -30,7 +31,7 @@ class ErrorBoundary extends (Component as any) {
   }
 
   render() {
-    if ((this.state as any).hasError) {
+    if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 rtl" dir="rtl">
           <div className="max-w-2xl w-full bg-white rounded-[2rem] p-8 shadow-2xl border-2 border-rose-100">
@@ -47,9 +48,9 @@ class ErrorBoundary extends (Component as any) {
             </div>
 
             <div className="bg-slate-50 rounded-2xl p-6 mb-8 overflow-auto max-h-60 border border-slate-100">
-              <p className="text-rose-700 font-mono text-sm mb-2">{(this.state as any).error?.toString()}</p>
+              <p className="text-rose-700 font-mono text-sm mb-2">{this.state.error?.toString()}</p>
               <pre className="text-slate-400 font-mono text-[10px] leading-relaxed">
-                {(this.state as any).errorInfo?.componentStack}
+                {this.state.errorInfo?.componentStack}
               </pre>
             </div>
 
@@ -75,7 +76,7 @@ class ErrorBoundary extends (Component as any) {
       );
     }
 
-    return (this.props as any).children;
+    return this.props.children;
   }
 }
 

@@ -1,21 +1,22 @@
 export interface Student {
-  id: string | number;
+  id: string;
   name: string;
   nickname?: string;
-  preferred: (string | number)[];
-  forbidden: (string | number)[];
-  separateFrom: (string | number)[];
-  forbiddenNeighbors: (string | number)[];
-  keepDistantFrom: (string | number)[];
+  preferred?: string[];
+  forbidden?: string[];
+  separateFrom?: string[];
+  forbiddenNeighbors?: string[];
+  keepDistantFrom?: string[];
   frontPrefer?: boolean;
   backPrefer?: boolean;
   tall?: boolean;
   height?: 'short' | 'medium' | 'tall';
-  preferredRow?: 'front' | 'middle' | 'back';
+  preferredRow?: 'front' | 'middle' | 'back' | 'any';
+  rowPreference?: 'front' | 'middle' | 'back' | 'any';
   cornerPrefer?: boolean;
+  cornerPreference?: boolean;
   notes?: string;
   groups?: string[];
-  // New fields
   attendance?: { date: string; status: 'present' | 'absent' | 'late' }[];
   grades?: { id?: string | number, subject: string; grade: number; testName?: string; date: string; category?: 'quiz' | 'midterm' | 'final' | 'homework' | 'other' }[];
   physicalHeight?: number; // cm
@@ -24,20 +25,25 @@ export interface Student {
   isAlwaysBack?: boolean;
   isAlwaysMiddle?: boolean;
   birthday?: string; // YYYY-MM-DD
-  
-  // New School Features
-  diagnostics?: { id: string, type: string, description: string, date: string, accommodations: string[] }[];
+  avatar?: string;
+  environmentPreferences?: string[];
+  areaPref?: any;
+  gender?: string;
+  noteTags?: string[];
+  pedagogicalDiagnoses?: string[];
+  learningAccommodations?: string[];
+  ai_pedagogy_recommendation?: string;
+  successes?: string;
+  pedagogicalReminders?: { id: string, note: string, dueDate: string, completed: boolean }[];
   communications?: { id: string, date: string, type: 'phone' | 'email' | 'letter' | 'meeting', summary: string, toParent: boolean }[];
   documents?: { id: string, title: string, url: string, date: string, type: 'image' | 'pdf' | 'other' }[];
   pastHistory?: { year: string, teacher: string, summary: string, gradesAvg: number }[];
   tasks?: { id: string, title: string, description: string, dueDate: string, status: 'pending' | 'completed', category: 'homework' | 'project' | 'study' | 'other', priority: 'low' | 'medium' | 'high' }[];
-  pedagogicalReminders?: { id: string, note: string, dueDate: string, completed: boolean }[];
   lessons?: { id: string, name: string, day: string, time: string, room?: string }[];
-  
-  // New fields from prompt
-  interestLevel?: 'low' | 'medium' | 'high'; // רמת עניין
-  supportNeeded?: 'none' | 'low' | 'medium' | 'high'; // צורך בתמיכה לימודית
-  // Migration fields for database integration
+  diagnostics?: { id: string, type: string, description: string, date: string, accommodations: string[] }[];
+  status?: string;
+  interestLevel?: 'low' | 'medium' | 'high';
+  supportNeeded?: 'none' | 'low' | 'medium' | 'high';
   externalId?: string;
   metadata?: Record<string, any>;
   createdAt?: string;
