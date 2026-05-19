@@ -31,6 +31,15 @@ async function startServer() {
   };
 
   // API routes
+  app.get("/api/health", (req, res) => {
+    console.log("Health check pinged");
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV
+    });
+  });
+
   app.post("/api/ai/generate", async (req, res) => {
     try {
       const { prompt, systemInstruction } = req.body;
@@ -106,7 +115,9 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server is listening on 0.0.0.0:${PORT}`);
+    console.log(`[SERVER] Started successfully`);
+    console.log(`[SERVER] Listening on 0.0.0.0:${PORT}`);
+    console.log(`[SERVER] Mode: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 

@@ -1,19 +1,26 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
 
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code == 'failed-precondition') {
-        // Multiple tabs open, persistence can only be enabled in one
-        console.info('Persistence failed: Multiple tabs open');
-    } else if (err.code == 'unimplemented') {
-        // The current browser does not support persistence
-        console.info('Persistence failed: Unimplemented');
-    }
-});
+// Ensure we use the correct database ID from config
+// This prevents "Database (default) not found" error
+const dbId = firebaseConfig.firestoreDatabaseId;
+
+if (!dbId || dbId === '(default)') {
+  console.warn('Firebase initialized with (default) database. Double-check your firestoreDatabaseId in config.');
+}
+
+// Initialize Firestore with modern cache management (replaces deprecated enableIndexedDbPersistence)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+}, dbId);
+
+export const auth = getAuth(app);
