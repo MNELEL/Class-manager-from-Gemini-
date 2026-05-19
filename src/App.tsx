@@ -11547,13 +11547,13 @@ Instructions:
     const hebDateString = hd.renderGematriya();
     
     if (isPresentationMode) return (
-      <div className="fixed top-6 left-6 z-[200]">
+      <div className="fixed top-8 right-8 z-[200]">
         <button 
           onClick={() => setIsPresentationMode(false)}
-          className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 hover:text-brand-600 transition-all shadow-2xl group flex items-center gap-3 font-black"
+          className="px-6 py-4 bg-brand-600 dark:bg-brand-500 text-white rounded-full font-black text-sm shadow-2xl hover:scale-105 transition-all flex items-center gap-3 ring-4 ring-brand-100 dark:ring-brand-900/30 group whitespace-nowrap"
         >
-          <Minimize2 className="w-6 h-6" />
-          <span>צא ממצב הצגה</span>
+          <Minimize2 className="w-5 h-5 group-hover:scale-125 transition-transform" />
+          <span>סיום מצב הצגה</span>
         </button>
       </div>
     );
@@ -11697,7 +11697,12 @@ Instructions:
           <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-1" />
 
           <button 
-            onClick={() => setIsPresentationMode(true)}
+            onClick={() => {
+              setIsPresentationMode(true);
+              setViewType('grid');
+              setIs3DView(true);
+              setEditMode('placement');
+            }}
             className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
             title="מצב הצגה (הסתרת ממשק)"
           >
@@ -12189,7 +12194,10 @@ Instructions:
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-6 custom-scrollbar">
+      <div className={cn(
+        "flex-1 overflow-y-auto px-4 pb-6 space-y-6 custom-scrollbar",
+        isPresentationMode && "p-0 space-y-0 overflow-hidden"
+      )}>
         {viewType === 'grid' ? (
         <>
           {/* Group Constraints Section */}
@@ -12853,7 +12861,7 @@ Instructions:
                   >
                     {viewType === 'grid' ? (
                       <div className="flex-1 flex overflow-hidden">
-                        {!isMobile && (
+                        {!isMobile && !isPresentationMode && (
                           <aside className="w-72 border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col z-10 shrink-0">
                             <StudentPickerGrid 
                               students={activeConfig.students} 
@@ -12872,6 +12880,7 @@ Instructions:
                           is3DView ? "bg-slate-900/10 dark:bg-black/50" : "bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] dark:bg-[radial-gradient(#1e293b_1.5px,transparent_1.5px)] [background-size:32px_32px] bg-slate-50 dark:bg-slate-950"
                         )}>
                    {/* Grid Toolbar */}
+                   {!isPresentationMode && (
                    <div className="glass-card px-4 py-2 rounded-2xl flex items-center gap-3 mb-10 z-30 shadow-bento shrink-0 relative">
                      {/* Dashboard Link */}
                      <button 
@@ -13201,11 +13210,12 @@ Instructions:
                        </div>
                      )}
                    </div>
+                   )}
 
                       {/* Grid Content */}
                      <ResponsiveGridContainer is3DView={is3DView}>
                        <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
-                         {violations.length > 0 && !isPrinting && (
+                         {violations.length > 0 && !isPrinting && !isPresentationMode && (
                           <div className="absolute top-6 left-6 z-[60] flex flex-col gap-2 max-w-xs pointer-events-none" dir="rtl">
                             {violations.slice(0, 4).map((v, i) => (
                               <motion.div 
@@ -13237,7 +13247,7 @@ Instructions:
                           </div>
                         )}
                        {/* Floating UI for Structure Mode */}
-                       {editMode === 'structure' && (
+                       {editMode === 'structure' && !isPresentationMode && (
                           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-6 z-50">
                              <div className="flex items-center gap-3">
                                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">שורות</span>
@@ -14134,72 +14144,78 @@ Instructions:
       )}
 
       {/* Floating Notifications */}
-      <FloatingAIAssistant onCommand={handleAICommand} />
-      <div className="fixed bottom-[80px] lg:bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
-        <AnimatePresence>
-          {notifications.map((n) => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, x: -50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 10, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className={cn(
-                "p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto border-l-4 min-w-[280px]",
-                n.type === 'error' ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-800 dark:text-rose-200 shadow-rose-200 dark:shadow-none" : "bg-white dark:bg-slate-900 border-brand-500 text-slate-700 dark:text-slate-200 shadow-slate-200 dark:shadow-none"
-              )}
-            >
-              {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-brand-500" />}
-              <div className="flex-1">
-                <p className="text-xs font-black">{n.text}</p>
-              </div>
-              <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-                <X className="w-3 h-3" />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {!isPresentationMode && <FloatingAIAssistant onCommand={handleAICommand} />}
+      {!isPresentationMode && (
+        <div className="fixed bottom-[80px] lg:bottom-14 left-6 z-[110] flex flex-col gap-3 pointer-events-none">
+          <AnimatePresence>
+            {notifications.map((n) => (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, x: -50, scale: 0.9 }}
+                animate={{ opacity: 1, x: 10, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className={cn(
+                  "p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto border-l-4 min-w-[280px]",
+                  n.type === 'error' ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-800 dark:text-rose-200 shadow-rose-200 dark:shadow-none" : "bg-white dark:bg-slate-900 border-brand-500 text-slate-700 dark:text-slate-200 shadow-slate-200 dark:shadow-none"
+                )}
+              >
+                {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-brand-500" />}
+                <div className="flex-1">
+                  <p className="text-xs font-black">{n.text}</p>
+                </div>
+                <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Mobile Bottom Navigation Bar */}
+      {!isPresentationMode && (
         <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-2 py-3 z-[100] pb-[calc(12px+env(safe-area-inset-bottom))]">
-        {([
-          { id: 'dashboard', icon: <PieChartIcon className="w-5 h-5" />, label: 'ראשי' },
-          { id: 'attendance', icon: <Calendar className="w-5 h-5" />, label: 'נוכחות' },
-          { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
-          { id: 'progress', icon: <LineChart className="w-5 h-5" />, label: 'התקדמות' },
-          { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
-          { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'כיתה' }
-        ] as const).map(nav => (
-          <button
-            key={nav.id}
-            onClick={() => {
-              setViewType(nav.id);
-              setIsSidebarOpen(false);
-            }}
-            className={cn(
-              "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative flex-1",
-              viewType === nav.id 
-                ? "text-brand-600 dark:text-brand-400" 
-                : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-            )}
-          >
-            {nav.icon}
-            <span className="text-[10px] font-black">{nav.label}</span>
-            {viewType === nav.id && (
-              <motion.div layoutId="mobile-nav-active" className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-1 bg-brand-600 rounded-b-lg" />
-            )}
-          </button>
-        ))}
-      </nav>
+          {([
+            { id: 'dashboard', icon: <PieChartIcon className="w-5 h-5" />, label: 'ראשי' },
+            { id: 'attendance', icon: <Calendar className="w-5 h-5" />, label: 'נוכחות' },
+            { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
+            { id: 'progress', icon: <LineChart className="w-5 h-5" />, label: 'התקדמות' },
+            { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
+            { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'כיתה' }
+          ] as const).map(nav => (
+            <button
+              key={nav.id}
+              onClick={() => {
+                setViewType(nav.id);
+                setIsSidebarOpen(false);
+              }}
+              className={cn(
+                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative flex-1",
+                viewType === nav.id 
+                  ? "text-brand-600 dark:text-brand-400" 
+                  : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              {nav.icon}
+              <span className="text-[10px] font-black">{nav.label}</span>
+              {viewType === nav.id && (
+                <motion.div layoutId="mobile-nav-active" className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-1 bg-brand-600 rounded-b-lg" />
+              )}
+            </button>
+          ))}
+        </nav>
+      )}
 
-      <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
-        <div>CLass&scool pro-manager // Ready</div>
-        <div className="flex gap-4">
-          <span>{activeConfig.students.length} תלמידים</span>
-          <span>•</span>
-          <span>{activeConfig.grid.filter(id => id).length} משובצים</span>
-        </div>
-      </footer>
+      {!isPresentationMode && (
+        <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
+          <div>CLass&scool pro-manager // Ready</div>
+          <div className="flex gap-4">
+            <span>{activeConfig.students.length} תלמידים</span>
+            <span>•</span>
+            <span>{activeConfig.grid.filter(id => id).length} משובצים</span>
+          </div>
+        </footer>
+      )}
       {isFurnitureModalOpen && (
         <FurnitureManager 
           furniture={activeConfig.furniture} 
