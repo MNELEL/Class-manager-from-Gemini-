@@ -2026,7 +2026,8 @@ const AttendanceView = ({ students, onBack, updateCurrentConfig }: { students: a
 };
 
 const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: (update: any) => void }) => {
-  const [filterCategory, setFilterCategory] = useState<'all' | 'quiz' | 'midterm' | 'final' | 'homework'>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'quiz' | 'midterm' | 'final' | 'homework' | 'other'>('all');
+  const [filterSubject, setFilterSubject] = useState<string>('all');
   const [isAddingGrade, setIsAddingGrade] = useState(false);
   const [newGrade, setNewGrade] = useState({ studentId: '', subject: 'מתמטיקה', grade: 90, testName: '', date: new Date().toISOString().split('T')[0], category: 'quiz' as any });
 
@@ -2039,12 +2040,19 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
   ];
 
   const allGrades = students.flatMap(s => (s.grades || []).map((g: any) => ({ ...g, studentName: s.name, studentId: s.id })));
-  const filteredGrades = filterCategory === 'all' ? allGrades : allGrades.filter(g => g.category === filterCategory);
+  const filteredGrades = allGrades.filter((g: any) => {
+    if (filterCategory !== 'all' && g.category !== filterCategory) return false;
+    if (filterSubject !== 'all' && (g.subject || 'כללי') !== filterSubject) return false;
+    return true;
+  });
+
+  // Unique Subjects for dropdown
+  const uniqueSubjects = Array.from(new Set(allGrades.map((g: any) => g.subject || 'כללי')));
 
   // Subject Statistics
   const subjectStats = useMemo(() => {
     const stats: Record<string, { total: number, count: number, name: string }> = {};
-    allGrades.forEach(g => {
+    filteredGrades.forEach((g: any) => {
       const subject = g.subject || 'כללי';
       if (!stats[subject]) stats[subject] = { total: 0, count: 0, name: subject };
       stats[subject].total += g.grade;
@@ -2054,7 +2062,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
       ...s,
       average: Math.round(s.total / s.count)
     })).sort((a, b) => b.average - a.average);
-  }, [allGrades]);
+  }, [filteredGrades]);
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -2168,29 +2176,44 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        <button 
-          onClick={() => setFilterCategory('all')}
-          className={cn(
-            "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap",
-            filterCategory === 'all' ? "bg-slate-900 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
-          )}
-        >
-          הכל
-        </button>
-        {categories.map(cat => (
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide w-full max-w-full">
           <button 
-            key={cat.id}
-            onClick={() => setFilterCategory(cat.id as any)}
+            onClick={() => setFilterCategory('all')}
             className={cn(
-              "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap flex items-center gap-2",
-              filterCategory === cat.id ? "bg-brand-600 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
+              "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap",
+              filterCategory === 'all' ? "bg-slate-900 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
             )}
           >
-            <div className={cn("w-2 h-2 rounded-full", cat.color)} />
-            {cat.label}
+            הכל
           </button>
-        ))}
+          {categories.map(cat => (
+            <button 
+              key={cat.id}
+              onClick={() => setFilterCategory(cat.id as any)}
+              className={cn(
+                "px-6 py-3 rounded-2xl font-black text-xs transition-all whitespace-nowrap flex items-center gap-2",
+                filterCategory === cat.id ? "bg-brand-600 text-white shadow-xl" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"
+              )}
+            >
+              <div className={cn("w-2 h-2 rounded-full", cat.color)} />
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        
+        <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+          <select
+            value={filterSubject}
+            onChange={(e) => setFilterSubject(e.target.value)}
+            className="p-3 pr-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-black text-slate-600 dark:text-slate-300 text-sm outline-none cursor-pointer w-full"
+          >
+            <option value="all">כל המקצועות</option>
+            {uniqueSubjects.map(subject => (
+              <option key={subject as string} value={subject as string}>{subject as string}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {isAddingGrade && (

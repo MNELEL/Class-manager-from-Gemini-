@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Brain, 
   Users, 
@@ -12,11 +12,113 @@ import {
   CloudIcon, 
   Check, 
   FileText,
-  Target
+  Target,
+  Wand2,
+  RefreshCcw,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
+  const [activeAiDemo, setActiveAiDemo] = useState<'seating' | 'insights' | 'behavior'>('seating');
+
+  const aiDemos = {
+    seating: {
+      title: 'שיבוץ ישיבה חכם',
+      description: 'המערכת מנתחת העדפות חזותיות, בעיות משמעת וקשרים חברתיים כדי לייצר את מפת הישיבה המושלמת.',
+      icon: <Brain className="w-5 h-5 text-indigo-500" />,
+      visual: (
+        <div className="relative w-full h-full bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-6 flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800">
+           <div className="flex gap-4 items-center absolute top-4 left-4 bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-lg border border-slate-100 dark:border-slate-700">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-black text-slate-700 dark:text-slate-300">AI Processing...</span>
+           </div>
+           
+           <div className="grid grid-cols-3 gap-4 mt-8 w-full max-w-sm">
+              {[...Array(6)].map((_, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: i * 0.1, duration: 0.5, repeat: Infinity, repeatType: 'reverse', repeatDelay: 2 }}
+                  className={cn(
+                    "h-16 rounded-2xl flex items-center justify-center text-xs font-bold shadow-sm",
+                    i % 3 === 0 ? "bg-emerald-100 text-emerald-700" : (i % 2 === 0 ? "bg-indigo-100 text-indigo-700" : "bg-rose-100 text-rose-700")
+                  )}
+                >
+                  <Users className="w-5 h-5 opacity-50" />
+                </motion.div>
+              ))}
+           </div>
+           <p className="mt-8 text-sm font-bold text-slate-400 text-center px-4">
+             מתחשב ב-14 פרמטרים שונים לכל תלמיד כדי להבטיח את סביבת הלמידה הטובה ביותר.
+           </p>
+        </div>
+      )
+    },
+    insights: {
+      title: 'תובנות פדגוגיות',
+      description: 'בינה מלאכותית שמזהה דפוסים למידה ומציעה התערבויות מותאמות אישית לכל תלמיד.',
+      icon: <Wand2 className="w-5 h-5 text-emerald-500" />,
+      visual: (
+        <div className="relative w-full h-full bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-6 flex flex-col justify-center gap-4 border border-slate-200 dark:border-slate-800">
+          <motion.div 
+             initial={{ x: -20, opacity: 0 }}
+             animate={{ x: 0, opacity: 1 }}
+             className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex gap-4"
+          >
+             <div className="w-10 h-10 bg-emerald-100 rounded-xl flex shrink-0 items-center justify-center text-emerald-600">
+                <Target className="w-5 h-5" />
+             </div>
+             <div>
+                <h4 className="text-sm font-black text-slate-800 dark:text-white">זיהוי ירידה בהישגים</h4>
+                <p className="text-xs text-slate-500 mt-1">זוהתה מגמת ירידה בציוני המתמטיקה של נועם בשבועיים האחרונים. מומלץ תרגול ממוקד.</p>
+             </div>
+          </motion.div>
+          
+          <motion.div 
+             initial={{ x: 20, opacity: 0 }}
+             animate={{ x: 0, opacity: 1 }}
+             transition={{ delay: 0.3 }}
+             className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex gap-4"
+          >
+             <div className="w-10 h-10 bg-brand-100 rounded-xl flex shrink-0 items-center justify-center text-brand-600">
+                <Brain className="w-5 h-5" />
+             </div>
+             <div>
+                <h4 className="text-sm font-black text-slate-800 dark:text-white">המלצת למידה קבוצתית</h4>
+                <p className="text-xs text-slate-500 mt-1">חיבור של מאיה עם דניאל לפרויקט הבא יכול לשפר את מעורבות שניהם לפי דפוסי העבר.</p>
+             </div>
+          </motion.div>
+        </div>
+      )
+    },
+    behavior: {
+      title: 'כתיבת משובי עומק',
+      description: 'ה-AI מעבד את כל הנתונים, הציונים והיסטוריית ההתנהגות ויוצר משובים מנוסחים היטב לאסיפות הורים.',
+      icon: <MessageSquare className="w-5 h-5 text-rose-500" />,
+      visual: (
+        <div className="relative w-full h-full bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-6 flex flex-col justify-center items-center border border-slate-200 dark:border-slate-800">
+           <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <Sparkles className="w-4 h-4" />
+                 </div>
+                 <h4 className="text-sm font-black text-slate-800 dark:text-white">טיוטת משוב נוצרה בהצלחה</h4>
+              </div>
+              <div className="space-y-2">
+                <motion.div initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 1.5, repeat: Infinity }} className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                   <div className="h-full bg-brand-500 w-1/2" />
+                </motion.div>
+                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full w-5/6" />
+                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full w-4/6" />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4 text-center">המשובים נכתבים על סמך 45 אירועי יומן ספציפיים.</p>
+           </div>
+        </div>
+      )
+    }
+  };
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-x-hidden" dir="rtl">
       {/* Decorative Background Elements */}
@@ -90,6 +192,78 @@ export const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
               </div>
             ))}
          </div>
+      </section>
+
+      {/* AI Interactive Showcase */}
+      <section className="relative z-10 py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 space-y-4">
+             <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20 mx-auto">
+               <Sparkles className="w-4 h-4" />
+               ClassPro AI Engine
+             </div>
+             <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white">אינטליגנציה שמשנה את פני הכיתה</h2>
+             <p className="text-xl text-slate-500 dark:text-slate-400 font-medium max-w-2xl mx-auto">העוזר האישי שלך עובד מאחורי הקלעים 24/7 כדי לנתח נתונים, להציע תובנות ולחסוך לך שעות של עבודה סיזיפית.</p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-12 border border-slate-200 dark:border-slate-800 shadow-2xl">
+            <div className="space-y-6">
+               {(Object.keys(aiDemos) as Array<keyof typeof aiDemos>).map((key) => (
+                 <button
+                   key={key}
+                   onClick={() => setActiveAiDemo(key)}
+                   className={cn(
+                     "w-full text-right p-6 rounded-3xl transition-all border-2 text-right flex flex-col gap-3",
+                     activeAiDemo === key 
+                       ? "bg-slate-50 dark:bg-slate-800 border-indigo-500 shadow-sm" 
+                       : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                   )}
+                 >
+                    <div className="flex items-center gap-4">
+                       <div className={cn(
+                         "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                         activeAiDemo === key ? "bg-white dark:bg-slate-700 shadow-sm" : "bg-slate-100 dark:bg-slate-800"
+                       )}>
+                         {aiDemos[key].icon}
+                       </div>
+                       <h3 className={cn(
+                         "text-xl font-black transition-colors",
+                         activeAiDemo === key ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
+                       )}>
+                         {aiDemos[key].title}
+                       </h3>
+                    </div>
+                    <AnimatePresence>
+                      {activeAiDemo === key && (
+                        <motion.p 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed overflow-hidden"
+                        >
+                          {aiDemos[key].description}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                 </button>
+               ))}
+            </div>
+            <div className="h-[400px] lg:h-[500px]">
+               <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeAiDemo}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 1.05, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-full h-full"
+                  >
+                    {aiDemos[activeAiDemo].visual}
+                  </motion.div>
+               </AnimatePresence>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Main Features Grid */}

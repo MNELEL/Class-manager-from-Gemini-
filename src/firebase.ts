@@ -12,7 +12,7 @@ const app = initializeApp(firebaseConfig);
 
 // Ensure we use the correct database ID from config
 // This prevents "Database (default) not found" error
-const dbId = firebaseConfig.firestoreDatabaseId;
+const dbId = (firebaseConfig as any).firestoreDatabaseId;
 
 if (!dbId || dbId === '(default)') {
   console.warn('Firebase initialized with (default) database. Double-check your firestoreDatabaseId in config.');
