@@ -2636,11 +2636,11 @@ const EventsView = ({ currentConfig, updateCurrentConfig, onBack }: { currentCon
                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed mb-8">{e.description}</p>
                        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-6">
                          <div className="flex items-center gap-4">
-                           <button onClick={() => handleEdit(e)} className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-900/20 text-slate-400 hover:text-brand-600 rounded-2xl transition-all" title="ערוך"><Edit3 className="w-4 h-4" /></button>
-                           <button onClick={() => confirm('האם אתה בטוח שברצונך למחוק אירוע זה?') && updateCurrentConfig((prev: any) => ({ ...prev, events: prev.events.filter((ev: any) => ev.id !== e.id) }))} className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-600 rounded-2xl transition-all" title="מחק"><Trash2 className="w-4 h-4" /></button>
-                         </div>
-                         <button className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-brand-600 transition-colors">פרטים מלאים</button>
-                       </div>
+                            <button onClick={() => handleEdit(e)} className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-900/20 text-slate-400 hover:text-brand-600 rounded-2xl transition-all" title="ערוך"><Edit3 className="w-4 h-4" /></button>
+                            <button onClick={() => confirm('האם אתה בטוח שברצונך למחוק אירוע זה?') && updateCurrentConfig((prev: any) => ({ ...prev, events: prev.events.filter((ev: any) => ev.id !== e.id) }))} className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-600 rounded-2xl transition-all" title="מחק"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                          <button className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-brand-600 transition-colors">פרטים מלאים</button>
+                        </div>
                      </div>
                      <div className="absolute -bottom-10 -right-10 opacity-[0.04] dark:opacity-[0.08] pointer-events-none group-hover:scale-125 transition-transform duration-1000 rotate-12">
                         {React.cloneElement(type.icon || <Sparkles />, { className: "w-48 h-48" })}
@@ -2662,12 +2662,15 @@ const BEHAVIOR_CATEGORIES = [
   { id: 'success_campaign', label: 'הצלחה במבצע', icon: '🎯', color: 'text-indigo-500', points: 30 },
   { id: 'disruption', label: 'הפרעה', icon: '📢', color: 'text-orange-500', points: -10 },
   { id: 'bad_learning', label: 'חוסר למידה', icon: '📝', color: 'text-rose-500', points: -15 },
-  { id: 'violence', label: 'אלימות', icon: '🚫', color: 'text-red-600', points: -50 },
+  { id: 'violence', label: 'אלימות', icon: '🚫', color: 'text-red-650', points: -50 },
   { id: 'missing_task', label: 'אי ביצוע משימה', icon: '❌', color: 'text-slate-500', points: -10 },
 ];
 
 const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications, students, setViewType }: { currentConfig: any, updateCurrentConfig: (update: any) => void, onBack: () => void, setNotifications: any, students: any[], setViewType?: any }) => {
+  const [activeTab, setActiveTab] = useState<'challenges' | 'points' | 'rewards'>('challenges');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  
   const [newCampaign, setNewCampaign] = useState({ 
     title: '', 
     description: '', 
@@ -2680,18 +2683,55 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
     status: 'active'
   });
 
+  // Rewards states
+  const [isAddingReward, setIsAddingReward] = useState(false);
+  const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
+  const [newReward, setNewReward] = useState({
+    title: '',
+    price: 100,
+    stock: 10,
+    icon: 'Zap'
+  });
+
+  // Points quick-add state
+  const [pointsChangeStudentId, setPointsChangeStudentId] = useState<string | null>(null);
+  const [ptsReason, setPtsReason] = useState('השתתפות יפה ומאמץ בשיעור');
+  const [ptsValue, setPtsValue] = useState(10);
+
+  // Student list search
+  const [studentSearch, setStudentSearch] = useState('');
+
   const campaigns = currentConfig.campaigns || [];
+  const rewards = currentConfig.rewards || [];
 
   const addCampaign = () => {
     if (!newCampaign.title || !newCampaign.targetPoints) return;
-    const item = { ...newCampaign, id: `camp-${Date.now()}`, currentPoints: 0, participants: [] };
-    updateCurrentConfig((prev: any) => ({
-      ...prev,
-      campaigns: [...campaigns, item]
-    }));
     
-    setNotifications((prev: any) => [{ id: Date.now(), text: `מבצע חדש הושק: ${newCampaign.title}`, type: 'success' }, ...prev]);
+    if (editingCampaignId) {
+      updateCurrentConfig((prev: any) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((camp: any) => 
+          camp.id === editingCampaignId 
+            ? { ...camp, ...newCampaign } 
+            : camp
+        )
+      }));
+      setNotifications((prev: any) => [{ id: Date.now(), text: `המבצע עודכן בהצלחה: ${newCampaign.title}`, type: 'success' }, ...prev]);
+      setEditingCampaignId(null);
+    } else {
+      const item = { ...newCampaign, id: `camp-${Date.now()}`, currentPoints: 0, participants: [], progress: {} };
+      updateCurrentConfig((prev: any) => ({
+        ...prev,
+        campaigns: [...(prev.campaigns || []), item]
+      }));
+      setNotifications((prev: any) => [{ id: Date.now(), text: `מבצע חדש הושק: ${newCampaign.title}`, type: 'success' }, ...prev]);
+    }
+    
     setIsAdding(false);
+    resetCampaignForm();
+  };
+
+  const resetCampaignForm = () => {
     setNewCampaign({ 
       title: '', 
       description: '', 
@@ -2703,6 +2743,123 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
       reward: '',
       status: 'active'
     });
+    setEditingCampaignId(null);
+  };
+
+  const startEditCampaign = (camp: any) => {
+    setNewCampaign({
+      title: camp.title,
+      description: camp.description,
+      targetPoints: camp.targetPoints,
+      type: camp.type,
+      category: camp.category,
+      startDate: camp.startDate,
+      endDate: camp.endDate || '',
+      reward: camp.reward || '',
+      status: camp.status || 'active'
+    });
+    setEditingCampaignId(camp.id);
+    setIsAdding(true);
+  };
+
+  const toggleCampaignStatus = (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'active' ? 'completed' : 'active';
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      campaigns: prev.campaigns.map((camp: any) => 
+        camp.id === id ? { ...camp, status: nextStatus } : camp
+      )
+    }));
+    setNotifications((prev: any) => [{ id: Date.now(), text: `סטטוס המבצע עודכן ל-${nextStatus === 'active' ? 'פעיל' : 'הושלם'}`, type: 'info' }, ...prev]);
+  };
+
+  // Define rewards handlers
+  const saveReward = () => {
+    if (!newReward.title || !newReward.price) return;
+    
+    if (editingRewardId) {
+      updateCurrentConfig((prev: any) => ({
+        ...prev,
+        rewards: prev.rewards.map((r: any) => 
+          r.id === editingRewardId ? { ...r, ...newReward } : r
+        )
+      }));
+      setNotifications((prev: any) => [{ id: Date.now(), text: `הפרס עודכן בהצלחה: ${newReward.title}`, type: 'success' }, ...prev]);
+      setEditingRewardId(null);
+    } else {
+      const rewardItem = { ...newReward, id: `rev-${Date.now()}` };
+      updateCurrentConfig((prev: any) => ({
+        ...prev,
+        rewards: [...(prev.rewards || []), rewardItem]
+      }));
+      setNotifications((prev: any) => [{ id: Date.now(), text: `פרס חדש הוגדר: ${newReward.title}`, type: 'success' }, ...prev]);
+    }
+    
+    setIsAddingReward(false);
+    resetRewardForm();
+  };
+
+  const resetRewardForm = () => {
+    setNewReward({
+      title: '',
+      price: 100,
+      stock: 10,
+      icon: 'Zap'
+    });
+    setEditingRewardId(null);
+  };
+
+  const startEditReward = (reward: any) => {
+    setNewReward({
+      title: reward.title,
+      price: reward.price,
+      stock: reward.stock,
+      icon: reward.icon || 'Zap'
+    });
+    setEditingRewardId(reward.id);
+    setIsAddingReward(true);
+  };
+
+  const deleteReward = (id: string) => {
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      rewards: prev.rewards.filter((r: any) => r.id !== id)
+    }));
+    setNotifications((prev: any) => [{ id: Date.now(), text: 'הפרס נמחק בהצלחה', type: 'info' }, ...prev]);
+  };
+
+  // Points adjustment handler (with custom reason logging)
+  const adjustStudentPoints = (studentId: string, value: number, reason: string) => {
+    updateCurrentConfig((prev: any) => {
+      const currentPts = prev.student_points?.[studentId] || 0;
+      const newPoints = {
+        ...(prev.student_points || {}),
+        [studentId]: Math.max(0, currentPts + value)
+      };
+      
+      const newLog = [
+        ...(prev.analytics_log || []),
+        {
+          type: 'points',
+          studentId: studentId,
+          reason: reason || 'שיפור והשתתפות',
+          value: value,
+          timestamp: Date.now()
+        }
+      ].slice(-1000);
+
+      return {
+        ...prev,
+        student_points: newPoints,
+        analytics_log: newLog
+      };
+    });
+    
+    setNotifications((prev: any) => [{ 
+      id: Date.now(), 
+      text: `${value > 0 ? 'נוספו' : 'הופחתו'} ${Math.abs(value)} נקודות לתלמיד`, 
+      type: value > 0 ? 'success' : 'info' 
+    }, ...prev]);
   };
 
   const getCategoryIcon = (cat: string) => {
@@ -2714,224 +2871,574 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
     }
   };
 
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch.trim()) return students;
+    return students.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()));
+  }, [students, studentSearch]);
+
   return (
-    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
-       <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm">
-              <ChevronLeft className="w-7 h-7" />
-            </button>
-            <div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">מבצעים ויעדי כיתה</h2>
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">ניהול אתגרים, צבירת נקודות ותגמולים קבוצתיים</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setViewType && setViewType('campaign-display')}
-              className="flex items-center gap-3 px-6 py-4 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-2xl font-black border border-brand-100 dark:border-brand-800 transition-all hover:scale-105 active:scale-95"
-            >
-              <Monitor className="w-5 h-5" />
-              מצב קיוסק
-            </button>
-            <button onClick={() => setIsAdding(!isAdding)} className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              מבצע חדש
-            </button>
-          </div>
-       </div>
-
-       {isAdding && (
-         <motion.div 
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border-2 border-emerald-100 dark:border-emerald-900 shadow-xl space-y-8"
-         >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-               <div className="space-y-2 lg:col-span-2 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">שם המבצע</label>
-                 <input value={newCampaign.title} onChange={e => setNewCampaign({...newCampaign, title: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none" placeholder="למשל: אלופי הקריאה, מבצע כיתה נקייה, מצטייני השבוע בחשבון..." />
-               </div>
-               <div className="space-y-2 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">סוג מבצע</label>
-                 <select value={newCampaign.type} onChange={e => setNewCampaign({...newCampaign, type: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none appearance-none">
-                    <option value="class-wide">כיתתי (יעד משותף)</option>
-                    <option value="individual">אישי (תחרות בין תלמידים)</option>
-                 </select>
-               </div>
-               <div className="space-y-2 lg:col-span-3 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">תיאור היעד והמשימה</label>
-                 <textarea value={newCampaign.description} onChange={e => setNewCampaign({...newCampaign, description: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none h-24 resize-none" placeholder="תארו מה התלמידים צריכים לעשות כדי להצליח במבצע..." />
-               </div>
-               <div className="space-y-2 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">יעד נקודות</label>
-                 <input type="number" value={newCampaign.targetPoints} onChange={e => setNewCampaign({...newCampaign, targetPoints: parseInt(e.target.value)})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none" />
-               </div>
-               <div className="space-y-2 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">קטגוריה</label>
-                 <select value={newCampaign.category} onChange={e => setNewCampaign({...newCampaign, category: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none appearance-none">
-                    <option value="academic">לימודי</option>
-                    <option value="behavior">התנהגותי</option>
-                    <option value="participation">השתתפות ומעורבות</option>
-                    <option value="other">אחר</option>
-                 </select>
-               </div>
-               <div className="space-y-2 text-right">
-                 <label className="text-xs font-black text-slate-500 uppercase">פרס למנצחים/לכיתה</label>
-                 <input value={newCampaign.reward} onChange={e => setNewCampaign({...newCampaign, reward: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold text-slate-700 dark:text-white outline-none" placeholder="למשל: מסיבת פיצה, 15 דק' הפסקה נוספת..." />
-               </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-               <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black">ביטול</button>
-               <button onClick={addCampaign} className="px-10 py-3 bg-emerald-600 text-white rounded-2xl font-black shadow-lg">השק מבצע!</button>
-            </div>
-         </motion.div>
-       )}
-
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {campaigns.length === 0 ? (
-             <div className="md:col-span-2 py-20 text-center opacity-50 space-y-4">
-                <Target className="w-16 h-16 mx-auto text-slate-300" />
-                <p className="text-xl font-black text-slate-500">אין מבצעים פעילים כרגע</p>
-                <button onClick={() => setIsAdding(true)} className="text-brand-600 font-bold hover:underline">לחצו כאן כדי להתחיל את המבצע הראשון שלכם</button>
+    <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors" dir="rtl">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+           <div className="flex items-center gap-6">
+             <button onClick={onBack} className="p-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded-2xl transition-all border border-slate-200/50 dark:border-slate-800 cursor-pointer">
+               <ChevronLeft className="w-6 h-6 text-slate-700 dark:text-slate-350" />
+             </button>
+             <div>
+               <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">קמפיינים ומרכז תגמולים</h2>
+               <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">נהלו אתגרי כיתה, נקודות והגדרת הפרסים של החנות</p>
              </div>
-          ) : (
-            campaigns.map((c: any) => {
-              const progress = Math.min(100, Math.round((c.currentPoints / c.targetPoints) * 100));
-              return (
-                <motion.div 
-                  key={c.id} 
-                  layout
-                  className="bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 p-8 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group"
-                >
-                   <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-2xl">
+           </div>
+           <div className="flex items-center gap-3">
+             <button 
+               onClick={() => setViewType && setViewType('campaign-display')}
+               className="flex items-center gap-3 px-6 py-4 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-2xl font-black border border-brand-100 dark:border-brand-800/40 transition-all hover:scale-105 cursor-pointer"
+             >
+               <Monitor className="w-5 h-5" />
+               מצב קיוסק גדול
+             </button>
+             {activeTab === 'challenges' && (
+               <button onClick={() => { resetCampaignForm(); setIsAdding(!isAdding); }} className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all cursor-pointer flex items-center gap-2">
+                 <Plus className="w-5 h-5" />
+                 שיגור מבצע חדש
+               </button>
+             )}
+             {activeTab === 'rewards' && (
+               <button onClick={() => { resetRewardForm(); setIsAddingReward(!isAddingReward); }} className="px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all cursor-pointer flex items-center gap-2">
+                 <Plus className="w-5 h-5" />
+                 הגדר פרס חדש
+               </button>
+             )}
+           </div>
+        </div>
+
+        {/* View Mode Switching Tabs */}
+        <div className="flex gap-2 p-1.5 bg-slate-200/60 dark:bg-slate-900 rounded-[2rem] w-fit">
+          <button 
+            onClick={() => setActiveTab('challenges')}
+            className={cn(
+              "px-8 py-3.5 rounded-2xl font-black text-sm transition-all cursor-pointer",
+              activeTab === 'challenges' 
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md shadow-slate-100/50" 
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            )}
+          >
+            📊 אתגרים ומבצעים ({campaigns.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('points')}
+            className={cn(
+              "px-8 py-3.5 rounded-2xl font-black text-sm transition-all cursor-pointer",
+              activeTab === 'points' 
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md shadow-slate-100/50" 
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            )}
+          >
+            🎯 מעקב נקודות תלמידים
+          </button>
+          <button 
+            onClick={() => setActiveTab('rewards')}
+            className={cn(
+              "px-8 py-3.5 rounded-2xl font-black text-sm transition-all cursor-pointer",
+              activeTab === 'rewards' 
+                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md shadow-slate-100/50" 
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            )}
+          >
+            🎁 ניהול מלאי הפרסים ({rewards.length})
+          </button>
+        </div>
+
+        {/* --- CHALLENGES TAB --- */}
+        {activeTab === 'challenges' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {isAdding && (
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-slate-900 p-8 rounded-[3.5rem] border-2 border-emerald-100 dark:border-emerald-900 shadow-xl space-y-8 text-right"
+              >
+                 <div className="flex items-center gap-3">
+                   <Target className="w-6 h-6 text-emerald-600" />
+                   <h3 className="text-xl font-black dark:text-white">
+                     {editingCampaignId ? 'עריכת פרטי מבצע' : 'ייזום אתגר כיתתי או אישי חדש'}
+                   </h3>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs font-black text-slate-400 uppercase">שם המבצע / האתגר</label>
+                      <input 
+                        value={newCampaign.title} 
+                        onChange={e => setNewCampaign({...newCampaign, title: e.target.value})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20" 
+                        placeholder="למשל: תרגול יומי עצמאי, ניקיון המרחב האישי..." 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase">סוג מבצע</label>
+                      <select 
+                        value={newCampaign.type} 
+                        onChange={e => setNewCampaign({...newCampaign, type: e.target.value})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none"
+                      >
+                         <option value="class-wide">כיתתי (חתירה יחד ליעד משותף)</option>
+                         <option value="individual">אישי (תחרות צבירה בין כולם)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2 lg:col-span-3">
+                      <label className="text-xs font-black text-slate-400 uppercase">פירוט המשימה והמדדים להצלחה</label>
+                      <textarea 
+                        value={newCampaign.description} 
+                        onChange={e => setNewCampaign({...newCampaign, description: e.target.value})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none h-24 resize-none focus:ring-2 focus:ring-emerald-500/20" 
+                        placeholder="למשל: כל תלמיד שיקרא ספר ויגיש יומן קריאה יעניק 20 נקודות לקמפיין!" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase">יעד נקודות למבצע</label>
+                      <input 
+                        type="number" 
+                        value={newCampaign.targetPoints} 
+                        onChange={e => setNewCampaign({...newCampaign, targetPoints: Math.max(1, parseInt(e.target.value) || 0)})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase">קטגוריית אתגר</label>
+                      <select 
+                        value={newCampaign.category} 
+                        onChange={e => setNewCampaign({...newCampaign, category: e.target.value})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none"
+                      >
+                         <option value="academic">📚 לימודי ואקדמי</option>
+                         <option value="behavior">❤️ התנהגות ויחסי אנוש</option>
+                         <option value="participation">👥 מעורבות כיתתית ודיונים</option>
+                         <option value="other">⭐ אחר / כללי</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase">הפרס המוגדר להשגה</label>
+                      <input 
+                        value={newCampaign.reward} 
+                        onChange={e => setNewCampaign({...newCampaign, reward: e.target.value})} 
+                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20" 
+                        placeholder="למשל: 10 דקות הפסקה נוספת או פעילות ספורטיבית כיתתית" 
+                      />
+                    </div>
+                 </div>
+                 
+                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button onClick={() => { setIsAdding(false); resetCampaignForm(); }} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 rounded-2xl font-black cursor-pointer">ביטול</button>
+                    <button onClick={addCampaign} className="px-10 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all cursor-pointer">
+                      {editingCampaignId ? 'עדכן מבצע פעיל' : 'שלח מבצע לדרך! 🚀'}
+                    </button>
+                 </div>
+              </motion.div>
+            )}
+
+            {/* Campaign Challenge Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               {campaigns.length === 0 ? (
+                  <div className="lg:col-span-2 py-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] opacity-70">
+                     <Target className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-700 mb-2 animate-bounce" />
+                     <p className="text-lg font-black text-slate-400">אופס, טרם הפעלתם משימות או אתגרי כיתה</p>
+                     <button onClick={() => setIsAdding(true)} className="text-brand-600 font-bold hover:underline mt-1 text-sm">לחצו כאן כדי להגדיר את הקמפיין הראשון שלכם</button>
+                  </div>
+               ) : (
+                 campaigns.map((c: any) => {
+                   const progress = Math.min(100, Math.round((c.currentPoints / c.targetPoints) * 100));
+                   const isCompleted = c.status === 'completed' || progress >= 100;
+                   return (
+                     <div 
+                       key={c.id} 
+                       className={cn(
+                         "bg-white dark:bg-slate-900 rounded-[3rem] border-2 p-8 shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all hover:shadow-lg",
+                         isCompleted ? "border-emerald-200 dark:border-emerald-950/40 opacity-90" : "border-slate-100 dark:border-slate-800 hover:border-slate-200"
+                       )}
+                     >
+                        <div>
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center gap-4">
+                              <div className={cn(
+                                "p-4 rounded-2xl",
+                                isCompleted ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-600" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                              )}>
+                                 {getCategoryIcon(c.category)}
+                              </div>
+                              <div className="text-right">
+                                 <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                   {c.title}
+                                   {isCompleted && <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full font-black">הושלם!</span>}
+                                 </h3>
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.type === 'class-wide' ? '📢 מבצע כיתתי מבוזר' : '👤 אתגר תחרות אישי'}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Actions / Admin buttons */}
+                            <div className="flex gap-1">
+                               <button 
+                                 onClick={() => toggleCampaignStatus(c.id, c.status || 'active')}
+                                 className="p-2.5 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl transition-all cursor-pointer border border-slate-100 dark:border-slate-800" 
+                                 title={c.status === 'completed' ? "החזר למצב פעיל" : "סמן כהושלם"}
+                               >
+                                 <CheckSquare className="w-4 h-4" />
+                               </button>
+                               <button 
+                                 onClick={() => startEditCampaign(c)}
+                                 className="p-2.5 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-brand-600 rounded-xl transition-all cursor-pointer border border-slate-100 dark:border-slate-800" 
+                                 title="ערוך הגדרות"
+                               >
+                                 <Edit3 className="w-4 h-4" />
+                               </button>
+                               <button 
+                                 onClick={() => {
+                                   if(confirm('האם למחוק מבצע זה לצמיתות?')) {
+                                     updateCurrentConfig((prev: any) => ({ ...prev, campaigns: prev.campaigns.filter((camp: any) => camp.id !== c.id) }));
+                                   }
+                                 }}
+                                 className="p-2.5 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-xl transition-all cursor-pointer border border-slate-100 dark:border-slate-800" 
+                                 title="מחק מבצע"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </button>
+                            </div>
+                          </div>
+
+                          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-8 leading-relaxed text-right">{c.description}</p>
+                        </div>
+
+                        {/* Progress and indicators */}
+                        <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800/40">
+                           <div className="space-y-2">
+                             <div className="flex items-center justify-between text-xs font-black">
+                                <span className="text-slate-450 uppercase tracking-tight">התקדמות כללית במאמץ:</span>
+                                <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-mono", isCompleted ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-350")}>
+                                   {c.currentPoints} / {c.targetPoints} נק' ({progress}%)
+                                </span>
+                             </div>
+                             <div className="h-3.5 bg-slate-100 dark:bg-slate-800/70 rounded-full overflow-hidden p-0.5 shadow-inner">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-1000",
+                                    progress >= 100 ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]" : "bg-brand-500"
+                                  )} 
+                                />
+                             </div>
+                           </div>
+
+                           {/* Show top individual contributors if it is individual challenge */}
+                           {c.type === 'individual' && c.progress && Object.keys(c.progress).length > 0 && (
+                             <div className="space-y-2.5 text-right">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">מובילי האתגר האישי:</span>
+                               <div className="grid grid-cols-2 gap-3">
+                                 {Object.entries(c.progress)
+                                   .sort(([, a], [, b]) => (b as number) - (a as number))
+                                   .slice(0, 4)
+                                   .map(([sId, sProgress]) => {
+                                     const studentInfo = students.find(s => s.id.toString() === sId.toString());
+                                     return (
+                                        <div key={sId} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-850/50 rounded-xl text-xs border border-slate-100 dark:border-slate-850">
+                                          <span className="font-bold text-slate-600 dark:text-slate-300 truncate max-w-[90px]">{studentInfo?.name || `מזהה תלמיד: ${sId}`}</span>
+                                          <span className="font-mono font-black text-brand-650">{sProgress as number} נק'</span>
+                                        </div>
+                                     );
+                                   })}
+                               </div>
+                             </div>
+                           )}
+
+                           {/* Associated prize */}
+                           {c.reward && (
+                             <div className="pt-4 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                   <Zap className="w-4 h-4 text-amber-500" />
+                                   <span className="text-xs font-black text-slate-500 uppercase">הבונוס המובטח:</span>
+                                   <span className="text-sm font-black text-slate-800 dark:text-white">{c.reward}</span>
+                                </div>
+                                {isCompleted && (
+                                   <div className="flex items-center gap-1 text-emerald-600 animate-pulse font-black text-xs uppercase">
+                                      <CheckCircle2 className="w-4 h-4" /> היעד הושלם!
+                                   </div>
+                                )}
+                             </div>
+                           )}
+                        </div>
+
+                        {/* Decorative background design block */}
+                        <div className="absolute -bottom-6 -left-6 opacity-[0.03] group-hover:scale-110 transition-transform duration-700 pointer-events-none">
                            {getCategoryIcon(c.category)}
                         </div>
-                        <div>
-                           <h3 className="text-xl font-black text-slate-900 dark:text-white">{c.title}</h3>
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.type === 'class-wide' ? 'מבצע כיתתי' : 'מבצע אישי'}</span>
-                        </div>
-                      </div>
-                    <div className="flex gap-2">
-                         <button 
-                           onClick={() => {
-                             if (c.type === 'individual') {
-                               const studentId = prompt("הזן מזהה תלמיד (או השתמש בתצוגת הפירוט):");
-                               if (!studentId) return;
-                               const pts = prompt("הזן נקודות להוספה:", "10");
-                               if (pts && !isNaN(parseInt(pts))) {
-                                 updateCurrentConfig((prev: any) => ({
-                                   ...prev,
-                                   campaigns: prev.campaigns.map((camp: any) => 
-                                     camp.id === c.id ? { 
-                                       ...camp, 
-                                       progress: { 
-                                         ...(camp.progress || {}), 
-                                         [studentId]: (camp.progress?.[studentId] || 0) + parseInt(pts) 
-                                       },
-                                       currentPoints: Math.max(0, camp.currentPoints + parseInt(pts))
-                                     } : camp
-                                   ),
-                                   student_points: {
-                                      ...(prev.student_points || {}),
-                                      [studentId]: (prev.student_points?.[studentId] || 0) + parseInt(pts)
-                                   }
-                                 }));
-                               }
-                             } else {
-                               const pts = prompt("הזן נקודות להוספה לכיתה:", "10");
-                               if (pts && !isNaN(parseInt(pts))) {
-                                 updateCurrentConfig((prev: any) => ({
-                                   ...prev,
-                                   campaigns: prev.campaigns.map((camp: any) => 
-                                     camp.id === c.id ? { ...camp, currentPoints: Math.max(0, camp.currentPoints + parseInt(pts)) } : camp
-                                   )
-                                 }));
-                               }
-                             }
-                           }}
-                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 rounded-xl transition-all" 
-                           title="הוסף נקודות"
-                         >
-                           <PlusCircle className="w-5 h-5" />
-                         </button>
-                        <button 
-                          onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, campaigns: prev.campaigns.filter((camp: any) => camp.id !== c.id) }))}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-xl transition-all" 
-                          title="מחק מבצע"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                   </div>
+                     </div>
+                   );
+                 })
+               )}
+            </div>
+          </div>
+        )}
 
-                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed line-clamp-2">{c.description}</p>
+        {/* --- POINTS TRACKER TAB --- */}
+        {activeTab === 'points' && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm space-y-8 text-right animate-in fade-in duration-200">
+             <div>
+                <h3 className="text-2xl font-black text-slate-800 dark:text-white">בקרת נקודות כיתתית</h3>
+                <p className="text-sm text-slate-450 mt-1">נהלו את המאזנים של התלמידים, העניקו נקודות בונוס או עדכנו נתוני צבירה בזמן אמת</p>
+             </div>
 
-                   <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm font-black">
-                         <span className="text-slate-400 uppercase tracking-tight">התקדמות המבצע</span>
-                         <span className={cn("px-3 py-1 rounded-full text-[10px]", progress >= 100 ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600")}>
-                            {c.currentPoints} / {c.targetPoints} נק' ({progress}%)
-                         </span>
-                      </div>
-                      <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner">
-                         <motion.div 
-                           initial={{ width: 0 }}
-                           animate={{ width: `${progress}%` }}
-                           className={cn(
-                             "h-full rounded-full transition-all duration-1000",
-                             progress >= 100 ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "bg-brand-500"
-                           )} 
-                         />
-                      </div>
-                   </div>
+             {/* Search input bar */}
+             <div className="flex items-center gap-4 max-w-md bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-850">
+                <Search className="w-5 h-5 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={studentSearch} 
+                  onChange={e => setStudentSearch(e.target.value)} 
+                  placeholder="חיפוש מהיר של תלמיד..." 
+                  className="w-full bg-transparent border-none text-sm outline-none font-bold text-slate-700 dark:text-white"
+                />
+             </div>
 
-                   {c.type === 'individual' && c.progress && Object.keys(c.progress).length > 0 && (
-                     <div className="mt-6 space-y-2">
-                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">מובילים במבצע:</span>
-                       <div className="grid grid-cols-2 gap-2">
-                         {Object.entries(c.progress)
-                           .sort(([, a], [, b]) => (b as number) - (a as number))
-                           .slice(0, 4)
-                           .map(([sId, sProgress]) => {
-                             const studentInfo = students.find(s => s.id.toString() === sId.toString());
-                             return (
-                               <div key={sId} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-[10px]">
-                                 <span className="font-bold text-slate-600 dark:text-slate-300 truncate max-w-[80px]">{studentInfo?.name || sId}</span>
-                                 <span className="font-black text-brand-600">{sProgress as number} נק'</span>
-                                </div>
-                             );
-                           })}
+             {/* Students grid table with point controls */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredStudents.length === 0 ? (
+                  <p className="col-span-3 text-center py-12 text-sm text-slate-400 italic">לא נמצאו תלמידים התואמים את החיפוש.</p>
+                ) : (
+                  filteredStudents.map(s => {
+                    const balance = currentConfig.student_points?.[s.id] || 0;
+                    return (
+                      <div key={s.id} className="p-6 bg-slate-50 dark:bg-slate-950/60 rounded-[2rem] border border-slate-100 dark:border-slate-850 flex items-center justify-between gap-4">
+                         <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg">
+                               {s.name[0]}
+                            </div>
+                            <div>
+                               <h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{s.name}</h4>
+                               <span className="text-[10px] font-bold text-slate-450">קבוצה {s.group || 'אחרת'} | {balance} נקודות</span>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <div className="text-left leading-none pl-2">
+                               <p className="text-[9px] font-black text-slate-400 uppercase">יתרה</p>
+                               <span className="text-xl font-mono font-black text-brand-600">{balance}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                               <button 
+                                 onClick={() => {
+                                   setPointsChangeStudentId(s.id);
+                                   setPtsValue(10);
+                                   setPtsReason('בונוס על השתתפות מעולה בשיעור');
+                                 }}
+                                 className="p-1 px-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white cursor-pointer transition-colors text-xs font-black"
+                                 title="הוספת נקודות"
+                               >
+                                 + תגמל
+                               </button>
+                               <button 
+                                 onClick={() => {
+                                   setPointsChangeStudentId(s.id);
+                                   setPtsValue(-10);
+                                   setPtsReason('עיכוב הגשה או אי עמידה במשימה');
+                                 }}
+                                 className="p-1 px-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-lg hover:bg-rose-500 hover:text-white cursor-pointer transition-colors text-xs font-black"
+                                 title="גריעת נקודות"
+                               >
+                                 - גרע
+                               </button>
+                            </div>
+                         </div>
+                      </div>
+                    );
+                  })
+                )}
+             </div>
+
+             {/* Custom Overlay modal for inputting reason of point changes */}
+             {pointsChangeStudentId && (() => {
+               const studentObj = students.find(s => s.id === pointsChangeStudentId);
+               return (
+                 <div className="fixed inset-0 z-[1050] bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 text-right">
+                       <div>
+                          <h4 className="text-xl font-black text-slate-900 dark:text-white">שינוי נקודות עבור: {studentObj?.name}</h4>
+                          <p className="text-xs text-slate-400 font-bold mt-1">רישום סיבת הענקת או הפחתת הנקודות</p>
                        </div>
-                     </div>
-                   )}
-
-                   {c.reward && (
-                     <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                           <Zap className="w-4 h-4 text-amber-500" />
-                           <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase">הפרס:</span>
-                           <span className="text-sm font-bold text-slate-900 dark:text-white">{c.reward}</span>
-                        </div>
-                        {progress >= 100 && (
-                          <div className="flex items-center gap-1 text-emerald-600 animate-pulse font-black text-[10px] uppercase">
-                             <CheckCircle2 className="w-3 h-3" /> היעד הושג!
+                       
+                       <div className="space-y-4">
+                          <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-400">כמות נקודות</label>
+                             <input 
+                               type="number" 
+                               value={ptsValue} 
+                               onChange={e => setPtsValue(parseInt(e.target.value) || 0)}
+                               className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono font-black text-slate-800 dark:text-white outline-none"
+                             />
                           </div>
-                        )}
-                     </div>
-                   )}
+                          <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-400">סיבה / הסבר לשינוי</label>
+                             <input 
+                               type="text" 
+                               value={ptsReason} 
+                               onChange={e => setPtsReason(e.target.value)} 
+                               className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold text-slate-800 dark:text-white outline-none"
+                               placeholder="למשל: עזרה לחבר, מבדק מוצלח..."
+                             />
+                          </div>
+                       </div>
 
-                   {/* Decorative icon */}
-                    <div className="absolute -bottom-8 -right-8 opacity-5 group-hover:scale-125 transition-transform duration-1000 rotate-12">
-                       {getCategoryIcon(c.category)}
+                       <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              adjustStudentPoints(pointsChangeStudentId, ptsValue, ptsReason);
+                              setPointsChangeStudentId(null);
+                            }}
+                            className="flex-1 py-3.5 bg-brand-650 hover:bg-brand-700 text-white rounded-xl font-bold shadow-md cursor-pointer"
+                          >
+                             אישור ותגמול
+                          </button>
+                          <button 
+                            onClick={() => setPointsChangeStudentId(null)}
+                            className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold cursor-pointer"
+                          >
+                             ביטול
+                          </button>
+                       </div>
                     </div>
-                </motion.div>
-              );
-            })
-          )}
-       </div>
+                 </div>
+               );
+             })()}
+          </div>
+        )}
+
+        {/* --- DEFINE REWARDS TAB --- */}
+        {activeTab === 'rewards' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+             {isAddingReward && (
+                <div className="bg-white dark:bg-slate-900 border-2 border-indigo-100 dark:border-indigo-950 p-8 rounded-[3.5rem] shadow-xl text-right space-y-6">
+                   <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-indigo-650" />
+                      <h3 className="text-xl font-black dark:text-white">
+                        {editingRewardId ? 'עדכון פרטי פרס' : 'הגדרת פרס/הטבה לחנות הכיתה'}
+                      </h3>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-black text-slate-450 mr-1">כותרת או שם הפרס</label>
+                        <input 
+                          type="text" 
+                          value={newReward.title} 
+                          onChange={e => setNewReward({...newReward, title: e.target.value})}
+                          placeholder="למשל: פטור משיעורי בית, ישיבה עם חבר..."
+                          className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-white outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-black text-slate-450 mr-1">עלות (בנקודות)</label>
+                        <input 
+                          type="number" 
+                          value={newReward.price} 
+                          onChange={e => setNewReward({...newReward, price: Math.max(1, parseInt(e.target.value) || 0)})}
+                          className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono font-black text-slate-700 dark:text-white outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-black text-slate-450 mr-1">מלאי זמין בחנות</label>
+                        <input 
+                          type="number" 
+                          value={newReward.stock} 
+                          onChange={e => setNewReward({...newReward, stock: Math.max(0, parseInt(e.target.value) || 0)})}
+                          className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono font-black text-slate-700 dark:text-white outline-none"
+                        />
+                      </div>
+                   </div>
+
+                   <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-450 block">קטגוריית אייקון</label>
+                      <div className="flex gap-4">
+                         {(['Clock', 'Zap', 'Map', 'CheckCircle2'] as const).map(ic => (
+                            <button
+                              key={ic}
+                              type="button"
+                              onClick={() => setNewReward({...newReward, icon: ic})}
+                              className={cn(
+                                "flex-1 py-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 font-black text-xs transition-all cursor-pointer",
+                                newReward.icon === ic 
+                                  ? "bg-slate-900 border-slate-900 text-white dark:bg-white dark:text-slate-900" 
+                                  : "bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-800"
+                              )}
+                            >
+                               {ic === 'Clock' && <Clock className="w-5 h-5 text-indigo-505" />}
+                               {ic === 'Zap' && <Zap className="w-5 h-5 text-amber-500" />}
+                               {ic === 'Map' && <MapIcon className="w-5 h-5 text-emerald-505" />}
+                               {ic === 'CheckCircle2' && <CheckCircle2 className="w-5 h-5 text-rose-505" />}
+                               <span>
+                                 {ic === 'Clock' ? 'שיעור חופשי/זמן' : ic === 'Zap' ? 'בונוס/ממתק' : ic === 'Map' ? 'בחירת מקום' : 'פטור/מטלות'}
+                               </span>
+                            </button>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-805">
+                      <button onClick={() => { setIsAddingReward(false); resetRewardForm(); }} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-2xl font-black cursor-pointer">ביטול</button>
+                      <button onClick={saveReward} className="px-10 py-3 bg-indigo-650 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg cursor-pointer">
+                        {editingRewardId ? 'שמור שינויים' : 'הוסף פרס לחנות'}
+                      </button>
+                   </div>
+                </div>
+             )}
+
+             {/* Reward store cards */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {rewards.length === 0 ? (
+                  <div className="lg:col-span-3 py-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-850 rounded-[2.5rem] opacity-65">
+                     <p className="font-bold text-slate-450">חנות הפרסים ריקה בהגדרה הנוכחית.</p>
+                     <button onClick={() => setIsAddingReward(true)} className="text-indigo-600 hover:underline">לחצו כאן ליצירת הפרס הראשון</button>
+                  </div>
+                ) : (
+                  rewards.map((r: any) => (
+                    <div key={r.id} className="bg-white dark:bg-slate-900 border-2 border-slate-200/50 dark:border-slate-850 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between gap-6 relative overflow-hidden group">
+                       <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-4">
+                             <div className="p-3.5 bg-slate-50 dark:bg-slate-850 text-brand-600 rounded-2xl">
+                                {r.icon === 'Clock' && <Clock className="w-6 h-6" />}
+                                {r.icon === 'Zap' && <Zap className="w-6 h-6 text-amber-500" />}
+                                {r.icon === 'Map' && <MapIcon className="w-6 h-6" />}
+                                {r.icon === 'CheckCircle2' && <CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                             </div>
+                             <div className="text-right">
+                                <h4 className="font-black text-xl text-slate-900 dark:text-white leading-tight">{r.title}</h4>
+                                <div className="flex items-center gap-2 mt-2">
+                                   <Badge className="bg-brand-600 text-white select-none">{r.price} נקודות</Badge>
+                                   <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500">במלאי: {r.stock}</Badge>
+                                </div>
+                             </div>
+                          </div>
+                          
+                          <div className="flex gap-1">
+                             <button
+                               onClick={() => startEditReward(r)}
+                               className="p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-brand-650 rounded-lg transition-all cursor-pointer"
+                               title="ערוך פרס"
+                             >
+                                <Edit3 className="w-4 h-4" />
+                             </button>
+                             <button
+                               onClick={() => deleteReward(r.id)}
+                               className="p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
+                               title="מחק פרס"
+                             >
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+                  ))
+                )}
+             </div>
+          </div>
+        )}
     </div>
   );
 };
@@ -2973,16 +3480,29 @@ const CampaignDisplay = ({ currentConfig }: { currentConfig: any }) => {
 
 const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[], onBack: () => void, updateCurrentConfig: any }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'homework' | 'study' | 'project'>('all');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTask, setNewTask] = useState({ studentId: 'all', title: '', description: '', dueDate: new Date().toISOString().split('T')[0], priority: 'medium' as any, category: 'homework' as any });
 
   const allTasks = students.flatMap(s => (s.tasks || []).map((t: any) => ({ ...t, studentName: s.name, studentId: s.id })));
-  const filteredTasks = filter === 'all' ? allTasks : allTasks.filter(t => t.status === filter);
+  const filteredTasks = allTasks.filter((t: any) => {
+    if (filter !== 'all' && t.status !== filter) return false;
+    if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+    return true;
+  });
 
   const priorities = [
     { id: 'low', label: 'נמוכה', color: 'bg-emerald-500' },
     { id: 'medium', label: 'בינונית', color: 'bg-amber-500' },
     { id: 'high', label: 'גבוהה', color: 'bg-rose-500' },
+  ];
+
+  const categories = [
+    { id: 'homework', label: 'שיעורי בית', icon: 'Book' },
+    { id: 'study', label: 'למידה למבחן', icon: 'GraduationCap' },
+    { id: 'project', label: 'פרויקט', icon: 'Folder' },
   ];
 
   return (
@@ -3009,20 +3529,41 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
         </button>
       </div>
 
-      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-1">
-        {(['pending', 'completed', 'all'] as const).map(f => (
-          <button 
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "px-6 py-3 font-black text-sm relative transition-all",
-              filter === f ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 hover:text-slate-600"
-            )}
+      <div className="flex flex-col md:flex-row gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div className="flex gap-4 border-b md:border-b-0 border-slate-200 dark:border-slate-800 pb-1 md:pb-0 hide-scrollbar overflow-x-auto">
+          {(['pending', 'completed', 'all'] as const).map(f => (
+            <button 
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-6 py-2 font-black text-sm relative transition-all whitespace-nowrap",
+                filter === f ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              {f === 'pending' ? 'בביצוע' : f === 'completed' ? 'הושלמו' : 'סטטוס: הכל'}
+              {filter === f && <motion.div layoutId="task-filter" className="absolute bottom-0 inset-x-0 h-1 bg-indigo-600 rounded-t-full" />}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 pr-4 md:border-r border-slate-200 dark:border-slate-800 overflow-x-auto hide-scrollbar">
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as any)}
+            className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border-none font-bold text-slate-600 text-sm outline-none cursor-pointer"
           >
-            {f === 'pending' ? 'בביצוע' : f === 'completed' ? 'הושלמו' : 'הכל'}
-            {filter === f && <motion.div layoutId="task-filter" className="absolute bottom-0 inset-x-0 h-1 bg-indigo-600 rounded-t-full" />}
-          </button>
-        ))}
+            <option value="all">עדיפות: הכל</option>
+            {priorities.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as any)}
+            className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border-none font-bold text-slate-600 text-sm outline-none cursor-pointer"
+          >
+            <option value="all">קטגוריה: הכל</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {isAddingTask && (
@@ -3068,6 +3609,16 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
                   {priorities.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase">קטגוריה</label>
+                <select 
+                  value={newTask.category}
+                  onChange={(e) => setNewTask(prev => ({...prev, category: e.target.value as any}))}
+                  className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-black text-slate-700 outline-none"
+                >
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
            </div>
            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button 
@@ -3102,8 +3653,15 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
         {filteredTasks.map((task: any) => (
           <div key={task.id} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all group">
              <div className="flex items-start justify-between mb-4">
-                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black text-white uppercase", priorities.find(p => p.id === task.priority)?.color)}>
-                  {priorities.find(p => p.id === task.priority)?.label}
+                <div className="flex items-center gap-2">
+                  <div className={cn("px-3 py-1 rounded-full text-[10px] font-black text-white uppercase", priorities.find(p => p.id === task.priority)?.color)}>
+                    {priorities.find(p => p.id === task.priority)?.label}
+                  </div>
+                  {task.category && categories.find(c => c.id === task.category) && (
+                    <div className="px-3 py-1 rounded-full text-[10px] font-black text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 uppercase shadow-sm">
+                      {categories.find(c => c.id === task.category)?.label}
+                    </div>
+                  )}
                 </div>
                 <button 
                   onClick={() => {
@@ -3851,6 +4409,17 @@ const StudentDetailView = ({
       .sort((a, b) => a.daysUntil - b.daysUntil);
   }, [students]);
   
+  // Local academic/grades state variables
+  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
+  const [editingGradeId, setEditingGradeId] = useState<number | null>(null);
+  const [gradeForm, setGradeForm] = useState({
+    subject: 'מתמטיקה',
+    category: 'quiz',
+    testName: '',
+    grade: 90,
+    date: new Date().toISOString().split('T')[0]
+  });
+
   const currentIndex = students.findIndex(s => s.id === student.id);
   const prevStudent = students[currentIndex - 1];
   const nextStudent = students[currentIndex + 1];
@@ -4783,122 +5352,58 @@ const StudentDetailView = ({
                                     const support = student.supportNeeded === 'none' ? 'ללא' : student.supportNeeded === 'low' ? 'מועטה' : student.supportNeeded === 'medium' ? 'בינונית' : student.supportNeeded === 'high' ? 'רבה' : 'טרם הוגדר';
                                     const envPrefs = student.environmentPreferences?.length > 0 ? student.environmentPreferences.join(', ') : 'אין העדפות סביבתיות';
                                     const successes = student.successes || 'לא צוינו חוזקות';
-                                    const notes = student.notes || 'אין הערות נוספות';
-  
-                                    try {
-                                      const prompt = `${aiWeights.customSystemPrompt || 'אתה יועץ פדגוגי מומחה ומלווה מקצועי של צוותי הוראה.'} 
-משוב פדגוגי והמלצות לקידום אישי עבור התלמיד/ה: ${student.name}.
-
-נתונים נוכחיים:
-- ממוצע ציונים: ${avg}
-- רמת עניין ומעורבות: ${interest}
-- צורך בתמיכה לימודית: ${support}
-- העדפות סביבת לימוד: ${envPrefs}
-- תגיות אפיון: ${tags}
-- תגיות הערות ואבחון: ${noteTags}
-- חוזקות והצלחות: ${successes}
-- אתגרים והערות: ${notes}
-
-משימה:
-כתוב המלצה פדגוגית ממוקדת, מעשית ומעודדת ב-4-6 משפטים.
-התייחס ספציפית לשילוב בין רמת העניין, הצורך בתמיכה והעדפות הסביבה כדי לייצר אסטרטגיית למידה אופטימלית.
-השב בעברית בלבד.`;
-  
-                                      const text = await generateContent(prompt, aiWeights.customSystemPrompt);
-                                      updateStudent('ai_pedagogy_recommendation', text);
+                                     const notes = student.notes || 'אין הערות נוספות';
+   
+                                     try {
+                                        const prompt = `שם התלמיד: ${student.name}, ממוצע ציונים: ${avg}, תגיות קבוצות: ${tags}, תגיות הערות: ${noteTags}, רמת עניין ומעורבות: ${interest}, צורך בתמיכה: ${support}, העדפות סביבת לימוד: ${envPrefs}, הצלחות וחוזקות: ${successes}, הערות נוספות: ${notes}. נתח מידע זה וגבש תוכנית פדגוגית אישית.`;
+                                       const text = await generateContent(prompt);
+                                       updateStudent('ai_pedagogy_recommendation', text);
+                                       setNotifications((prev) => [{ id: Date.now(), text: `גובשה תוכנית פדגוגית AI בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
                                     } catch (error) {
-                                      console.error("AI Error:", error);
-                                      updateStudent('ai_pedagogy_recommendation', '❌ חלה שגיאה בחיבור ל-AI. אנא ודא שהמערכת מחוברת לאינטרנט ונסה שוב.');
+                                      console.error("AI Pedagogy Generation Error:", error);
+                                      setNotifications((prev) => [{ id: Date.now(), text: "שגיאה ביצירת תוכנית פדגוגית באמצעות AI", type: 'error' }, ...prev]);
                                     } finally {
                                       setIsGeneratingAI(false);
                                     }
                                   }}
                                   className={cn(
-                                    "px-4 py-2 text-white rounded-xl transition-all font-black text-[10px] flex items-center gap-2 shadow-sm",
-                                    isGeneratingAI ? "bg-slate-400 cursor-not-allowed" : "bg-brand-600 hover:bg-brand-700"
+                                    "px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-lg shadow-amber-100 dark:shadow-none",
+                                    isGeneratingAI && "animate-pulse opacity-50"
                                   )}
                                 >
-                                  {isGeneratingAI ? (
-                                    <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                  ) : (
-                                    <Brain className="w-3 h-3" />
-                                  )}
-                                  {isGeneratingAI ? 'מפיק המלצה...' : 'הפק המלצת AI'}
-                                </button>
-                                <button
-                                  disabled={isAnalyzingNotes || !student.notes}
-                                  onClick={analyzeNotes}
-                                  className={cn(
-                                    "px-4 py-2 text-white rounded-xl transition-all font-black text-[10px] flex items-center gap-2 shadow-sm",
-                                    isAnalyzingNotes || !student.notes ? "bg-slate-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
-                                  )}
-                                >
-                                  {isAnalyzingNotes ? (
-                                    <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                  ) : (
-                                    <Wand2 className="w-3 h-3" />
-                                  )}
-                                  {isAnalyzingNotes ? 'מנתח...' : 'ניתוח ותיוג אוטומטי (AI)'}
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  {isGeneratingAI ? 'מגבש...' : 'גבש המלצות ב-AI'}
                                 </button>
                               </div>
                             </label>
-                            <label className="relative block flex-1">
-                              <textarea 
-                                 value={student.notes || ''}
-                                 onChange={(e) => {
-                                   updateStudent('notes', e.target.value);
-                                   updateStudent('notesLastUpdated', new Date().toISOString());
-                                 }}
-                                 placeholder="רשמו תצפיות פדגוגיות, נקודות לשמירה, קשיי למידה או הערות התנהגותיות..."
-                                 className="w-full h-full bg-amber-50/50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/50 rounded-3xl p-6 font-medium outline-none focus:border-amber-300 min-h-[150px] resize-y transition-all text-slate-800 dark:text-slate-200 shadow-sm placeholder:text-amber-600/40"
-                              />
-                            </label>
-                            <div className="mt-2 p-4 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
-                              <label className="text-xs font-bold text-amber-600/80 dark:text-amber-400/80 block mb-3">תגיות להערות (הפרד בפסיק או שורה חדשה)</label>
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {(student.noteTags || []).map((tag: string, idx: number) => (
-                                  <span key={idx} className="bg-amber-200/50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 font-bold shadow-sm">
-                                    {tag}
-                                    <button onClick={() => updateStudent('noteTags', student.noteTags.filter((_:any, i:number) => i !== idx))} className="hover:text-rose-600 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                                  </span>
-                                ))}
-                              </div>
-                              <input 
-                                  type="text"
-                                  placeholder="הוסף תגית הערה ולחץ Enter..."
-                                  onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ',') {
-                                        e.preventDefault();
-                                        const newTags = e.currentTarget.value.split(/[,\n]/).map(t => t.trim()).filter(Boolean);
-                                        if (newTags.length > 0) {
-                                          const currentTags = student.noteTags || [];
-                                          const uniqueNewTags = newTags.filter((t: string) => !currentTags.includes(t));
-                                          if (uniqueNewTags.length > 0) {
-                                             updateStudent('noteTags', [...currentTags, ...uniqueNewTags]);
-                                          }
-                                          e.currentTarget.value = '';
-                                        }
-                                      }
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900/50 rounded-xl p-3 text-sm focus:border-amber-300 outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
-                              />
-                            </div>
+                            
+                            <textarea
+                              value={student.notes || ''}
+                              onChange={(e) => {
+                                updateStudent('notes', e.target.value);
+                                updateStudent('notesLastUpdated', new Date().toISOString());
+                              }}
+                              placeholder="כתבו כאן אתגרי למידה, הערות התנהגות מיוחדות, ורקע כללי לתפקוד התלמיד..."
+                              className="w-full bg-amber-50/50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/50 rounded-3xl p-6 font-medium min-h-[150px] text-slate-800 dark:text-slate-200 focus:border-amber-300 outline-none transition-all resize-none shadow-sm placeholder:text-amber-600/40"
+                            />
                           </div>
                         </div>
                       </div>
-                   </div>
-                </div>
+                    </div>
+                  </div>
               )}
-
-              {activeTab === 'academic' && (
-                <div className="lg:col-span-3">
+              
+              {activeTab === 'academic' && (               <div className="lg:col-span-3">
                   <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex items-center gap-6">
                            <div className="p-5 bg-sky-50 dark:bg-sky-900/20 rounded-[2.5rem]">
                               <GraduationCap className="w-10 h-10 text-sky-600" />
                            </div>
-                           <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">ציונים והישגים</h3>
+                           <div>
+                              <h3 className="text-3xl font-display font-bold text-slate-900 dark:text-white capitalize">ציונים והישגים אקדמיים</h3>
+                              <p className="text-sm font-bold text-slate-400 dark:text-slate-500">ניהול הישגים וציונים שבועיים עבור {student.name}</p>
+                           </div>
                         </div>
                         <div className="flex gap-2">
                            <button
@@ -4911,6 +5416,7 @@ const StudentDetailView = ({
                                            <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
                                               <th style="padding: 10px; text-align: right;">מקצוע</th>
                                               <th style="padding: 10px; text-align: right;">שם המבחן/מטלה</th>
+                                              <th style="padding: 10px; text-align: right;">קטגוריה</th>
                                               <th style="padding: 10px; text-align: right;">הציון</th>
                                               <th style="padding: 10px; text-align: right;">תאריך</th>
                                            </tr>
@@ -4920,6 +5426,7 @@ const StudentDetailView = ({
                                               <tr style="border-bottom: 1px solid #e2e8f0;">
                                                  <td style="padding: 10px;">${g.subject}</td>
                                                  <td style="padding: 10px;">${g.testName || '-'}</td>
+                                                 <td style="padding: 10px;">${g.category || 'אחר'}</td>
                                                  <td style="padding: 10px; font-weight: bold;">${g.grade}</td>
                                                  <td style="padding: 10px;">${new Date(g.date).toLocaleDateString('he-IL')}</td>
                                               </tr>
@@ -4938,28 +5445,24 @@ const StudentDetailView = ({
                                w?.print();
                              }}
                              disabled={!(student.grades && student.grades.length > 0)}
-                             className="px-6 py-3 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-2xl hover:bg-slate-200 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm disabled:opacity-50"
+                             className="px-6 py-3 bg-slate-100 text-slate-700 dark:bg-slate-805 dark:text-slate-300 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm disabled:opacity-50"
                            >
                              <Printer className="w-4 h-4" />
                              הדפס תעודה
                            </button>
                            <button
                              onClick={() => {
-                               const subject = prompt('מקצוע:');
-                               if(!subject) return;
-                               const categoryRaw = prompt('קטגוריה (quiz / midterm / final / homework / other):', 'other');
-                               const category = ['quiz', 'midterm', 'final', 'homework', 'other'].includes(categoryRaw || '') ? categoryRaw : 'other';
-                               const testName = prompt('שם המבחן/מטלה:');
-                               if(!testName) return;
-                               const gradeStr = prompt('ציון (0-100):');
-                               if(!gradeStr) return;
-                               const grade = parseInt(gradeStr, 10);
-                               const dateRaw = prompt('תאריך (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-                               const date = dateRaw ? new Date(dateRaw).toISOString() : new Date().toISOString();
-                               const grades = student.grades || [];
-                               updateStudent('grades', [{ id: Date.now(), subject, category, testName, grade, date }, ...grades]);
+                               setEditingGradeId(null);
+                               setGradeForm({
+                                 subject: 'מתמטיקה',
+                                 category: 'quiz',
+                                 testName: '',
+                                 grade: 85,
+                                 date: new Date().toISOString().split('T')[0]
+                               });
+                               setIsGradeModalOpen(true);
                              }}
-                             className="px-6 py-3 bg-sky-600 text-white rounded-2xl hover:bg-sky-700 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
+                             className="px-6 py-3 bg-brand-600 text-white rounded-2xl hover:bg-brand-700 transition-colors font-bold text-sm flex items-center gap-2 shadow-sm"
                            >
                              <Plus className="w-4 h-4" />
                              הזן ציון חדש
@@ -4967,6 +5470,115 @@ const StudentDetailView = ({
                         </div>
                      </div>
 
+                     {/* Add / Edit Grade Modal Inline Overlay */}
+                     {isGradeModalOpen && (
+                       <motion.div 
+                         initial={{ opacity: 0, y: -20 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         className="p-8 bg-slate-50 dark:bg-slate-800/60 rounded-[2.5rem] border-2 border-brand-100 dark:border-brand-900/50 space-y-6"
+                       >
+                         <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                           {editingGradeId ? 'עריכת ציון קיים' : 'הזנת הערכה/ציון חדש'}
+                         </h4>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                           <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-500 uppercase">מקצוע</label>
+                             <select 
+                               value={gradeForm.subject}
+                               onChange={(e) => setGradeForm(prev => ({ ...prev, subject: e.target.value }))}
+                               className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                             >
+                               {['מתמטיקה', 'אנגלית', 'עברית (שפה)', 'מדעים', 'תנ״ך', 'היסטוריה', 'אזרחות', 'ספרות', 'גאוגרפיה', 'אמנות', 'מוזיקה', 'חינוך גופני'].map(s => (
+                                 <option key={s} value={s}>{s}</option>
+                               ))}
+                             </select>
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-500 uppercase">קטגוריה</label>
+                             <select 
+                               value={gradeForm.category}
+                               onChange={(e) => setGradeForm(prev => ({ ...prev, category: e.target.value as any }))}
+                               className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                             >
+                               <option value="quiz">בוחן</option>
+                               <option value="midterm">מבחן מחצית</option>
+                               <option value="final">מבחן סוף שנה</option>
+                               <option value="homework">שיעורי בית</option>
+                               <option value="other">אחר</option>
+                             </select>
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-500 uppercase">שם המטלה/מבחן</label>
+                             <input 
+                               type="text"
+                               placeholder="לדוגמה: בוחן משוואות כפולות"
+                               value={gradeForm.testName}
+                               onChange={(e) => setGradeForm(prev => ({ ...prev, testName: e.target.value }))}
+                               className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+                             />
+                           </div>
+                           <div className="space-y-2 lg:col-span-2">
+                             <div className="flex justify-between items-center">
+                               <label className="text-xs font-black text-slate-500 uppercase">ציון: {gradeForm.grade}</label>
+                             </div>
+                             <div className="flex items-center gap-4 py-2">
+                               <input 
+                                 type="range"
+                                 min="0"
+                                 max="100"
+                                 value={gradeForm.grade}
+                                 onChange={(e) => setGradeForm(prev => ({ ...prev, grade: parseInt(e.target.value, 10) }))}
+                                 className="flex-1 accent-brand-600 bg-slate-200 dark:bg-slate-700 rounded-lg h-2"
+                               />
+                               <input 
+                                 type="number"
+                                 min="0"
+                                 max="100"
+                                 value={gradeForm.grade}
+                                 onChange={(e) => setGradeForm(prev => ({ ...prev, grade: Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)) }))}
+                                 className="w-20 p-2 rounded-lg text-center font-black bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"
+                               />
+                             </div>
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-xs font-black text-slate-500 uppercase">תאריך ההערכה</label>
+                             <input 
+                               type="date"
+                               value={gradeForm.date}
+                               onChange={(e) => setGradeForm(prev => ({ ...prev, date: e.target.value }))}
+                               className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                             />
+                           </div>
+                         </div>
+                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-150 dark:border-slate-800">
+                           <button 
+                             onClick={() => setIsGradeModalOpen(false)}
+                             className="px-6 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-250 text-slate-500 dark:text-slate-400 rounded-xl font-bold text-sm"
+                           >
+                             ביטול
+                           </button>
+                           <button 
+                             disabled={!gradeForm.testName.trim()}
+                             onClick={() => {
+                               const gradesList = student.grades || [];
+                               if (editingGradeId !== null) {
+                                 // Update
+                                 const updated = gradesList.map((g: any) => g.id === editingGradeId ? { ...gradeForm, id: editingGradeId } : g);
+                                 updateStudent('grades', updated);
+                               } else {
+                                 // Add
+                                 updateStudent('grades', [{ ...gradeForm, id: Date.now() }, ...gradesList]);
+                               }
+                               setIsGradeModalOpen(false);
+                             }}
+                             className="px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-sm shadow-md disabled:opacity-50"
+                           >
+                             שמור
+                           </button>
+                         </div>
+                       </motion.div>
+                     )}
+ 
                      <div className="space-y-8">
                        {(student.grades || []).length === 0 ? (
                           <div className="p-10 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-700">
@@ -4997,7 +5609,7 @@ const StudentDetailView = ({
                                 </div>
                               </div>
                            </div>
-
+ 
                            {/* Subject Breakdown */}
                            <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-700 space-y-6">
                                <h4 className="text-xl font-black text-slate-800 dark:text-white opacity-80">ממוצעים לפי מקצוע</h4>
@@ -5026,7 +5638,7 @@ const StudentDetailView = ({
                                  })}
                                </div>
                            </div>
-
+ 
                            {/* Recent Grades List */}
                            <h4 className="text-xl font-black text-slate-800 dark:text-white pt-4">הערכות אחרונות</h4>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -5034,17 +5646,45 @@ const StudentDetailView = ({
                                <div key={g.id} className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
                                  <div>
                                    <div className="flex items-center gap-2">
-                                     <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-black">{g.subject}</span>
+                                     <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-100 rounded-lg text-xs font-black">{g.subject}</span>
                                      {g.category && <span className="px-2 py-1 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg text-xs font-black uppercase">{g.category}</span>}
                                      <span className="text-xs text-slate-400">{new Date(g.date).toLocaleDateString('he-IL')}</span>
                                    </div>
                                    <p className="font-bold text-slate-800 dark:text-white mt-3 text-lg leading-tight">{g.testName}</p>
                                  </div>
-                                 <div className="text-right flex flex-col items-end">
+                                 <div className="text-right flex flex-col items-end justify-between self-stretch">
                                    <div className={cn("text-4xl font-black tracking-tighter", g.grade >= 90 ? "text-emerald-500" : g.grade >= 70 ? "text-amber-500" : "text-rose-500")}>
                                      {g.grade}
                                    </div>
-                                   <button onClick={()=>updateStudent('grades', student.grades.filter((x:any)=>x.id!==g.id))} className="text-[10px] text-slate-400 font-bold hover:text-rose-500 uppercase mt-1 transition-colors">מחק ציון</button>
+                                   <div className="flex items-center gap-2 mt-2">
+                                     <button 
+                                       onClick={() => {
+                                         setEditingGradeId(g.id);
+                                         setGradeForm({
+                                           subject: g.subject || 'מתמטיקה',
+                                           category: g.category || 'quiz',
+                                           testName: g.testName || '',
+                                           grade: g.grade,
+                                           date: g.date ? g.date.split('T')[0] : new Date().toISOString().split('T')[0]
+                                         });
+                                         setIsGradeModalOpen(true);
+                                       }}
+                                       className="text-[10px] text-brand-500 font-bold hover:text-brand-600 uppercase transition-colors"
+                                     >
+                                       ערוך
+                                     </button>
+                                     <span className="text-slate-300">|</span>
+                                     <button 
+                                       onClick={() => {
+                                         if(confirm('האם אתה בטוח שברצונך למחוק ציון זה?')) {
+                                           updateStudent('grades', student.grades.filter((x: any) => x.id !== g.id));
+                                         }
+                                       }} 
+                                       className="text-[10px] text-slate-400 font-bold hover:text-rose-500 uppercase transition-colors"
+                                     >
+                                       מחק
+                                     </button>
+                                   </div>
                                  </div>
                                </div>
                              ))}
@@ -6692,6 +7332,52 @@ const SettingsView = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Teacher Profile Section */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <User className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">פרופיל מורה</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block text-right">שם המורה</label>
+              <input 
+                type="text" 
+                value={teacherProfile.name}
+                onChange={e => setTeacherProfile({...teacherProfile, name: e.target.value})}
+                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-3 outline-none focus:border-brand-500 font-bold transition-all text-right dark:text-white"
+                placeholder="שם המורה..."
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block text-right">תפקיד / כיתה / מקצוע</label>
+              <input 
+                type="text" 
+                value={teacherProfile.role}
+                onChange={e => setTeacherProfile({...teacherProfile, role: e.target.value})}
+                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-3 outline-none focus:border-brand-500 font-bold transition-all text-right dark:text-white"
+                placeholder="למשל: מחנך כיתה ח' 2"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block text-right">שם בית ספר</label>
+              <input 
+                type="text" 
+                value={teacherProfile.school}
+                onChange={e => setTeacherProfile({...teacherProfile, school: e.target.value})}
+                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-3 outline-none focus:border-brand-500 font-bold transition-all text-right dark:text-white"
+                placeholder="הזן בית ספר..."
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium text-right leading-relaxed">
+            פרטים אלו יוצגו בדוחות מודפסים, קובצי ייצוא (PDF / Excel) ובכותרות של סידורי הישיבה.
+          </p>
+        </div>
+
         {/* Theme Configuration */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3">
@@ -9826,7 +10512,21 @@ export default function App() {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [deskHistory, setDeskHistory] = useState<Record<number, string[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | number | null>(null);
-  const [teacherProfile, setTeacherProfile] = useState({ name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' });
+  const [teacherProfile, setTeacherProfile] = useState(() => {
+    const saved = localStorage.getItem('classManager_teacherProfile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error reading saved teacher profile", e);
+      }
+    }
+    return { name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('classManager_teacherProfile', JSON.stringify(teacherProfile));
+  }, [teacherProfile]);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isFurnitureModalOpen, setIsFurnitureModalOpen] = useState(false);
@@ -12128,6 +12828,18 @@ Instructions:
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "תלמידים");
+
+    const profileData = [
+      { 'מאפיין': 'שם המורה', 'ערך': teacherProfile?.name || '' },
+      { 'מאפיין': 'תפקיד', 'ערך': teacherProfile?.role || '' },
+      { 'מאפיין': 'בית ספר', 'ערך': teacherProfile?.school || '' },
+      { 'מאפיין': 'שם כיתה / מערך', 'ערך': activeConfig.name || '' },
+      { 'מאפיין': 'תאריך יצוא', 'ערך': new Date().toLocaleDateString('he-IL') },
+      { 'מאפיין': 'סה"כ תלמידים', 'ערך': activeConfig.students.length }
+    ];
+    const profileWorksheet = XLSX.utils.json_to_sheet(profileData);
+    XLSX.utils.book_append_sheet(workbook, profileWorksheet, "פרופיל מורה וכיתה");
+
     XLSX.writeFile(workbook, `students-export-${activeConfig.name || 'unnamed'}.xlsx`);
     
     setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני תלמידים יוצאו לאקסל", type: 'success' }, ...prev]);
@@ -13539,13 +14251,22 @@ Instructions:
                         )}
                         {/* Print Header only for PDF */}
                         {isPrinting && (
-                          <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100">
+                          <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100 px-6">
                              <h1 className="text-4xl font-black text-slate-900">מפת הושבה: {activeConfig.name}</h1>
-                             <div className="flex items-center justify-center gap-6 mt-4">
+                             <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
+                                {teacherProfile?.name && (
+                                  <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">מורה: {teacherProfile.name}</span>
+                                )}
+                                {teacherProfile?.role && (
+                                  <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">תפקיד: {teacherProfile.role}</span>
+                                )}
+                                {teacherProfile?.school && (
+                                  <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">בית ספר: {teacherProfile.school}</span>
+                                )}
                                 <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">סה"כ תלמידים: {activeConfig.students.length}</span>
                                 <span className="px-4 py-2 bg-white rounded-xl text-slate-600 font-bold border border-slate-200 shadow-sm">תאריך: {new Date().toLocaleDateString('he-IL')}</span>
                              </div>
-                             <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות CLass&scool pro-manager AI</p>
+                             <p className="text-slate-400 font-bold mt-4 text-xs tracking-widest">הופק באמצעות Class&school pro-manager AI</p>
                           </div>
                         )}
                        {/* Floating UI for Structure Mode */}
@@ -14198,7 +14919,14 @@ Instructions:
                            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
                               <Layout className="w-6 h-6" />
                            </div>
-                           <h2 className="text-3xl font-black text-slate-800">רשימת שיבוצים שמית</h2>
+                           <div className="flex flex-col gap-1 text-right">
+                               <h2 className="text-3xl font-black text-slate-800">רשימת שיבוצים שמית</h2>
+                               <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500 font-bold text-slate-500" dir="rtl">
+                                  {teacherProfile?.name && <span>מורה: {teacherProfile.name}</span>}
+                                  {teacherProfile?.role && <span>• תפקיד: {teacherProfile.role}</span>}
+                                  {teacherProfile?.school && <span>• בית ספר: {teacherProfile.school}</span>}
+                               </div>
+                            </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
