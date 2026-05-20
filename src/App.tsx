@@ -81,6 +81,7 @@ import {
   Heart,
   HelpCircle,
   History,
+  Home,
   Info,
   Layers,
   Layout,
@@ -1626,24 +1627,174 @@ const StudentPickerGrid = ({
   onSort, 
   isPracticeMode 
 }: any) => {
-  const studentsInPool = students.filter((s: any) => !currentConfig.grid.flat().includes(s.id));
-  const filteredStudents = studentsInPool.filter((s: any) => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterHeight, setFilterHeight] = useState<string>("all");
+  const [filterLocation, setFilterLocation] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+
+  const studentsInPool = useMemo(() => {
+    return students.filter((s: any) => !currentConfig.grid.flat().includes(s.id));
+  }, [students, currentConfig.grid]);
+
+  const filteredStudents = useMemo(() => {
+    let result = studentsInPool.filter((s: any) => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (filterGroup !== 'all') {
+      if (filterGroup === 'none') {
+        result = result.filter((s: any) => !s.groups || s.groups.length === 0);
+      } else {
+        result = result.filter((s: any) => {
+          if (!s.groups || s.groups.length === 0) return false;
+          if (s.groups.includes(filterGroup)) return true;
+          return s.groups.some((sg: string) => {
+            const configGroup = currentConfig.groups?.find((g: any) => g.id === sg || g.name === sg);
+            return configGroup?.id === filterGroup || configGroup?.name === filterGroup;
+          });
+        });
+      }
+    }
+
+    if (filterHeight !== 'all') {
+      result = result.filter((s: any) => {
+        if (filterHeight === 'short') return s.height === 'short';
+        if (filterHeight === 'medium') return s.height === 'medium' || s.height === 'average';
+        if (filterHeight === 'tall') return s.height === 'tall';
+        return true;
+      });
+    }
+
+    if (filterLocation !== 'all') {
+      result = result.filter((s: any) => {
+        if (filterLocation === 'front') {
+          return s.rowPreference === 'front' || s.height === 'short' || s.supportNeeded === 'high';
+        }
+        if (filterLocation === 'back') {
+          return s.rowPreference === 'back' || s.height === 'tall';
+        }
+        if (filterLocation === 'window') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'חלון' || e === 'window' || e.includes('חלון') || e.includes('window')) || 
+                 s.areaPref?.special === 'window_or_microwave';
+        }
+        if (filterLocation === 'door') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'דלת' || e === 'door' || e.includes('דלת') || e.includes('door'));
+        }
+        if (filterLocation === 'quiet') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'שקט' || e === 'quiet' || e.includes('שקט') || e.includes('quiet')) || 
+                 s.areaPref?.isolated;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [studentsInPool, searchQuery, filterGroup, filterHeight, filterLocation, currentConfig.groups]);
+
+  const activeFiltersCount = (filterGroup !== 'all' ? 1 : 0) + (filterHeight !== 'all' ? 1 : 0) + (filterLocation !== 'all' ? 1 : 0);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-4">
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="חיפוש תלמיד..."
-            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-2.5 pr-10 pl-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/20"
-          />
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800/65 space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="חיפוש תלמיד..."
+              className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-2.5 pr-10 pl-4 text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "p-2.5 rounded-xl transition-all border flex items-center justify-center relative hover:scale-105 active:scale-95 cursor-pointer shrink-0",
+              showFilters || activeFiltersCount > 0
+                ? "bg-brand-50 border-brand-200 text-brand-600 dark:bg-brand-900/20 dark:border-brand-800/80 dark:text-brand-400"
+                : "bg-slate-50 border-transparent text-slate-500 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
+            )}
+            title="סינון מתקדם"
+          >
+            <Sliders className="w-4 h-4" />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -left-1 w-4 h-4 bg-brand-600 rounded-full text-[9px] font-black text-white flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-3 border border-slate-100 dark:border-slate-800/60 transition-all">
+            {/* Filter by Group */}
+            <div className="space-y-1 block text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">קבוצה חברתית</label>
+              <select
+                value={filterGroup}
+                onChange={(e) => setFilterGroup(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="all">כל הקבוצות</option>
+                <option value="none">ללא קבוצה</option>
+                {currentConfig.groups?.map((g: any) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter by Height */}
+            <div className="space-y-1 block text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">גובה פיזי</label>
+              <select
+                value={filterHeight}
+                onChange={(e) => setFilterHeight(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="all">כל הגבהים</option>
+                <option value="short">נמוך (קדמי)</option>
+                <option value="medium">בינוני (מרכז)</option>
+                <option value="tall">גבוה (אחורי)</option>
+              </select>
+            </div>
+
+            {/* Filter by Location Preference */}
+            <div className="space-y-1 block text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">עדיפות מיקום בכיתה</label>
+              <select
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="all">כל המיקומים</option>
+                <option value="front">שורה ראשונה (קרוב ללוח)</option>
+                <option value="back">שורה אחרונה</option>
+                <option value="window">ליד חלון</option>
+                <option value="door">ליד דלת</option>
+                <option value="quiet">אזור שקט</option>
+              </select>
+            </div>
+
+            {/* Reset Filters button */}
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={() => {
+                  setFilterGroup('all');
+                  setFilterHeight('all');
+                  setFilterLocation('all');
+                }}
+                className="text-right w-full text-[10px] font-black text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+              >
+                נקה את כל המסננים
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ממתינים לשיבוץ ({filteredStudents.length})</h3>
           <button 
@@ -2966,11 +3117,57 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
                     }));
                   }}
                   className={cn(
-                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors",
-                    task.status === 'completed' ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 hover:border-emerald-500"
+                    "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 relative overflow-hidden active:scale-90 cursor-pointer",
+                    task.status === 'completed' 
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100 dark:shadow-none" 
+                      : "border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/10 dark:hover:bg-emerald-950/25"
                   )}
                 >
-                  {task.status === 'completed' && <Check className="w-4 h-4" />}
+                  {task.status === 'completed' ? (
+                    <>
+                      <motion.svg
+                        className="w-4 h-4 text-white stroke-current"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial="hidden"
+                        animate="visible"
+                      >
+                        <motion.path
+                          d="M20 6L9 17l-5-5"
+                          variants={{
+                            hidden: { pathLength: 0, opacity: 0 },
+                            visible: { 
+                              pathLength: 1, 
+                              opacity: 1,
+                              transition: { duration: 0.35, ease: "easeOut" }
+                            }
+                          }}
+                        />
+                      </motion.svg>
+                      {/* Micro confetti / circle explode particles */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        {[...Array(6)].map((_, idx) => {
+                          const angle = (idx * 360) / 6;
+                          const radian = (angle * Math.PI) / 180;
+                          const dist = 16;
+                          const x = Math.cos(radian) * dist;
+                          const y = Math.sin(radian) * dist;
+                          return (
+                            <motion.div
+                              key={idx}
+                              initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
+                              animate={{ scale: 0, opacity: 0, x, y }}
+                              transition={{ duration: 0.45, ease: "easeOut" }}
+                              className="w-1.5 h-1.5 bg-emerald-200 px-0 py-0 rounded-full absolute"
+                            />
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
                 </button>
              </div>
              <h4 className={cn("text-lg font-black text-slate-800 dark:text-white leading-tight", task.status === 'completed' && "line-through opacity-50")}>
@@ -6290,6 +6487,7 @@ const SettingsView = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterHeight, setFilterHeight] = useState<string>("all");
   const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterLocation, setFilterLocation] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [studentToDelete, setStudentToDelete] = useState<any>(null);
   
@@ -6309,6 +6507,32 @@ const SettingsView = ({
         result = result.filter((s: any) => s.groups?.includes(filterGroup));
       }
     }
+
+    if (filterLocation !== 'all') {
+      result = result.filter((s: any) => {
+        if (filterLocation === 'front') {
+          return s.rowPreference === 'front' || s.height === 'short' || s.supportNeeded === 'high';
+        }
+        if (filterLocation === 'back') {
+          return s.rowPreference === 'back' || s.height === 'tall';
+        }
+        if (filterLocation === 'window') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'חלון' || e === 'window' || e.includes('חלון') || e.includes('window')) || 
+                 s.areaPref?.special === 'window_or_microwave';
+        }
+        if (filterLocation === 'door') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'דלת' || e === 'door' || e.includes('דלת') || e.includes('door'));
+        }
+        if (filterLocation === 'quiet') {
+          const envs = s.environmentPreferences || [];
+          return envs.some((e: string) => e === 'שקט' || e === 'quiet' || e.includes('שקט') || e.includes('quiet')) || 
+                 s.areaPref?.isolated;
+        }
+        return true;
+      });
+    }
     
     if (sortBy === 'newest') {
       result = [...result].reverse();
@@ -6317,7 +6541,7 @@ const SettingsView = ({
     }
     
     return result;
-  }, [currentConfig.students, searchQuery, filterHeight, filterGroup, sortBy]);
+  }, [currentConfig.students, searchQuery, filterHeight, filterGroup, filterLocation, sortBy]);
 
   const loadExampleData = () => {
     if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה המלאים. האם להמשיך?")) {
@@ -6956,6 +7180,22 @@ const SettingsView = ({
                     <option value="short">קדמי</option>
                     <option value="medium">בינוני</option>
                     <option value="tall">אחורי</option>
+                  </select>
+                </div>
+                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-500 uppercase">העדפת מיקום:</span>
+                  <select 
+                    value={filterLocation} 
+                    onChange={e => setFilterLocation(e.target.value)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="all">כל המיקומים</option>
+                    <option value="front">שורה ראשונה (קרוב ללוח)</option>
+                    <option value="back">שורה אחרונה</option>
+                    <option value="window">ליד חלון</option>
+                    <option value="door">ליד דלת</option>
+                    <option value="quiet">אזור שקט</option>
                   </select>
                 </div>
               </div>
@@ -9395,7 +9635,8 @@ export default function App() {
       if (result) {
         setGoogleUser(result.user);
         setWorkspaceToken(result.accessToken);
-        setNotifications(prev => [{ id: Date.now(), text: `חשבון Google חובּר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
+        setCurrentUser(result.user);
+        setNotifications(prev => [{ id: Date.now(), text: `חשבון Google חובר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
       }
     } catch (err: any) {
       setNotifications(prev => [{ id: Date.now(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
@@ -9629,6 +9870,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const handleGuestLogin = () => {
+    setCurrentUser({
+      uid: 'guest',
+      email: 'guest@classflow.org',
+      displayName: 'מורה אורח',
+      emailVerified: true,
+      isAnonymous: true,
+    } as any);
+    setNotifications(prev => [{ id: Date.now(), text: "ברוך הבא! נכנסת למערכת כאורח (שימוש מקומי)", type: 'success' }, ...prev]);
+  };
+
   const handleAuth = async (e: React.FormEvent, email: string, pass: string, name?: string) => {
     e.preventDefault();
     setIsAuthLoading(true);
@@ -9664,7 +9916,11 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (currentUser?.uid === 'guest') {
+      setCurrentUser(null);
+    } else {
+      await signOut(auth);
+    }
     setNotifications(prev => [{ id: Date.now(), text: "התנתקת בהצלחה", type: 'info' }, ...prev]);
   };
   const [showTimer, setShowTimer] = useState(false);
@@ -11547,16 +11803,30 @@ Instructions:
         )}
         
         {/* Global Toolbar Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-100 dark:shadow-none">
+        <button 
+          onClick={() => setViewTypeWithTransition('landing')}
+          className="flex items-center gap-3 hover:opacity-85 active:scale-[0.98] transition-all text-right cursor-pointer group"
+          title="חזור לדף הנחיתה והסברים"
+        >
+          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-100 dark:shadow-none group-hover:scale-105 transition-transform">
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase">CLass&Sscool<span className="text-brand-600 ml-1">pro</span></h1>
+            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase group-hover:text-brand-600 transition-colors">CLass&Sscool<span className="text-brand-600 ml-1">pro</span></h1>
           </div>
-        </div>
+        </button>
 
         <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-2 hidden lg:block" />
+
+        {/* Home/Landing Page Link */}
+        <button 
+          onClick={() => setViewTypeWithTransition('landing')}
+          className="hidden lg:flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black border border-slate-200/50 dark:border-slate-800 transition-all cursor-pointer hover:border-brand-200 dark:hover:border-slate-700"
+          title="למעבר לדף הנחיתה וההסברים של המערכת"
+        >
+          <Home className="w-4 h-4 text-brand-600" />
+          <span>דף נחיתה והוראות</span>
+        </button>
         
         {/* Add Event Button */}
         <button 
@@ -12714,19 +12984,49 @@ Instructions:
 
       <div className="flex flex-1 overflow-hidden relative">
         {currentUser ? Sidebar() : (
-          <div className="fixed inset-0 z-[300] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 overflow-hidden">
+          <div className="fixed inset-0 z-[300] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6 overflow-y-auto">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-8 border-4 border-white dark:border-slate-800"
+              className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-6 border-4 border-white dark:border-slate-800/80"
               dir="rtl"
             >
               <div className="text-center space-y-2">
                 <div className="w-16 h-16 bg-brand-100 dark:bg-brand-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-200 dark:border-brand-800">
                   <School className="w-10 h-10 text-brand-600 dark:text-brand-400" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">ברוכים הבאים</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-bold">{authMode === 'login' ? 'התחבר למערכת CLASSFLOW' : 'צור חשבון חדש ב-CLASSFLOW'}</p>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">כיתה חכמה CLASSFLOW</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-bold text-xs leading-relaxed">
+                  הפלטפורמה המתקדמת ביותר לניהול, סידור וחלוקת כיתות לימוד בזמן אמת ושילוב בינה מלאכותית.
+                </p>
+              </div>
+
+              {/* Tabs for Login / Register */}
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/40 dark:border-slate-700/40">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setAuthError(null); }}
+                  className={cn(
+                    "flex-1 py-2.5 text-xs font-black rounded-xl transition-all quick-transition",
+                    authMode === 'login' 
+                      ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm font-black" 
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold"
+                  )}
+                >
+                  התחברות למערכת
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                  className={cn(
+                    "flex-1 py-2.5 text-xs font-black rounded-xl transition-all quick-transition",
+                    authMode === 'signup' 
+                      ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm" 
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold"
+                  )}
+                >
+                  הרשמה / צור חשבון
+                </button>
               </div>
 
               <form onSubmit={(e) => {
@@ -12740,30 +13040,65 @@ Instructions:
                   </div>
                 )}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">אימייל</label>
-                  <input name="email" required type="email" className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700/50 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-800 shadow-inner" placeholder="name@school.org" />
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">איมייל</label>
+                  <input name="email" required type="email" className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="name@school.org" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">סיסמה</label>
-                  <input name="password" required type="password" className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700/50 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-800 shadow-inner" placeholder="••••••••" />
+                  <input name="password" required type="password" className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" placeholder="••••••••" />
                 </div>
-                {authError && <p className="text-rose-500 text-xs font-bold px-2">{authError}</p>}
+                
+                {authError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40 space-y-1">
+                    <p className="text-rose-600 dark:text-rose-400 text-xs font-bold leading-normal">{authError}</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] leading-normal font-medium">אם הרשמת דוא"ל חסומה בפרויקט, אנא התחבר מהירה עם Google או היכנס ישירות כאורח ללא שמירה בענן.</p>
+                  </div>
+                )}
+
                 <button 
                   type="submit" 
                   disabled={isAuthLoading}
-                  className="w-full py-4 bg-brand-600 dark:bg-brand-500 text-white rounded-2xl font-black shadow-xl shadow-brand-100 dark:shadow-none flex items-center justify-center gap-2 hover:bg-brand-700 dark:hover:bg-brand-400 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-400 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98]"
                 >
                   {isAuthLoading ? 'בטעינה...' : (authMode === 'login' ? 'התחברות' : 'הרשמה')}
                   <LogIn className="w-5 h-5" />
                 </button>
               </form>
 
-              <div className="text-center pt-4">
-                <button 
-                  onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-                  className="text-brand-600 dark:text-brand-400 font-black text-sm hover:underline"
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-100 dark:border-slate-800"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 font-extrabold text-[10px]">דרכי התחברות נוספות</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Google Sign-in */}
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isWorkspaceLoading}
+                  className="w-full py-3.5 hover:border-slate-300 border-2 border-slate-200 dark:border-slate-700 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 rounded-2xl font-black flex items-center justify-center gap-3 transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  {authMode === 'login' ? 'אין לך חשבון? הירשם עכשיו' : 'כבר יש לך חשבון? התחבר' }
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.68 1.54 14.98 1 12 1 7.35 1 3.37 3.65 1.39 7.5l3.85 2.99c.92-2.76 3.51-4.45 6.76-4.45z"/>
+                    <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.74-2.38 3.58l3.69 2.86c2.16-1.99 3.4-4.92 3.4-8.54z"/>
+                    <path fill="#FBBC05" d="M5.24 14.29c-.23-.69-.37-1.43-.37-2.2s.14-1.51.37-2.2L1.39 6.9c-.89 1.77-1.39 3.77-1.39 5.8s.5 4.03 1.39 5.8l3.85-2.99z"/>
+                    <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.69-2.86c-1.02.68-2.33 1.09-3.96 1.09-3.25 0-5.84-1.69-6.76-4.45L1.39 16.8c1.98 3.85 5.96 6.5 10.61 6.5z"/>
+                  </svg>
+                  <span>התחברות מהירה באמצעות Google</span>
+                </button>
+
+                {/* Guest sign in */}
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  className="w-full py-3.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 font-black rounded-2xl flex items-center justify-center gap-2 border border-emerald-200/40 dark:border-emerald-800/20 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <UserCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <span>המשך כמורה אורח (איחסון מקומי בלבד)</span>
                 </button>
               </div>
             </motion.div>
@@ -13732,13 +14067,17 @@ Instructions:
                       defaultValue={currentUser?.displayName || ''} 
                       onBlur={async (e) => {
                         if (currentUser && e.target.value !== currentUser.displayName) {
-                          await updateProfile(currentUser, { displayName: e.target.value });
+                          if (currentUser.uid === 'guest') {
+                            setCurrentUser(prev => prev ? { ...prev, displayName: e.target.value } : null);
+                          } else {
+                            await updateProfile(currentUser, { displayName: e.target.value });
                             const path = `users/${currentUser.uid}`;
                             try {
                               await updateDoc(doc(db, 'users', currentUser.uid), { displayName: e.target.value, updatedAt: new Date().toISOString() });
                             } catch (err) {
                               handleFirestoreError(err, OperationType.UPDATE, path);
                             }
+                          }
                           setTeacherProfile(prev => ({ ...prev, name: e.target.value }));
                           setNotifications(prev => [{ id: Date.now(), text: "פרופיל עודכן", type: 'success' }, ...prev]);
                         }
@@ -14175,7 +14514,17 @@ Instructions:
 
       {!isPresentationMode && (
         <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
-          <div>CLass&scool pro-manager // Ready</div>
+          <div className="flex items-center gap-3">
+            <span>CLass&scool pro-manager // Ready</span>
+            <span>•</span>
+            <button 
+              onClick={() => setViewTypeWithTransition('landing')}
+              className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors hover:underline cursor-pointer flex items-center gap-1 font-black normal-case"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>דף נחיתה והסברים</span>
+            </button>
+          </div>
           <div className="flex gap-4">
             <span>{activeConfig.students.length} תלמידים</span>
             <span>•</span>
