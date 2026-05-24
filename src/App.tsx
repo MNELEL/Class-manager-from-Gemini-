@@ -35,7 +35,9 @@ import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
 import { TeacherToolkit } from './components/TeacherToolkit';
 import { LessonsManager } from './components/LessonsManager';
+import { QuickGrades } from './components/QuickGrades';
 import { WeeklySummaryGenerator } from './components/WeeklySummaryGenerator';
+import { Whiteboard } from './components/Whiteboard';
 import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
@@ -1291,6 +1293,8 @@ const DeskCell = ({
       
       {student ? (
         <motion.div 
+          layout
+          layoutId={`student-node-${student.id}`}
           className={cn("flex flex-col items-center gap-1 w-full z-10 transition-all", editMode === 'placement' && "cursor-grab active:cursor-grabbing rounded-2xl")}
           animate={draggedStudentId === student.id ? { scale: 0.95, opacity: 0.4 } : { scale: 1, opacity: 1 }}
           whileHover={editMode === 'placement' ? { scale: 1.03, y: -4 } : {}}
@@ -1851,11 +1855,13 @@ const StudentPickerGrid = ({
           </div>
         ) : (
           filteredStudents.map((s: any) => (
-            <div 
+            <motion.div 
+              layout
+              layoutId={`student-node-${s.id}`}
               key={s.id}
               className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between hover:border-brand-500 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing group"
               draggable
-              onDragStart={(e) => {
+              onDragStart={(e: any) => {
                 e.dataTransfer.setData('type', 'student');
                 e.dataTransfer.setData('studentId', s.id);
               }}
@@ -1872,7 +1878,7 @@ const StudentPickerGrid = ({
               >
                 <Sliders className="w-4 h-4" />
               </button>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
@@ -6187,7 +6193,8 @@ const StudentDetailView = ({
                            </div>
  
                            {/* Recent Grades List */}
-                           <h4 className="text-xl font-black text-slate-800 dark:text-white pt-4">הערכות אחרונות</h4>
+                           <QuickGrades student={student} updateStudent={updateStudent} />
+                            <h4 className="text-xl font-black text-slate-800 dark:text-white pt-4">הערכות אחרונות</h4>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {(student.grades || []).map((g: any) => (
                                <div key={g.id} className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
@@ -10794,6 +10801,7 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     { id: 'import-csv', title: 'ייבוא תלמידים מקובץ', icon: <Upload className="w-8 h-8 text-sky-500" />, desc: 'העלאת רשימת תלמידים מקובץ Excel או CSV', status: 'פעיל' },
     { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
     { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' },
+    { id: 'whiteboard', title: 'לוח למידה', icon: <Activity className="w-8 h-8 text-teal-500" />, desc: 'לוח ציור וכתיבה שיתופי למסך התלמידים', status: 'פעיל' },
     { id: 'summary', title: 'סיכום שבועי להורים', icon: <Mail className="w-8 h-8 text-rose-500" />, desc: 'יצירת טיוטת מייל אוטומטית להורים עם נתוני התנהגות וציונים', status: 'פעיל' }
   ];
 
@@ -10871,6 +10879,7 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
             {selectedTool === 'birthdays' && <BirthdayTable students={students} />}
             {selectedTool === 'meetings' && <MeetingPlanner students={students} />}
             {selectedTool === 'ai' && <AIAppGenerator students={students} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />}
+            {selectedTool === 'whiteboard' && <Whiteboard />}
             {selectedTool === 'summary' && <WeeklySummaryGenerator students={students} setNotifications={setNotifications} />}
             {selectedTool === 'templates' && (
               <div className="text-center space-y-8 py-10">

@@ -19,6 +19,7 @@ export interface Student {
   groups?: string[];
   attendance?: { date: string; status: 'present' | 'absent' | 'late' }[];
   grades?: { id?: string | number, subject: string; grade: number; testName?: string; date: string; category?: 'quiz' | 'midterm' | 'final' | 'homework' | 'other' }[];
+  weeklyGrades?: { week: string; subject: string; grade: number }[];
   physicalHeight?: number; // cm
   physicalWidth?: number; // cm
   isAlwaysFront?: boolean;
