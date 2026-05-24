@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Lexend", "Inter", "Heebo", "Assistant", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Lexend", "Outfit", "Montserrat", sans-serif;
+  --font-sans: var(--app-font-sans, "Lexend", "Inter", "Heebo", "Assistant", ui-sans-serif, system-ui, sans-serif);
+  --font-display: var(--app-font-display, "Lexend", "Outfit", "Montserrat", sans-serif);
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
   --color-brand-50: #f8fafc;
@@ -190,6 +190,58 @@
   --color-purple-800: #6b21a8;
   --color-purple-900: #581c87;
   --color-purple-950: #3b0764;
+
+  /* Theme: Midnight (Deep Blue/Navy) */
+  --theme-midnight-50: #eff6ff;
+  --theme-midnight-100: #dbeafe;
+  --theme-midnight-200: #bfdbfe;
+  --theme-midnight-300: #93c5fd;
+  --theme-midnight-400: #60a5fa;
+  --theme-midnight-500: #3b82f6;
+  --theme-midnight-600: #2563eb;
+  --theme-midnight-700: #1d4ed8;
+  --theme-midnight-800: #1e40af;
+  --theme-midnight-900: #1e3a8a;
+  --theme-midnight-950: #172554;
+
+  /* Theme: Lavender (Soft Purple) */
+  --theme-lavender-50: #f5f3ff;
+  --theme-lavender-100: #ede9fe;
+  --theme-lavender-200: #ddd6fe;
+  --theme-lavender-300: #c4b5fd;
+  --theme-lavender-400: #a78bfa;
+  --theme-lavender-500: #8b5cf6;
+  --theme-lavender-600: #7c3aed;
+  --theme-lavender-700: #6d28d9;
+  --theme-lavender-800: #5b21b6;
+  --theme-lavender-900: #4c1d95;
+  --theme-lavender-950: #2e1065;
+
+  /* Theme: Orange Crush */
+  --theme-orange_crush-50: #fff7ed;
+  --theme-orange_crush-100: #ffedd5;
+  --theme-orange_crush-200: #fed7aa;
+  --theme-orange_crush-300: #fdba74;
+  --theme-orange_crush-400: #fb923c;
+  --theme-orange_crush-500: #f97316;
+  --theme-orange_crush-600: #ea580c;
+  --theme-orange_crush-700: #c2410c;
+  --theme-orange_crush-800: #9a3412;
+  --theme-orange_crush-900: #7c2d12;
+  --theme-orange_crush-950: #431407;
+
+  /* Theme: Graphite (Grey) */
+  --theme-graphite-50: #f9fafb;
+  --theme-graphite-100: #f3f4f6;
+  --theme-graphite-200: #e5e7eb;
+  --theme-graphite-300: #d1d5db;
+  --theme-graphite-400: #9ca3af;
+  --theme-graphite-500: #6b7280;
+  --theme-graphite-600: #4b5563;
+  --theme-graphite-700: #374151;
+  --theme-graphite-800: #1f2937;
+  --theme-graphite-900: #111827;
+  --theme-graphite-950: #030712;
 
   --shadow-bento: 0 0 0 1px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.05);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
@@ -411,6 +463,62 @@
   --color-brand-950: var(--theme-festive_stars-950);
 }
 
+[data-theme='midnight'] {
+  --color-brand-50: var(--theme-midnight-50);
+  --color-brand-100: var(--theme-midnight-100);
+  --color-brand-200: var(--theme-midnight-200);
+  --color-brand-300: var(--theme-midnight-300);
+  --color-brand-400: var(--theme-midnight-400);
+  --color-brand-500: var(--theme-midnight-500);
+  --color-brand-600: var(--theme-midnight-600);
+  --color-brand-700: var(--theme-midnight-700);
+  --color-brand-800: var(--theme-midnight-800);
+  --color-brand-900: var(--theme-midnight-900);
+  --color-brand-950: var(--theme-midnight-950);
+}
+
+[data-theme='lavender'] {
+  --color-brand-50: var(--theme-lavender-50);
+  --color-brand-100: var(--theme-lavender-100);
+  --color-brand-200: var(--theme-lavender-200);
+  --color-brand-300: var(--theme-lavender-300);
+  --color-brand-400: var(--theme-lavender-400);
+  --color-brand-500: var(--theme-lavender-500);
+  --color-brand-600: var(--theme-lavender-600);
+  --color-brand-700: var(--theme-lavender-700);
+  --color-brand-800: var(--theme-lavender-800);
+  --color-brand-900: var(--theme-lavender-900);
+  --color-brand-950: var(--theme-lavender-950);
+}
+
+[data-theme='orange_crush'] {
+  --color-brand-50: var(--theme-orange_crush-50);
+  --color-brand-100: var(--theme-orange_crush-100);
+  --color-brand-200: var(--theme-orange_crush-200);
+  --color-brand-300: var(--theme-orange_crush-300);
+  --color-brand-400: var(--theme-orange_crush-400);
+  --color-brand-500: var(--theme-orange_crush-500);
+  --color-brand-600: var(--theme-orange_crush-600);
+  --color-brand-700: var(--theme-orange_crush-700);
+  --color-brand-800: var(--theme-orange_crush-800);
+  --color-brand-900: var(--theme-orange_crush-900);
+  --color-brand-950: var(--theme-orange_crush-950);
+}
+
+[data-theme='graphite'] {
+  --color-brand-50: var(--theme-graphite-50);
+  --color-brand-100: var(--theme-graphite-100);
+  --color-brand-200: var(--theme-graphite-200);
+  --color-brand-300: var(--theme-graphite-300);
+  --color-brand-400: var(--theme-graphite-400);
+  --color-brand-500: var(--theme-graphite-500);
+  --color-brand-600: var(--theme-graphite-600);
+  --color-brand-700: var(--theme-graphite-700);
+  --color-brand-800: var(--theme-graphite-800);
+  --color-brand-900: var(--theme-graphite-900);
+  --color-brand-950: var(--theme-graphite-950);
+}
+
 @layer components {
   .classroom-floor {
     background-color: #f1f5f9;
@@ -482,6 +590,39 @@
     background-image: 
       url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18l.6-.6c.2-.5.7-.9 1.4-1.4 1-.7 1.4-1.5 1.4-2.3 0-1.2-1-2.1-2.4-2.1-1.1 0-1.9.5-2.2 1.2h-1c.3-1.3 1.5-2.2 3.2-2.2 2 0 3.4 1.4 3.4 3.1 0 1.2-.6 2.2-1.8 3l-1.3.9c-.4.3-.6.5-.8.9l-.3.5h0z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E"),
       linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 40px 40px, 100px 100px;
+  }
+
+  [data-theme='midnight'] .classroom-floor {
+    background-color: #020617;
+    background-image: 
+      radial-gradient(1px 1px at 25% 25%, #fff 100%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 50% 50%, #fff 100%, transparent 100%),
+      radial-gradient(1px 1px at 75% 75%, #fff 100%, transparent 100%);
+    background-size: 150px 150px;
+  }
+
+  [data-theme='lavender'] .classroom-floor {
+    background-color: #f5f3ff;
+    background-image: 
+      linear-gradient(135deg, rgba(139, 92, 246, 0.05) 25%, transparent 25%, transparent 50%, rgba(139, 92, 246, 0.05) 50%, rgba(139, 92, 246, 0.05) 75%, transparent 75%, transparent 100%);
+    background-size: 60px 60px;
+  }
+
+  [data-theme='orange_crush'] .classroom-floor {
+    background-color: #fff7ed;
+    background-image: 
+      radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.05) 0%, transparent 50%);
+    background-size: 100% 100%;
+  }
+
+  [data-theme='graphite'] .classroom-floor {
+    background-color: #f9fafb;
+    background-image: 
+      linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+      linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+    background-size: 50px 50px;
   }
 
   .dark .classroom-floor {
