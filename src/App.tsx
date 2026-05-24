@@ -50,6 +50,7 @@ import {
   Activity,
   AlertCircle,
   ArrowLeft,
+  Award,
   BarChart3,
   ArrowRight,
   ArrowRightLeft,
@@ -87,7 +88,9 @@ import {
   Filter,
   FlaskConical,
   FolderOpen,
+  Gift,
   GraduationCap,
+  Grid,
   Grid3X3,
   GripVertical,
   HardDrive,
@@ -98,6 +101,7 @@ import {
   Info,
   Layers,
   Layout,
+  LayoutDashboard,
   LayoutGrid,
   Lightbulb,
   LineChart,
@@ -933,6 +937,11 @@ const DeskCell = ({
   const isSelected = studentId && selectedStudentId === studentId;
   const isBulkSelected = studentId && selectedStudentIds.includes(studentId);
   
+  const overdueTasksCount = student && student.tasks 
+    ? student.tasks.filter((t: any) => t.status !== 'done' && new Date(t.dueDate).getTime() < Date.now()).length 
+    : 0;
+  const hasOverdue = overdueTasksCount > 0;
+
   const selectedStudentObj = selectedStudentId ? currentConfig.students.find((s: any) => s.id === selectedStudentId) : null;
   const isFriendOfSelected = studentId && selectedStudentObj?.preferred?.includes(studentId);
   const isAvoidedBySelected = studentId && selectedStudentObj?.forbidden?.includes(studentId);
@@ -1100,6 +1109,7 @@ const DeskCell = ({
         (isSelected && !isPrinting) && "ring-4 ring-brand-400 border-brand-500 shadow-2xl z-50",
         (isBulkSelected && !isPrinting) && "ring-4 ring-brand-500 border-brand-600 shadow-2xl z-50 bg-brand-50/50 dark:bg-brand-900/30",
         (hasConflict && !isPrinting) && "ring-4 ring-rose-400/30 border-rose-200 dark:border-rose-900",
+        (hasOverdue && !isPrinting) && "ring-4 ring-rose-500/35 border-rose-400 bg-rose-50/5 dark:bg-rose-950/10 shadow-[0_0_20px_rgba(244,63,94,0.25)]",
         (editMode === 'structure' && !isHidden && !isObstruction && !isPrinting) && "cursor-move hover:ring-2 hover:ring-amber-300"
       )}
     >
@@ -1342,6 +1352,18 @@ const DeskCell = ({
              <div className="flex items-center gap-1 mb-0.5">
                <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
+              </div>
+              
+              {overdueTasksCount > 0 && !isPrinting && (
+                <div 
+                  title={`${overdueTasksCount} מטלות בפיגור`} 
+                  className="mt-1.5 mb-1 flex items-center gap-1.5 px-3 py-1 bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/30 rounded-xl text-[10px] font-black animate-pulse"
+                >
+                  <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span>{overdueTasksCount} בפיגור</span>
+                </div>
+              )}
+              <div className="hidden" /> {/* dummy
              </div>
              
              {/* Hover Tooltip - Hidden when printing or in structure mode */}
@@ -1485,7 +1507,7 @@ const DeskCell = ({
                       newGrid[idx] = null;
                       return { ...prev, grid: newGrid };
                     });
-                    setNotifications((prev: any) => [{ id: Date.now(), text: `השיבוץ בוטל: ${student.name}`, type: 'info' }, ...prev]);
+                    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `השיבוץ בוטל: ${student.name}`, type: 'info' }, ...prev]);
                   }}
                   className="w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white hover:border-rose-700 shadow-xl transition-all"
                 >
@@ -1513,7 +1535,7 @@ const DeskCell = ({
                             students: prev.students.filter((s:any) => s.id !== student.id)
                           };
                        });
-                       setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק לחלוטין`, type: 'error' }, ...prev]);
+                       setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `התלמיד ${student.name} נמחק לחלוטין`, type: 'error' }, ...prev]);
                     }
                   }}
                   className="w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center hover:bg-rose-600 hover:text-white hover:border-rose-700 shadow-xl transition-all"
@@ -1620,6 +1642,206 @@ const ConflictPanel = ({ conflicts, students, onResolve }: any) => {
           ניסית להחליף בין {students.find((s:any)=>s.id===conflicts[0]?.studentId1)?.name || 'התלמיד'} לבין מקום פנוי בשורה הראשונה?
         </p>
       </div>
+    </div>
+  );
+};
+
+// --- Command Palette Component ---
+
+const CommandPaletteModal = ({ 
+  isOpen, 
+  onClose, 
+  students = [], 
+  setViewType, 
+  setSelectedStudentId 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  students: any[]; 
+  setViewType: (view: any) => void; 
+  setSelectedStudentId: (id: string | null) => void; 
+}) => {
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const viewsList = [
+    { id: 'dashboard', name: 'לוח בקרה וסיכומים (Dashboard)', keywords: 'dashboard דשבורד בקרה לוח כיתה', icon: LayoutDashboard },
+    { id: 'grid', name: 'מפת ישיבה כיתתית (Classroom Grid)', keywords: 'מפה ישיבה כיתה סידור תלמידים יציאה חזור', icon: Grid },
+    { id: 'grades', name: 'מערכת ניהול ציונים (Grades)', keywords: 'ציונים מבחן בוחן הישגים', icon: Award },
+    { id: 'attendance', name: 'מעקב נוכחות (Attendance)', keywords: 'נוכחות חיסור איחור תלמידים', icon: ClipboardList },
+    { id: 'analytics', name: 'דוחות וסטטיסטיקות AI (Analytics)', keywords: 'דוחות גרפים AI נתונים אנליטיקה', icon: BarChart3 },
+    { id: 'behaviorLog', name: 'יומן משמעת והתנהגות (Behavior)', keywords: 'יומן התנהגות משמעת הערה חיובי שלילי', icon: Activity },
+    { id: 'groups-management', name: 'ניהול קבוצות ואילוצי סידור (Groups)', keywords: 'קבוצות אילוצים חברים רחוקים סידור ישיבה', icon: Users },
+    { id: 'rewards', name: 'חנות פרסים והטבות (Rewards)', keywords: 'פרסים חנות נקודות הטבות קבלה', icon: Gift },
+    { id: 'leaderboard', name: 'לוח מובילים שבועי (Leaderboard)', keywords: 'לוח מובילים נקודות ראשון ניקוד', icon: Trophy },
+    { id: 'settings', name: 'הגדרות המערכת (Settings)', keywords: 'הגדרות פרופיל קובץ ייבוא ייצוא', icon: Settings },
+    { id: 'tools', name: 'ארגז כלים ומחוללים (Tools)', keywords: 'כלים טיימר רולטה הגרלה מחולל קבוצות', icon: Wrench },
+    { id: 'tasks', name: 'ניהול מטלות ומשימות (Tasks)', keywords: 'מטלות משימות בית שיעורים פיגור', icon: BookOpen }
+  ];
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuery('');
+      setActiveIndex(0);
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [isOpen]);
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    
+    const matchingViews = viewsList.filter(v => 
+      v.name.toLowerCase().includes(q) || 
+      v.keywords.toLowerCase().includes(q)
+    ).map(v => ({ ...v, type: 'view' }));
+
+    const matchingStudents = students.filter((s: any) => 
+      s.name.toLowerCase().includes(q) || 
+      (s.group && s.group.toLowerCase().includes(q))
+    ).map(s => ({
+      id: s.id,
+      name: s.name,
+      subText: s.group ? `קבוצה: ${s.group}` : 'תלמיד כיתתי',
+      type: 'student',
+      icon: User
+    }));
+
+    return [...matchingViews, ...matchingStudents];
+  }, [query, students]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  const handleSelect = (item: any) => {
+    if (item.type === 'view') {
+      setViewType(item.id);
+    } else if (item.type === 'student') {
+      setSelectedStudentId(item.id);
+      setViewType('studentDetail');
+    }
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredItems[activeIndex]) {
+          handleSelect(filteredItems[activeIndex]);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, activeIndex, filteredItems]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[3000] bg-slate-950/60 backdrop-blur-md flex items-start justify-center pt-[15vh] px-4">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0, y: -20 }} 
+        animate={{ scale: 1, opacity: 1, y: 0 }} 
+        exit={{ scale: 0.95, opacity: 0, y: -20 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col"
+        dir="rtl"
+      >
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+          <Search className="w-6 h-6 text-slate-400 shrink-0" />
+          <input 
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חפש תלמיד או לוח תצוגה... (לדוגמה: 'ציונים', 'יוסי')"
+            className="flex-1 bg-transparent border-0 text-xl font-black text-slate-800 dark:text-white outline-none placeholder-slate-400 placeholder:font-semibold"
+          />
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-wider shrink-0 shadow-sm">
+            <span>ESC</span>
+          </kbd>
+        </div>
+
+        <div className="max-h-[50vh] overflow-y-auto custom-scrollbar p-4 space-y-1.5">
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item: any, idx: number) => {
+              const IconComponent = item.icon;
+              const matches = idx === activeIndex;
+              return (
+                <button
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => handleSelect(item)}
+                  className={cn(
+                    "w-full text-right p-4 rounded-2xl flex items-center gap-4 transition-all duration-150 relative shrink-0",
+                    matches 
+                      ? "bg-brand-500 text-white shadow-lg shadow-brand-500/25 scale-[1.01] z-20" 
+                      : "bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+                  )}
+                >
+                  <div className={cn(
+                    "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
+                    matches 
+                      ? "bg-white/20 text-white" 
+                      : "bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400"
+                  )}>
+                    <IconComponent className="w-5 h-5" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 pr-1">
+                    <p className="font-extrabold text-base tracking-tight truncate">
+                      {item.name}
+                    </p>
+                    {item.subText && (
+                      <p className={cn(
+                        "text-xs font-semibold mt-0.5 truncate",
+                        matches ? "text-white/80" : "text-slate-400"
+                      )}>
+                        {item.subText}
+                      </p>
+                    )}
+                  </div>
+
+                  {matches && (
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-lg border border-white/10 shadow-sm">
+                      עבור אל
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500 space-y-3">
+              <Search className="w-12 h-12 mx-auto stroke-[1.5]" />
+              <div>
+                <p className="font-black text-lg">לא נמצאו תוצאות לחיפוש</p>
+                <p className="text-sm font-semibold max-w-xs mx-auto mt-1 opacity-75">נסה להקליד שם של תלמיד או חלק של יישום מפתח (כמו ציונים, לוח בקרה וכו')</p>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800 flex items-center gap-6 text-[10px] font-extrabold text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-lg">↑↓</kbd>
+            <span>ניווט במקלדת</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-lg">Enter</kbd>
+            <span>לבחירה</span>
+          </span>
+        </div>
+      </motion.div>
     </div>
   );
 };
@@ -2682,7 +2904,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
                     ...prev,
                     students: prev.students.map((s: any) => 
                       s.id === newGrade.studentId 
-                        ? { ...s, grades: [...(s.grades || []), { ...newGrade, id: Date.now() }] } 
+                        ? { ...s, grades: [...(s.grades || []), { ...newGrade, id: Date.now() + Math.random() }] } 
                         : s
                     )
                   }));
@@ -2778,7 +3000,7 @@ const EventsView = ({ currentConfig, updateCurrentConfig, onBack }: { currentCon
       if (editingEventId) {
         updatedEvents = (prev.events || []).map((e: any) => e.id === editingEventId ? { ...newEvent, id: editingEventId } : e);
       } else {
-        updatedEvents = [{ ...newEvent, id: Date.now().toString() }, ...(prev.events || [])];
+        updatedEvents = [{ ...newEvent, id: Date.now() + Math.random().toString() }, ...(prev.events || [])];
       }
       return { ...prev, events: updatedEvents };
     });
@@ -3276,7 +3498,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
             : camp
         )
       }));
-      setNotifications((prev: any) => [{ id: Date.now(), text: `המבצע עודכן בהצלחה: ${newCampaign.title}`, type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `המבצע עודכן בהצלחה: ${newCampaign.title}`, type: 'success' }, ...prev]);
       setEditingCampaignId(null);
     } else {
       const item = { ...newCampaign, id: `camp-${Date.now()}`, currentPoints: 0, participants: [], progress: {} };
@@ -3284,7 +3506,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
         ...prev,
         campaigns: [...(prev.campaigns || []), item]
       }));
-      setNotifications((prev: any) => [{ id: Date.now(), text: `מבצע חדש הושק: ${newCampaign.title}`, type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `מבצע חדש הושק: ${newCampaign.title}`, type: 'success' }, ...prev]);
     }
     
     setIsAdding(false);
@@ -3330,7 +3552,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
         camp.id === id ? { ...camp, status: nextStatus } : camp
       )
     }));
-    setNotifications((prev: any) => [{ id: Date.now(), text: `סטטוס המבצע עודכן ל-${nextStatus === 'active' ? 'פעיל' : 'הושלם'}`, type: 'info' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `סטטוס המבצע עודכן ל-${nextStatus === 'active' ? 'פעיל' : 'הושלם'}`, type: 'info' }, ...prev]);
   };
 
   // Define rewards handlers
@@ -3344,7 +3566,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
           r.id === editingRewardId ? { ...r, ...newReward } : r
         )
       }));
-      setNotifications((prev: any) => [{ id: Date.now(), text: `הפרס עודכן בהצלחה: ${newReward.title}`, type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `הפרס עודכן בהצלחה: ${newReward.title}`, type: 'success' }, ...prev]);
       setEditingRewardId(null);
     } else {
       const rewardItem = { ...newReward, id: `rev-${Date.now()}` };
@@ -3352,7 +3574,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
         ...prev,
         rewards: [...(prev.rewards || []), rewardItem]
       }));
-      setNotifications((prev: any) => [{ id: Date.now(), text: `פרס חדש הוגדר: ${newReward.title}`, type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `פרס חדש הוגדר: ${newReward.title}`, type: 'success' }, ...prev]);
     }
     
     setIsAddingReward(false);
@@ -3385,7 +3607,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
       ...prev,
       rewards: prev.rewards.filter((r: any) => r.id !== id)
     }));
-    setNotifications((prev: any) => [{ id: Date.now(), text: 'הפרס נמחק בהצלחה', type: 'info' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'הפרס נמחק בהצלחה', type: 'info' }, ...prev]);
   };
 
   // Points adjustment handler (with custom reason logging)
@@ -3416,7 +3638,7 @@ const CampaignsView = ({ currentConfig, updateCurrentConfig, onBack, setNotifica
     });
     
     setNotifications((prev: any) => [{ 
-      id: Date.now(), 
+      id: Date.now() + Math.random(), 
       text: `${value > 0 ? 'נוספו' : 'הופחתו'} ${Math.abs(value)} נקודות לתלמיד`, 
       type: value > 0 ? 'success' : 'info' 
     }, ...prev]);
@@ -4190,7 +4412,7 @@ const TasksView = ({ students, onBack, updateCurrentConfig }: { students: any[],
               <button 
                 disabled={!newTask.title}
                 onClick={() => {
-                  const taskToSave = { ...newTask, id: Date.now().toString(), status: 'pending' as const };
+                  const taskToSave = { ...newTask, id: Date.now() + Math.random().toString(), status: 'pending' as const };
                   updateCurrentConfig((prev: any) => ({
                     ...prev,
                     students: prev.students.map((s: any) => 
@@ -4919,11 +5141,11 @@ const StudentDetailView = ({
 תובנות: ${result.insights}`;
         
         updateStudent('ai_pedagogy_recommendation', analysisText);
-        setNotifications((prev: any) => [{ id: Date.now(), text: `ההערות נותחו ותויגו בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
+        setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `ההערות נותחו ותויגו בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
       }
     } catch (error) {
       console.error("AI Analysis Error:", error);
-      setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה בניתוח הערות באמצעות AI", type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "שגיאה בניתוח הערות באמצעות AI", type: 'error' }, ...prev]);
     } finally {
       setIsAnalyzingNotes(false);
     }
@@ -5673,7 +5895,7 @@ const StudentDetailView = ({
                           const val = (e.target as HTMLInputElement).value;
                           if (!val.trim()) return;
                           const reminder = {
-                            id: `rem-${Date.now()}`,
+                            id: `rem-${Date.now() + Math.random()}`,
                             text: val,
                             studentId: student.id,
                             date: new Date().toISOString(),
@@ -5694,7 +5916,7 @@ const StudentDetailView = ({
                         const val = input.value;
                         if (!val.trim()) return;
                         const reminder = {
-                          id: `rem-${Date.now()}`,
+                          id: `rem-${Date.now() + Math.random()}`,
                           text: val,
                           studentId: student.id,
                           date: new Date().toISOString(),
@@ -5919,10 +6141,10 @@ const StudentDetailView = ({
                                         const prompt = `שם התלמיד: ${student.name}, ממוצע ציונים: ${avg}, תגיות קבוצות: ${tags}, תגיות הערות: ${noteTags}, רמת עניין ומעורבות: ${interest}, צורך בתמיכה: ${support}, העדפות סביבת לימוד: ${envPrefs}, הצלחות וחוזקות: ${successes}, הערות נוספות: ${notes}. נתח מידע זה וגבש תוכנית פדגוגית אישית.`;
                                        const text = await generateContent(prompt);
                                        updateStudent('ai_pedagogy_recommendation', text);
-                                       setNotifications((prev) => [{ id: Date.now(), text: `גובשה תוכנית פדגוגית AI בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
+                                       setNotifications((prev) => [{ id: Date.now() + Math.random(), text: `גובשה תוכנית פדגוגית AI בהצלחה עבור ${student.name}`, type: 'success' }, ...prev]);
                                     } catch (error) {
                                       console.error("AI Pedagogy Generation Error:", error);
-                                      setNotifications((prev) => [{ id: Date.now(), text: "שגיאה ביצירת תוכנית פדגוגית באמצעות AI", type: 'error' }, ...prev]);
+                                      setNotifications((prev) => [{ id: Date.now() + Math.random(), text: "שגיאה ביצירת תוכנית פדגוגית באמצעות AI", type: 'error' }, ...prev]);
                                     } finally {
                                       setIsGeneratingAI(false);
                                     }
@@ -6128,7 +6350,7 @@ const StudentDetailView = ({
                                  updateStudent('grades', updated);
                                } else {
                                  // Add
-                                 updateStudent('grades', [{ ...gradeForm, id: Date.now() }, ...gradesList]);
+                                 updateStudent('grades', [{ ...gradeForm, id: Date.now() + Math.random() }, ...gradesList]);
                                }
                                setIsGradeModalOpen(false);
                              }}
@@ -6292,7 +6514,7 @@ const StudentDetailView = ({
                            if (!dueDateStr) dueDateStr = new Date().toISOString().split('T')[0];
                            let priorityRaw = prompt("עדיפות (low / medium / high):", "medium");
                            const priority = ['low', 'medium', 'high'].includes(priorityRaw || '') ? priorityRaw : 'medium';
-                           const newTask = { id: Date.now().toString(), title, status: 'pending', dueDate: dueDateStr, priority };
+                           const newTask = { id: Date.now() + Math.random().toString(), title, status: 'pending', dueDate: dueDateStr, priority };
                            updateStudent('tasks', [...(student.tasks || []), newTask]);
                          }}
                          className="px-5 py-3 bg-brand-600 text-white rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-700 transition-colors"
@@ -6727,9 +6949,9 @@ const StudentDetailView = ({
                               setIsWorkspaceActionLoading(true);
                               try {
                                 await sendGmail(email, subject, body);
-                                setNotifications((prev: any) => [{ id: Date.now(), text: `אימייל נשלח בהצלחה ל-${email}`, type: 'success' }, ...prev]);
+                                setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `אימייל נשלח בהצלחה ל-${email}`, type: 'success' }, ...prev]);
                               } catch (err: any) {
-                                setNotifications((prev: any) => [{ id: Date.now(), text: `שגיאה בשליחת אימייל: ${err.message}`, type: 'error' }, ...prev]);
+                                setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `שגיאה בשליחת אימייל: ${err.message}`, type: 'error' }, ...prev]);
                               } finally {
                                 setIsWorkspaceActionLoading(false);
                               }
@@ -6757,10 +6979,10 @@ const StudentDetailView = ({
                                   start: { dateTime: start.toISOString() },
                                   end: { dateTime: end.toISOString() }
                                 });
-                                setNotifications((prev: any) => [{ id: Date.now(), text: 'אסיפת הורים נקבעה ביומן Google!', type: 'success' }, ...prev]);
+                                setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'אסיפת הורים נקבעה ביומן Google!', type: 'success' }, ...prev]);
                                 window.open(eventLink, '_blank');
                               } catch (err: any) {
-                                setNotifications((prev: any) => [{ id: Date.now(), text: `שגיאה בקביעת תור: ${err.message}`, type: 'error' }, ...prev]);
+                                setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `שגיאה בקביעת תור: ${err.message}`, type: 'error' }, ...prev]);
                               } finally {
                                 setIsWorkspaceActionLoading(false);
                               }
@@ -6875,7 +7097,7 @@ const StudentDetailView = ({
                                reader.onload = (ev) => {
                                  const data = ev.target?.result as string;
                                  const newDoc = {
-                                   id: Date.now().toString(),
+                                   id: Date.now() + Math.random().toString(),
                                    name: file.name,
                                    type: file.type,
                                    size: Math.round(file.size / 1024),
@@ -7350,7 +7572,7 @@ const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: an
       ...prev,
       groups: [...(prev.groups || []), { id, name, constraint: 'none' }]
     }));
-    setNotifications((prev: any) => [{ id: Date.now(), text: `קבוצה חדשה נוצרה: ${name}`, type: 'success' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `קבוצה חדשה נוצרה: ${name}`, type: 'success' }, ...prev]);
   };
 
   const removeGroup = (id: string) => {
@@ -7359,7 +7581,7 @@ const GroupManager = ({ groups = [], updateCurrentConfig, setNotifications }: an
       groups: prev.groups.filter((g: any) => g.id !== id)
     }));
     setConfirmDeleteId(null);
-    setNotifications((prev: any) => [{ id: Date.now(), text: `הקבוצה נמחקה בהצלחה`, type: 'info' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `הקבוצה נמחקה בהצלחה`, type: 'info' }, ...prev]);
   };
 
   const updateGroup = (id: string, field: string, value: any) => {
@@ -7576,7 +7798,7 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
                      students: prev.students.filter((s:any) => s.id !== student.id),
                      grid: prev.grid.map((row: any[]) => row.map((id: string | null) => id === student.id ? null : id))
                    }));
-                   setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
+                   setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `התלמיד ${student.name} נמחק`, type: 'info' }, ...prev]);
                  }
                }
              }}
@@ -7843,7 +8065,7 @@ const SettingsView = ({
       ];
 
       updateCurrentConfig({
-        id: Date.now().toString(),
+        id: Date.now() + Math.random().toString(),
         name: "כיתת הדגמה מקצועית",
         rows,
         cols,
@@ -7868,7 +8090,7 @@ const SettingsView = ({
         ]
       });
 
-      setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני ההדגמה המלאים נטענו בהצלחה!", type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "נתוני ההדגמה המלאים נטענו בהצלחה!", type: 'success' }, ...prev]);
     }
   };
 
@@ -8382,9 +8604,9 @@ const SettingsView = ({
                       if (newStudent.name.trim()) {
                         updateCurrentConfig((prev: any) => ({
                           ...prev,
-                          students: [...prev.students, { id: Date.now().toString(), name: newStudent.name.trim(), preferred: [], forbidden: [], height: newStudent.height, groups: [], interestLevel: 'medium', supportNeeded: 'none', tags: [], environmentPreferences: [] }]
+                          students: [...prev.students, { id: Date.now() + Math.random().toString(), name: newStudent.name.trim(), preferred: [], forbidden: [], height: newStudent.height, groups: [], interestLevel: 'medium', supportNeeded: 'none', tags: [], environmentPreferences: [] }]
                         }));
-                        setNotifications((prev: any) => [{id: Date.now(), text: 'התלמיד נוסף בהצלחה', type: 'success'}, ...prev]);
+                        setNotifications((prev: any) => [{id: Date.now() + Math.random(), text: 'התלמיד נוסף בהצלחה', type: 'success'}, ...prev]);
                         setNewStudent({ name: '', height: 'average' });
                         setIsAddStudentOpen(false);
                       }
@@ -8688,7 +8910,7 @@ const SettingsView = ({
                     const saved = JSON.parse(localStorage.getItem('classManager_savedConfigs') || '{}');
                     saved[name] = currentConfig;
                     localStorage.setItem('classManager_savedConfigs', JSON.stringify(saved));
-                    setNotifications((prev:any) => [{id: Date.now(), text: `התצורה "${name}" נשמרה בהצלחה`, type: 'success'}, ...prev]);
+                    setNotifications((prev:any) => [{id: Date.now() + Math.random(), text: `התצורה "${name}" נשמרה בהצלחה`, type: 'success'}, ...prev]);
                  }
                }}
                className="flex items-center gap-2 px-6 py-4 bg-brand-50 hover:bg-brand-100 text-brand-700 font-black rounded-2xl transition-colors border border-brand-200"
@@ -8707,7 +8929,7 @@ const SettingsView = ({
                  const name = prompt("הזן שם תצורה לטעינה:\n" + names.join("\n"));
                  if(name && saved[name]) {
                     updateCurrentConfig(() => saved[name]);
-                    setNotifications((prev:any) => [{id: Date.now(), text: `התצורה "${name}" נטענה בהצלחה`, type: 'success'}, ...prev]);
+                    setNotifications((prev:any) => [{id: Date.now() + Math.random(), text: `התצורה "${name}" נטענה בהצלחה`, type: 'success'}, ...prev]);
                  } else if (name) {
                     alert('לא נמצאה תצורה בשם זה.');
                  }
@@ -8745,7 +8967,7 @@ const SettingsView = ({
                       ...prev,
                       grid: Array(prev.rows * prev.cols).fill(null)
                     }));
-                    setNotifications((prev: any) => [{ id: Date.now(), text: "כל השיבוצים בוטלו בהצלחה", type: 'success' }, ...prev]);
+                    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "כל השיבוצים בוטלו בהצלחה", type: 'success' }, ...prev]);
                   }
                 }}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 active:scale-95"
@@ -8768,7 +8990,7 @@ const SettingsView = ({
                       students: [],
                       grid: Array(prev.rows * prev.cols).fill(null)
                     }));
-                    setNotifications((prev: any) => [{ id: Date.now(), text: "כל נתוני התלמידים נמחקו", type: 'error' }, ...prev]);
+                    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "כל נתוני התלמידים נמחקו", type: 'error' }, ...prev]);
                   }
                 }}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white text-rose-600 rounded-2xl font-black border-2 border-rose-600 hover:bg-rose-50 transition-all active:scale-95"
@@ -8816,7 +9038,7 @@ const SettingsView = ({
                       students: prev.students.filter((s:any) => s.id !== studentToDelete.id),
                       grid: prev.grid.map((row: any[]) => row.map((id: string | null) => id === studentToDelete.id ? null : id))
                     }));
-                    setNotifications((prev: any) => [{ id: Date.now(), text: `התלמיד ${studentToDelete.name} נמחק`, type: 'info' }, ...prev]);
+                    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `התלמיד ${studentToDelete.name} נמחק`, type: 'info' }, ...prev]);
                     setStudentToDelete(null);
                   }}
                   className="flex-1 px-6 py-3 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-lg shadow-rose-200"
@@ -8958,57 +9180,23 @@ const LeaderboardView = ({ students = [], student_points = {}, onBack }: any) =>
           <p className="text-slate-500 font-medium">דירוג התלמידים לפי צבירת נקודות והישיגים אישיים.</p>
         </div>
       </div>
-
-      <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 transition-all shadow-sm">
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <div>
-              <h2 className="text-4xl font-black text-slate-900 dark:text-white">יומן התנהגות כיתתי</h2>
-              <p className="text-slate-500 font-medium">תיעוד ומעקב יומיומי אחר הישגי והתנהגות התלמידים.</p>
-            </div>
-          </div>
-          
-          <div className="flex gap-4 items-center">
-             <select onChange={(e) => setSelectedStudent(e.target.value)} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
-                <option value="all">כל התלמידים</option>
-                {currentConfig.students.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-             </select>
-             <button onClick={exportPDF} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg">ייצוא דוח התנהגות</button>
-          </div>
-
-          <div className="flex gap-2">
-            <DailySummaryGenerator students={currentConfig.students} events={currentConfig.events || []} setNotifications={setNotifications} />
-            <BehaviorTimeline logs={logs} />
-          </div>
-          
-          <div className="flex gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm shadow-indigo-100/50">
-             {(['daily', 'weekly', 'monthly'] as const).map(t => (
-               <button
-                 key={t}
-                 onClick={() => setTimeFilter(t)}
-                 className={cn(
-                   "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                   timeFilter === t ? "bg-brand-600 text-white shadow-lg shadow-brand-500/30" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                 )}
-               >
-                 {t === 'daily' ? 'יומי' : t === 'weekly' ? 'שבועי' : 'חודשי'}
-               </button>
-             ))}
-          </div>
-       </div>
-          <p className="text-xs font-bold text-slate-400">נקודות מצטברות: {student_points[s.id] || 0}</p>
+      
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
+         <div className="grid grid-cols-1 gap-4">
+            {sorted.map((s: any, idx: number) => (
+               <div key={s.id} className="flex items-center justify-between p-6 rounded-3xl border-2 transition-all bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-6">
+                     <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm bg-slate-100 dark:bg-slate-800 text-slate-400">
+                        {idx + 1}
+                     </div>
+                     <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center font-bold text-slate-600 text-xl">
+                           {s.name[0]}
                         </div>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-8">
-                     <div className="text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">נקודות</p>
-                        <p className="text-3xl font-display font-black text-brand-600">{student_points[s.id] || 0}</p>
-                     </div>
-                     <div className="flex gap-1">
-                        {[1,2,3].map(i => <Star key={i} className={cn("w-5 h-5", i <= (idx === 0 ? 3 : idx === 1 ? 2 : 1) ? "text-amber-400 fill-amber-400" : "text-slate-200")} />)}
+                        <div>
+                           <h4 className="text-xl font-black text-slate-800 dark:text-white">{s.name}</h4>
+                           <p className="text-xs font-bold text-slate-400">נקודות מצטברות: {student_points[s.id] || 0}</p>
+                        </div>
                      </div>
                   </div>
                </div>
@@ -9034,7 +9222,10 @@ const AnalyticsDashboardView = ({ currentConfig, onBack }: { currentConfig: any,
   const groupDistribution = useMemo(() => {
     return groups.map((g: any) => {
       const groupStudents = students.filter((s: any) => s.groups?.includes(g.id));
-      const totalPoints = groupStudents.reduce((acc: number, s: any) => acc + (currentConfig.student_points?.[s.id] || 0), 0);
+      const totalPoints = groupStudents.reduce((acc: number, s: any) => {
+        const studentPoints = currentConfig.student_points ? (currentConfig.student_points[s.id] || 0) : 0;
+        return acc + studentPoints;
+      }, 0);
       return { name: g.name, value: totalPoints };
     }).filter((g: any) => g.value > 0);
   }, [groups, students, currentConfig.student_points]);
@@ -9231,7 +9422,17 @@ const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack, setNotifi
     }
 
     return filtered.sort((a: any, b: any) => b.timestamp - a.timestamp);
-  }, [currentConfig.analytics_log, timeFilter, selectedCategory]);
+  }, [currentConfig.analytics_log, timeFilter, selectedCategory, selectedStudent]);
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Behavior Report - ${currentConfig.name}`, 10, 10);
+    (doc as any).autoTable({
+        head: [['Time', 'Category', 'Note']],
+        body: logs.map((l: any) => [new Date(l.timestamp).toLocaleString(), l.categoryId, l.note || '']),
+    });
+    doc.save('behavior_report.pdf');
+  };
 
   return (
     <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -10238,10 +10439,10 @@ const AIAppGenerator = ({ students, googleUser, handleGoogleLogin, setNotificati
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save(`AI_LessonPlan_${new Date().toISOString().slice(0, 10)}.pdf`);
       
-      setNotifications((prev: any) => [{ id: Date.now(), text: 'הקובץ נוצר ונשמר בהצלחה!', type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'הקובץ נוצר ונשמר בהצלחה!', type: 'success' }, ...prev]);
     } catch (error) {
       console.error("PDF Export failed", error);
-      setNotifications((prev: any) => [{ id: Date.now(), text: 'ייצוא ל-PDF נכשל', type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'ייצוא ל-PDF נכשל', type: 'error' }, ...prev]);
     } finally {
       setIsExporting(false);
     }
@@ -10256,10 +10457,10 @@ const AIAppGenerator = ({ students, googleUser, handleGoogleLogin, setNotificati
     setIsExporting(true);
     try {
       const docUrl = await exportToDocs(`מערך שיעור AI - ${new Date().toLocaleDateString('he-IL')}`, result);
-      setNotifications((prev: any) => [{ id: Date.now(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
       window.open(docUrl, '_blank');
     } catch (err: any) {
-      setNotifications((prev: any) => [{ id: Date.now(), text: `טעות בייצוא: ${err.message}`, type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `טעות בייצוא: ${err.message}`, type: 'error' }, ...prev]);
     } finally {
       setIsExporting(false);
     }
@@ -10303,7 +10504,7 @@ const AIAppGenerator = ({ students, googleUser, handleGoogleLogin, setNotificati
                <button 
                  onClick={() => {
                    navigator.clipboard.writeText(result);
-                   setNotifications((prev: any) => [{ id: Date.now(), text: 'התוכן הועתק ללוח!', type: 'success' }, ...prev]);
+                   setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'התוכן הועתק ללוח!', type: 'success' }, ...prev]);
                  }}
                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-xs"
                  title="העתק ללוח"
@@ -10506,7 +10707,7 @@ const RemindersView = ({ config, updateConfig, students, onBack }: any) => {
   const addReminder = () => {
     if (!newReminder.trim()) return;
     const reminder = {
-      id: `rem-${Date.now()}`,
+      id: `rem-${Date.now() + Math.random()}`,
       text: newReminder,
       studentId: selectedStudentId,
       date: new Date().toISOString(),
@@ -10859,10 +11060,10 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
         }).join('\n');
       
       const docUrl = await exportToDocs(`דוח כיתה ${currentConfig.name} - ${new Date().toLocaleDateString('he-IL')}`, content);
-      setNotifications((prev: any) => [{ id: Date.now(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'המסמך נוצר ב-Google Docs בהצלחה!', type: 'success' }, ...prev]);
       window.open(docUrl, '_blank');
     } catch (err: any) {
-      setNotifications((prev: any) => [{ id: Date.now(), text: `טעות בייצוא: ${err.message}`, type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `טעות בייצוא: ${err.message}`, type: 'error' }, ...prev]);
     } finally {
       setIsWorkspaceActionLoading(false);
     }
@@ -10875,10 +11076,10 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
       const dataStr = JSON.stringify(currentConfig, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const driveUrl = await saveToDrive(`ClassPro_Backup_${currentConfig.name}_${new Date().toISOString().split('T')[0]}.json`, blob, 'application/json');
-      setNotifications((prev: any) => [{ id: Date.now(), text: 'הגיבוי נשמר ב-Google Drive בהצלחה!', type: 'success' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'הגיבוי נשמר ב-Google Drive בהצלחה!', type: 'success' }, ...prev]);
       window.open(driveUrl, '_blank');
     } catch (err: any) {
-      setNotifications((prev: any) => [{ id: Date.now(), text: `טעות בגיבוי: ${err.message}`, type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `טעות בגיבוי: ${err.message}`, type: 'error' }, ...prev]);
     } finally {
       setIsWorkspaceActionLoading(false);
     }
@@ -11175,10 +11376,10 @@ export default function App() {
         setGoogleUser(result.user);
         setWorkspaceToken(result.accessToken);
         setCurrentUser(result.user);
-        setNotifications(prev => [{ id: Date.now(), text: `חשבון Google חובר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חשבון Google חובר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
       }
     } catch (err: any) {
-      setNotifications(prev => [{ id: Date.now(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
     } finally {
       setIsWorkspaceLoading(false);
     }
@@ -11186,7 +11387,7 @@ export default function App() {
 
   const handleGoogleLogout = async () => {
     await logout();
-    setNotifications(prev => [{ id: Date.now(), text: 'התנתקת מחשבון Google', type: 'info' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: 'התנתקת מחשבון Google', type: 'info' }, ...prev]);
   };
   const [currentConfig, setCurrentConfig] = useState({
     id: '1',
@@ -11279,6 +11480,19 @@ export default function App() {
   const [customThemes, setCustomThemes] = useState<any[]>([]);
   const [accentColor, setAccentColor] = useState('#6366f1');
   const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [isFirebaseOnline, setIsFirebaseOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsFirebaseOnline(true);
+    const handleOffline = () => setIsFirebaseOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -11393,7 +11607,7 @@ export default function App() {
       setCurrentUser(user);
       setIsAuthLoading(false);
       if (user) {
-        setNotifications(prev => [{ id: Date.now(), text: `ברוך הבא, ${user.displayName || user.email}`, type: 'success' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now() + Math.random(), text: `ברוך הבא, ${user.displayName || user.email}`, type: 'success' }, ...prev]);
         // Also update teacher profile from firebase user if available
         if (user.displayName) {
           setTeacherProfile(prev => ({ ...prev, name: user.displayName! }));
@@ -11429,7 +11643,7 @@ export default function App() {
       emailVerified: true,
       isAnonymous: true,
     } as any);
-    setNotifications(prev => [{ id: Date.now(), text: "ברוך הבא! נכנסת למערכת כאורח (שימוש מקומי)", type: 'success' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: "ברוך הבא! נכנסת למערכת כאורח (שימוש מקומי)", type: 'success' }, ...prev]);
   };
 
   const handleAuth = async (e: React.FormEvent, email: string, pass: string, name?: string) => {
@@ -11460,7 +11674,7 @@ export default function App() {
       }
     } catch (err: any) {
       setAuthError(err.message);
-      setNotifications(prev => [{ id: Date.now(), text: "שגיאת התחברות: " + err.message, type: 'error' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שגיאת התחברות: " + err.message, type: 'error' }, ...prev]);
     } finally {
       setIsAuthLoading(false);
     }
@@ -11472,7 +11686,7 @@ export default function App() {
     } else {
       await signOut(auth);
     }
-    setNotifications(prev => [{ id: Date.now(), text: "התנתקת בהצלחה", type: 'info' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: "התנתקת בהצלחה", type: 'info' }, ...prev]);
   };
   const [showTimer, setShowTimer] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(600); // 10 minutes default
@@ -11485,7 +11699,7 @@ export default function App() {
     updateCurrentConfig((prev: any) => {
       const newPoints = { ...prev.student_points, [studentId]: (prev.student_points[studentId] || 0) + points };
       const newLog = [...(prev.analytics_log || []), {
-        id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `log-${Date.now() + Math.random()}-${Math.random().toString(36).substr(2, 9)}`,
         type: 'points',
         studentId,
         reason,
@@ -11535,7 +11749,7 @@ export default function App() {
     }));
     setQuickAddName('');
     setQuickAddGroups([]);
-    setNotifications(prev => [{ id: Date.now(), text: `התלמיד ${quickAddName} נוסף בהצלחה!`, type: 'success' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: `התלמיד ${quickAddName} נוסף בהצלחה!`, type: 'success' }, ...prev]);
   };
 
   const handlePredefinedImport = () => {
@@ -11570,7 +11784,7 @@ export default function App() {
       ]
     }));
     
-    setNotifications(prev => [{ id: Date.now(), text: `יובאו ${predefined.length} תלמידים מהרשימה המוכנה!`, type: 'success' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: `יובאו ${predefined.length} תלמידים מהרשימה המוכנה!`, type: 'success' }, ...prev]);
   };
 
   const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -11608,13 +11822,13 @@ export default function App() {
             ...prev,
             students: [...prev.students, ...importedStudents]
           }));
-          setNotifications(prev => [{ id: Date.now(), text: `יובאו ${importedStudents.length} תלמידים מקובץ ה-CSV!`, type: 'success' }, ...prev]);
+          setNotifications(prev => [{ id: Date.now() + Math.random(), text: `יובאו ${importedStudents.length} תלמידים מקובץ ה-CSV!`, type: 'success' }, ...prev]);
         } else {
-          setNotifications(prev => [{ id: Date.now(), text: "לא נמצאו נתונים תואמים בקובץ", type: 'error' }, ...prev]);
+          setNotifications(prev => [{ id: Date.now() + Math.random(), text: "לא נמצאו נתונים תואמים בקובץ", type: 'error' }, ...prev]);
         }
       } catch (err) {
         console.error('Import error:', err);
-        setNotifications(prev => [{ id: Date.now(), text: "שגיאה בפענוח הקובץ", type: 'error' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שגיאה בפענוח הקובץ", type: 'error' }, ...prev]);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -11921,7 +12135,7 @@ export default function App() {
       setIsTimerRunning(false);
       setIsTimerFinished(true);
       playAlertSound();
-      setNotifications(prev => [{ id: Date.now(), text: "הטיימר הסתיים! 🔔", type: 'info' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "הטיימר הסתיים! 🔔", type: 'info' }, ...prev]);
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timerSeconds, playAlertSound]);
@@ -12098,7 +12312,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
               const currentGrades = updatedStudents[studentIdx].grades || [];
               updatedStudents[studentIdx] = {
                 ...updatedStudents[studentIdx],
-                grades: [{ id: Date.now(), subject: cmd.subject || 'כללי', grade: cmd.grade || 0, testName: cmd.testName || '', date: new Date().toISOString() }, ...currentGrades]
+                grades: [{ id: Date.now() + Math.random(), subject: cmd.subject || 'כללי', grade: cmd.grade || 0, testName: cmd.testName || '', date: new Date().toISOString() }, ...currentGrades]
               };
               acted = true;
             }
@@ -12130,7 +12344,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
               const diags = updatedStudents[studentIdx].diagnostics || [];
               updatedStudents[studentIdx] = {
                 ...updatedStudents[studentIdx],
-                diagnostics: [{ id: String(Date.now()), type: cmd.type, description: cmd.description, date: new Date().toISOString(), accommodations: cmd.accommodations || [] }, ...diags]
+                diagnostics: [{ id: String(Date.now() + Math.random()), type: cmd.type, description: cmd.description, date: new Date().toISOString(), accommodations: cmd.accommodations || [] }, ...diags]
               };
               acted = true;
             }
@@ -12141,7 +12355,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
               const comms = updatedStudents[studentIdx].communications || [];
               updatedStudents[studentIdx] = {
                 ...updatedStudents[studentIdx],
-                communications: [{ id: String(Date.now()), type: cmd.type, summary: cmd.summary, date: new Date().toISOString(), toParent: cmd.toParent }, ...comms]
+                communications: [{ id: String(Date.now() + Math.random()), type: cmd.type, summary: cmd.summary, date: new Date().toISOString(), toParent: cmd.toParent }, ...comms]
               };
               acted = true;
             }
@@ -12159,7 +12373,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
             }
           }
           if (cmd.action === 'showToast') {
-             setNotifications(prevNotif => [{ id: Date.now(), text: cmd.message, type: cmd.type || 'info' }, ...prevNotif]);
+             setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: cmd.message, type: cmd.type || 'info' }, ...prevNotif]);
              if (cmd.type === 'error') replyMessage = cmd.message;
           }
         });
@@ -12229,7 +12443,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
     }
 
     if (validSeats.length === 0 && Object.keys(lockedAssignments).length === 0) {
-      setNotifications(prev => [{ id: Date.now(), text: "אין מקומות פנויים לסידור", type: 'error' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "אין מקומות פנויים לסידור", type: 'error' }, ...prev]);
       setIsLoadingAI(false);
       return;
     }
@@ -12366,10 +12580,10 @@ Instructions:
       }, "שיבוץ חכם AI");
       
       setAiSortScore(98);
-      setNotifications(prev => [{ id: Date.now(), text: `ה-AI ניתח סנטימנט בהערות המורה ויצר סידור ישיבה מתקדם במיוחד!`, type: 'success' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: `ה-AI ניתח סנטימנט בהערות המורה ויצר סידור ישיבה מתקדם במיוחד!`, type: 'success' }, ...prev]);
     } catch (error: any) {
       console.error("AI Gen Error, falling back to simulated annealing", error);
-      setNotifications(prev => [{ id: Date.now(), text: `שגיאה ב-AI: ${error.message || "בעיה בתקשורת"}. מפעיל אלגוריתם חלופי...`, type: 'warning' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: `שגיאה ב-AI: ${error.message || "בעיה בתקשורת"}. מפעיל אלגוריתם חלופי...`, type: 'warning' }, ...prev]);
       fallbackSimulatedAnnealing(validSeats, rows, cols, lockedAssignments);
     } finally {
       setIsLoadingAI(false);
@@ -12672,7 +12886,7 @@ Instructions:
       setAiSortScore(calculateQualityScore(best));
       setIsLoadingAI(false);
       setIsAIPanelOpen(false);
-      setNotifications(prev => [{ id: Date.now(), text: `ה-AI סיים אופטימיזציה לסדרי הישיבה!`, type: 'success' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: `ה-AI סיים אופטימיזציה לסדרי הישיבה!`, type: 'success' }, ...prev]);
       
       // Request Gemini explanation in background
       try {
@@ -12680,7 +12894,7 @@ Instructions:
 אנא כתוב משפט אחד קצרצר ומעודד בלבד שיקפוץ למורה ויאמר שהסידור בוצע בהצלחה ולקח בחשבון את העדפות התלמידים.`;
         generateContent(prompt, undefined, "gemini-1.5-flash").then(text => {
           if (text) {
-             setNotifications(prev => [{ id: Date.now() + 1, text: text as string, type: 'info' }, ...prev]);
+             setNotifications(prev => [{ id: Date.now() + Math.random() + 1, text: text as string, type: 'info' }, ...prev]);
           }
         }).catch(err => console.error(err));
       } catch (e) {
@@ -12756,6 +12970,9 @@ Instructions:
         else undo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
         redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -12789,7 +13006,7 @@ Instructions:
     localStorage.setItem('desk-history', JSON.stringify(deskHistory));
     
     if (lastSaved) {
-        setNotifications((prev: any) => [{ id: Date.now(), text: 'השינויים נשמרו בהצלחה', type: 'success' }, ...prev]);
+        setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'השינויים נשמרו בהצלחה', type: 'success' }, ...prev]);
     }
     setLastSaved(Date.now());
   }, [currentConfig, deskHistory]);
@@ -12816,7 +13033,7 @@ Instructions:
 
     updateCurrentConfig((prev: any) => {
       if (prev.lockedDesks?.includes(deskIdx)) {
-        setNotifications((prevN: any) => [{ id: Date.now(), text: "המקום הזה נעול לשינויים", type: 'error' }, ...prevN]);
+        setNotifications((prevN: any) => [{ id: Date.now() + Math.random(), text: "המקום הזה נעול לשינויים", type: 'error' }, ...prevN]);
         return prev;
       }
 
@@ -12833,7 +13050,7 @@ Instructions:
       }
 
       if (oldPos && prev.lockedDesks?.includes(oldPos.r * prev.cols + oldPos.c)) {
-        setNotifications((prevN: any) => [{ id: Date.now(), text: "לא ניתן להזיז תלמיד ממקום נעול", type: 'error' }, ...prevN]);
+        setNotifications((prevN: any) => [{ id: Date.now() + Math.random(), text: "לא ניתן להזיז תלמיד ממקום נעול", type: 'error' }, ...prevN]);
         return prev;
       }
 
@@ -12951,7 +13168,7 @@ Instructions:
           const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
           
           if (data.length <= 1) {
-            setNotifications(prev => [{ id: Date.now(), text: "הקובץ ריק או לא תקין.", type: 'error' }, ...prev]);
+            setNotifications(prev => [{ id: Date.now() + Math.random(), text: "הקובץ ריק או לא תקין.", type: 'error' }, ...prev]);
             return;
           }
 
@@ -13012,10 +13229,10 @@ Instructions:
             });
           }
         }
-        setNotifications(prev => [{ id: Date.now(), text: `הנתונים יובאו בהצלחה!`, type: 'success' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now() + Math.random(), text: `הנתונים יובאו בהצלחה!`, type: 'success' }, ...prev]);
       } catch (err: any) {
         console.error("Import error:", err);
-        setNotifications(prev => [{ id: Date.now(), text: `שגיאה בייבוא: ${err.message || "קובץ לא תקין"}`, type: 'error' }, ...prev]);
+        setNotifications(prev => [{ id: Date.now() + Math.random(), text: `שגיאה בייבוא: ${err.message || "קובץ לא תקין"}`, type: 'error' }, ...prev]);
       }
     };
     if (file.name.endsWith('.json')) reader.readAsText(file);
@@ -13084,7 +13301,7 @@ Instructions:
           const triggerKey = `reminder-${r.id}-${currentDate}-${currentTime}`;
           if (!sessionStorage.getItem(triggerKey)) {
             setNotifications(prev => [
-              { id: Date.now(), text: `תזכורת: ${r.title}`, type: 'info' },
+              { id: Date.now() + Math.random(), text: `תזכורת: ${r.title}`, type: 'info' },
               ...prev
             ]);
             sessionStorage.setItem(triggerKey, 'true');
@@ -13102,67 +13319,96 @@ Instructions:
     return () => clearTimeout(timer);
   }, [currentConfig.grid, checkViolations]);
 
+  const currentConfigRef = useRef(currentConfig);
+  const practiceConfigRef = useRef(practiceConfig);
+
+  useEffect(() => {
+    currentConfigRef.current = currentConfig;
+  }, [currentConfig]);
+
+  useEffect(() => {
+    practiceConfigRef.current = practiceConfig;
+  }, [practiceConfig]);
+
   const updateCurrentConfig = useCallback((update: any, explicitActionName?: string) => {
-    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
-    setter((prev: any) => {
-      const actualPrev = prev || currentConfig;
-      let next = typeof update === 'function' ? update(actualPrev) : update;
-      if (JSON.stringify(next) !== JSON.stringify(actualPrev)) {
-        const actionName = explicitActionName || deriveActionName(actualPrev, next);
-        setUndoHistory(h => [{ config: actualPrev, name: actionName, timestamp: Date.now() }, ...h].slice(0, 50));
-        setRedoHistory([]); 
-        next = { ...next, updatedAt: Date.now() };
+    const actualPrev = isPracticeMode ? (practiceConfigRef.current || currentConfigRef.current) : currentConfigRef.current;
+    let next = typeof update === 'function' ? update(actualPrev) : update;
+    
+    if (JSON.stringify(next) !== JSON.stringify(actualPrev)) {
+      const actionName = explicitActionName || deriveActionName(actualPrev, next);
+      next = { ...next, updatedAt: Date.now() };
+
+      if (isPracticeMode) {
+        setPracticeConfig(next);
+        practiceConfigRef.current = next;
+      } else {
+        setCurrentConfig(next);
+        currentConfigRef.current = next;
       }
-      return next;
-    });
-  }, [isPracticeMode, currentConfig]);
+
+      setUndoHistory(h => [{ config: actualPrev, name: actionName, timestamp: Date.now() }, ...h].slice(0, 50));
+      setRedoHistory([]);
+    }
+  }, [isPracticeMode]);
 
   const undo = () => {
     if (undoHistory.length === 0) return;
     const [prevItem, ...rest] = undoHistory;
     
-    // Clear lastAIConfig if the user manually undoes past it
     if (lastAIConfig && JSON.stringify(prevItem.config) === JSON.stringify(lastAIConfig)) {
       setLastAIConfig(null);
     }
 
-    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
+    const actualCurrent = isPracticeMode ? (practiceConfigRef.current || currentConfigRef.current) : currentConfigRef.current;
     
-    setter((current: any) => {
-       const actualCurrent = current || currentConfig;
-       setRedoHistory(h => [{ config: actualCurrent, name: prevItem.name, timestamp: Date.now() }, ...h].slice(0, 50));
-       return prevItem.config;
-    });
+    if (isPracticeMode) {
+      setPracticeConfig(prevItem.config);
+      practiceConfigRef.current = prevItem.config;
+    } else {
+      setCurrentConfig(prevItem.config);
+      currentConfigRef.current = prevItem.config;
+    }
+
+    setRedoHistory(h => [{ config: actualCurrent, name: prevItem.name, timestamp: Date.now() }, ...h].slice(0, 50));
     setUndoHistory(rest);
-    setNotifications(prevNotif => [{ id: Date.now(), text: `בוצע ביטול: ${prevItem.name}`, type: 'success' }, ...prevNotif]);
+    setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: `בוצע ביטול: ${prevItem.name}`, type: 'success' }, ...prevNotif]);
   };
 
   const undoAI = () => {
     if (!lastAIConfig) return;
-    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
     
-    setter((current: any) => {
-      const actualCurrent = current || currentConfig;
-      setUndoHistory(h => [{ config: actualCurrent, name: "ביטול שיבוץ AI", timestamp: Date.now() }, ...h].slice(0, 50));
-      return lastAIConfig;
-    });
+    const actualCurrent = isPracticeMode ? (practiceConfigRef.current || currentConfigRef.current) : currentConfigRef.current;
     
+    if (isPracticeMode) {
+      setPracticeConfig(lastAIConfig);
+      practiceConfigRef.current = lastAIConfig;
+    } else {
+      setCurrentConfig(lastAIConfig);
+      currentConfigRef.current = lastAIConfig;
+    }
+
+    setUndoHistory(h => [{ config: actualCurrent, name: "ביטול שיבוץ AI", timestamp: Date.now() }, ...h].slice(0, 50));
     setLastAIConfig(null);
-    setNotifications(prevNotif => [{ id: Date.now(), text: "בוצע ביטול חכם של שיבוץ ה-AI", type: 'success' }, ...prevNotif]);
+    setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: "בוצע ביטול חכם של שיבוץ ה-AI", type: 'success' }, ...prevNotif]);
   };
 
   const redo = () => {
     if (redoHistory.length === 0) return;
     const [nextItem, ...rest] = redoHistory;
-    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
     
-    setter((current: any) => {
-       const actualCurrent = current || currentConfig;
-       setUndoHistory(h => [{ config: actualCurrent, name: nextItem.name, timestamp: Date.now() }, ...h].slice(0, 50));
-       return nextItem.config;
-    });
+    const actualCurrent = isPracticeMode ? (practiceConfigRef.current || currentConfigRef.current) : currentConfigRef.current;
+
+    if (isPracticeMode) {
+      setPracticeConfig(nextItem.config);
+      practiceConfigRef.current = nextItem.config;
+    } else {
+      setCurrentConfig(nextItem.config);
+      currentConfigRef.current = nextItem.config;
+    }
+
+    setUndoHistory(h => [{ config: actualCurrent, name: nextItem.name, timestamp: Date.now() }, ...h].slice(0, 50));
     setRedoHistory(rest);
-    setNotifications(prevNotif => [{ id: Date.now(), text: `שוחזר מחדש: ${nextItem.name}`, type: 'success' }, ...prevNotif]);
+    setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: `שוחזר מחדש: ${nextItem.name}`, type: 'success' }, ...prevNotif]);
   };
 
   const historyTimeline = useMemo(() => {
@@ -13197,30 +13443,35 @@ Instructions:
     if (targetIndex === currentActiveIndex) return; 
     
     const targetItem = timeline[targetIndex];
-    const setter = isPracticeMode ? setPracticeConfig : setCurrentConfig;
+    
+    if (isPracticeMode) {
+      setPracticeConfig(targetItem.config);
+      practiceConfigRef.current = targetItem.config;
+    } else {
+      setCurrentConfig(targetItem.config);
+      currentConfigRef.current = targetItem.config;
+    }
     
     if (targetIndex < currentActiveIndex) {
       // Going into the PAST
       const itemsToMoveToRedo = timeline.slice(targetIndex + 1, currentActiveIndex + 1);
       
-      setter(targetItem.config);
       setUndoHistory(timeline.slice(0, targetIndex).reverse().map(item => ({ config: item.config, name: item.name, timestamp: item.timestamp })));
       setRedoHistory(prev => [
         ...itemsToMoveToRedo.map(item => ({ config: item.config, name: item.name, timestamp: item.timestamp })),
         ...prev
       ]);
-      setNotifications(prevNotif => [{ id: Date.now(), text: `חזרת אחורה למצב: ${targetItem.name}`, type: 'success' }, ...prevNotif]);
+      setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: `חזרת אחורה למצב: ${targetItem.name}`, type: 'success' }, ...prevNotif]);
     } else {
       // Going into the FUTURE
       const itemsToMoveToUndo = timeline.slice(currentActiveIndex, targetIndex);
       
-      setter(targetItem.config);
       setUndoHistory(prev => [
         ...itemsToMoveToUndo.slice().reverse().map(item => ({ config: item.config, name: item.name, timestamp: item.timestamp })),
         ...prev
       ]);
       setRedoHistory(timeline.slice(targetIndex + 1).map(item => ({ config: item.config, name: item.name, timestamp: item.timestamp })));
-      setNotifications(prevNotif => [{ id: Date.now(), text: `שחזרת מחדש למצב: ${targetItem.name}`, type: 'success' }, ...prevNotif]);
+      setNotifications(prevNotif => [{ id: Date.now() + Math.random(), text: `שחזרת מחדש למצב: ${targetItem.name}`, type: 'success' }, ...prevNotif]);
     }
   };
 
@@ -13232,11 +13483,11 @@ Instructions:
   const exportLayoutToImage = async () => {
     const gridElement = document.querySelector('.classroom-grid-container');
     if (!gridElement) {
-       setNotifications(prev => [{ id: Date.now(), text: "לא נמצא אלמנט לייצוא", type: 'error' }, ...prev]);
+       setNotifications(prev => [{ id: Date.now() + Math.random(), text: "לא נמצא אלמנט לייצוא", type: 'error' }, ...prev]);
        return;
     }
     
-    setNotifications(prev => [{ id: Date.now(), text: "מפיק תמונה...", type: 'info' }, ...prev]);
+    setNotifications(prev => [{ id: Date.now() + Math.random(), text: "מפיק תמונה...", type: 'info' }, ...prev]);
 
     try {
       const canvas = await html2canvas(gridElement as HTMLElement, {
@@ -13251,10 +13502,10 @@ Instructions:
       link.download = `Classroom-Layout-${new Date().toISOString().split('T')[0]}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-      setNotifications(prev => [{ id: Date.now(), text: "תמונה נשמרה בהצלחה", type: 'success' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "תמונה נשמרה בהצלחה", type: 'success' }, ...prev]);
     } catch (error) {
       console.error(error);
-      setNotifications(prev => [{ id: Date.now(), text: "שגיאה בייצוא התמונה", type: 'error' }, ...prev]);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שגיאה בייצוא התמונה", type: 'error' }, ...prev]);
     }
   };
 
@@ -13537,15 +13788,15 @@ Instructions:
         </button>
 
         {/* Global Search Bar */}
-        <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 gap-3 w-80 group focus-within:ring-2 ring-brand-100 transition-all">
-          <Search className="w-4 h-4 text-slate-400 group-focus-within:text-brand-500" />
-          <input 
-            type="text" 
-            placeholder="חפש תלמיד, ציון או משימה..." 
-            className="bg-transparent border-none focus:ring-0 text-[13px] font-semibold text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div 
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl px-4 py-2 gap-3 w-80 group cursor-pointer hover:border-brand-300 transition-all"
+          title="פתח את החיפוש המהיר (Ctrl+K)"
+        >
+          <Search className="w-4 h-4 text-slate-400 group-hover:text-brand-500 shrink-0" />
+          <span className="text-[13px] font-medium text-slate-400 select-none flex-1 text-right">
+            חיפוש תלמיד או מסך...
+          </span>
           <kbd className="hidden lg:block px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-[10px] font-black text-slate-400 uppercase">CMD+K</kbd>
         </div>
       </div>
@@ -13590,13 +13841,13 @@ Instructions:
                     setCurrentConfig(practiceConfig || activeConfig);
                     setPracticeConfig(null);
                     setIsPracticeMode(false);
-                    setNotifications(prev => [{ id: Date.now(), text: "השינויים הוחלו בהצלחה!", type: 'success' }, ...prev]);
+                    setNotifications(prev => [{ id: Date.now() + Math.random(), text: "השינויים הוחלו בהצלחה!", type: 'success' }, ...prev]);
                   }
                 );
               } else {
                 setPracticeConfig(JSON.parse(JSON.stringify(activeConfig)));
                 setIsPracticeMode(true);
-                setNotifications(prev => [{ id: Date.now(), text: "ברוכים הבאים למצב אימון! השינויים כאן לא ישפיעו על הכיתה החיה.", type: 'info' }, ...prev]);
+                setNotifications(prev => [{ id: Date.now() + Math.random(), text: "ברוכים הבאים למצב אימון! השינויים כאן לא ישפיעו על הכיתה החיה.", type: 'info' }, ...prev]);
               }
             }}
             className={cn(
@@ -13619,7 +13870,7 @@ Instructions:
                   () => {
                     setPracticeConfig(null);
                     setIsPracticeMode(false);
-                    setNotifications(prev => [{ id: Date.now(), text: "שינויי האימון בוטלו.", type: 'info' }, ...prev]);
+                    setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שינויי האימון בוטלו.", type: 'info' }, ...prev]);
                   }
                 );
               }}
@@ -13722,10 +13973,10 @@ Instructions:
                   const dataStr = JSON.stringify(activeConfig, null, 2);
                   const blob = new Blob([dataStr], { type: 'application/json' });
                   const driveUrl = await saveToDrive(`ClassPro_Layout_${activeConfig.name}_${new Date().toISOString().split('T')[0]}.json`, blob, 'application/json');
-                  setNotifications(prev => [{ id: Date.now(), text: 'הסידור נשמר ב-Google Drive!', type: 'success' }, ...prev]);
+                  setNotifications(prev => [{ id: Date.now() + Math.random(), text: 'הסידור נשמר ב-Google Drive!', type: 'success' }, ...prev]);
                   window.open(driveUrl, '_blank');
                 } catch (err: any) {
-                  setNotifications(prev => [{ id: Date.now(), text: `שגיאה בשמירה: ${err.message}`, type: 'error' }, ...prev]);
+                  setNotifications(prev => [{ id: Date.now() + Math.random(), text: `שגיאה בשמירה: ${err.message}`, type: 'error' }, ...prev]);
                 } finally {
                   setIsWorkspaceLoading(false);
                 }
@@ -13763,13 +14014,13 @@ Instructions:
       grid: Array(prev.rows * prev.cols).fill(null)
     }));
     setIsResetConfirmOpen(false);
-    setNotifications((prev: any) => [{ id: Date.now(), text: "סידור הישיבה אופס בהצלחה", type: 'info' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "סידור הישיבה אופס בהצלחה", type: 'info' }, ...prev]);
   };
 
   const exportToPDF = async () => {
     if (!gridRef.current) return;
     setIsExporting(true);
-    setNotifications((prev: any) => [{ id: Date.now(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
     
     // Set printing mode to hide UI elements
     updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
@@ -13801,10 +14052,10 @@ Instructions:
       pdf.save(`classroom-layout-${currentConfig.name || 'export'}.pdf`);
       
       if (was3D) setIs3DView(true);
-      setNotifications((prev: any) => [{ id: Date.now(), text: "הקובץ מוכן להורדה", type: 'info' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "הקובץ מוכן להורדה", type: 'info' }, ...prev]);
     } catch (error) {
       console.error('Export failed:', error);
-      setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה ביצוא ה-PDF", type: 'error' }, ...prev]);
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "שגיאה ביצוא ה-PDF", type: 'error' }, ...prev]);
     } finally {
       updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: false }));
       setIsExporting(false);
@@ -13841,7 +14092,7 @@ Instructions:
 
     XLSX.writeFile(workbook, `students-export-${activeConfig.name || 'unnamed'}.xlsx`);
     
-    setNotifications((prev: any) => [{ id: Date.now(), text: "נתוני תלמידים יוצאו לאקסל", type: 'success' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "נתוני תלמידים יוצאו לאקסל", type: 'success' }, ...prev]);
   };
 
   const importFromCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -13881,10 +14132,10 @@ Instructions:
           students: [...prev.students, ...importedStudents]
         }));
 
-        setNotifications((prev: any) => [{ id: Date.now(), text: `יובאו ${importedStudents.length} תלמידים בהצלחה`, type: 'success' }, ...prev]);
+        setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `יובאו ${importedStudents.length} תלמידים בהצלחה`, type: 'success' }, ...prev]);
       } catch (err) {
         console.error("Import error:", err);
-        setNotifications((prev: any) => [{ id: Date.now(), text: "שגיאה בייבוא הקובץ", type: 'error' }, ...prev]);
+        setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "שגיאה בייבוא הקובץ", type: 'error' }, ...prev]);
       }
     };
     reader.readAsBinaryString(file);
@@ -13902,7 +14153,7 @@ Instructions:
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
     
-    setNotifications((prev: any) => [{ id: Date.now(), text: "מבנה הכיתה יוצא בהצלחה", type: 'success' }, ...prev]);
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "מבנה הכיתה יוצא בהצלחה", type: 'success' }, ...prev]);
   };
 
   const Sidebar = () => (
@@ -14375,7 +14626,7 @@ Instructions:
               conflicts={conflicts} 
               students={activeConfig.students}
               onResolve={(conflict: any) => {
-                setNotifications(prev => [{ id: Date.now(), text: `הצעה: העבר את ${activeConfig.students.find((s:any)=>s.id===conflict.studentId1)?.name} למקום פנוי בשורה 1`, type: 'info' }, ...prev]);
+                setNotifications(prev => [{ id: Date.now() + Math.random(), text: `הצעה: העבר את ${activeConfig.students.find((s:any)=>s.id===conflict.studentId1)?.name} למקום פנוי בשורה 1`, type: 'info' }, ...prev]);
               }}
             />
           </div>
@@ -14884,10 +15135,10 @@ Instructions:
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={viewType}
-                    initial={{ opacity: 0, x: 15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -15 }}
-                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                    initial={{ opacity: 0, y: 12, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.985 }}
+                    transition={{ duration: 0.22, ease: [0.215, 0.61, 0.355, 1] }}
                     className="h-full w-full overflow-hidden flex flex-col"
                   >
                     {viewType === 'grid' ? (
@@ -15732,7 +15983,7 @@ Instructions:
                                  handleUpdatePoints(id, category.points, category.label, category.id);
                                });
                                setSelectedStudentIds([]);
-                               setNotifications(prev => [{ id: Date.now(), text: `עודכנה הצטיינות ל-${selectedStudentIds.length} תלמידים`, type: 'success' }, ...prev]);
+                               setNotifications(prev => [{ id: Date.now() + Math.random(), text: `עודכנה הצטיינות ל-${selectedStudentIds.length} תלמידים`, type: 'success' }, ...prev]);
                              }}
                              className="p-3 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-2xl transition-all flex items-center gap-2"
                            >
@@ -15747,7 +15998,7 @@ Instructions:
                                  handleUpdatePoints(id, category.points, category.label, category.id);
                                });
                                setSelectedStudentIds([]);
-                               setNotifications(prev => [{ id: Date.now(), text: `דווחה הפרעה ל-${selectedStudentIds.length} תלמידים`, type: 'orange' }, ...prev]);
+                               setNotifications(prev => [{ id: Date.now() + Math.random(), text: `דווחה הפרעה ל-${selectedStudentIds.length} תלמידים`, type: 'orange' }, ...prev]);
                              }}
                              className="p-3 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-2xl transition-all flex items-center gap-2"
                            >
@@ -15766,7 +16017,7 @@ Instructions:
                                  return { ...prev, grid: newGrid };
                                });
                                setSelectedStudentIds([]);
-                               setNotifications(prev => [{ id: Date.now(), text: `${selectedStudentIds.length} תלמידים הוסרו מהשיבוץ`, type: 'info' }, ...prev]);
+                               setNotifications(prev => [{ id: Date.now() + Math.random(), text: `${selectedStudentIds.length} תלמידים הוסרו מהשיבוץ`, type: 'info' }, ...prev]);
                              }}
                              className="p-3 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all flex items-center gap-2"
                            >
@@ -15907,7 +16158,7 @@ Instructions:
                               () => {
                                 setUndoHistory([]);
                                 setRedoHistory([]);
-                                setNotifications(prev => [{ id: Date.now(), text: "היסטוריית השינויים אופסה בהצלחה", type: 'success' }, ...prev]);
+                                setNotifications(prev => [{ id: Date.now() + Math.random(), text: "היסטוריית השינויים אופסה בהצלחה", type: 'success' }, ...prev]);
                               }
                             );
                           }}
@@ -15932,6 +16183,13 @@ Instructions:
 
       {/* Panels & Modals at Root level */}
       <AnimatePresence>
+        <CommandPaletteModal 
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          students={activeConfig.students}
+          setViewType={setViewTypeWithTransition}
+          setSelectedStudentId={setSelectedStudentId}
+        />
         {isProfileModalOpen && (
           <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-800 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-8" dir="rtl">
@@ -15966,7 +16224,7 @@ Instructions:
                             }
                           }
                           setTeacherProfile(prev => ({ ...prev, name: e.target.value }));
-                          setNotifications(prev => [{ id: Date.now(), text: "פרופיל עודכן", type: 'success' }, ...prev]);
+                          setNotifications(prev => [{ id: Date.now() + Math.random(), text: "פרופיל עודכן", type: 'success' }, ...prev]);
                         }
                       }}
                       className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 outline-none focus:border-brand-500 transition-all font-bold" 
@@ -16338,7 +16596,7 @@ Instructions:
           onAction={(ids: string[], points: number, reason: string, categoryId: string) => {
             ids.forEach(id => handleUpdatePoints(id, points, reason, categoryId));
             setSelectedStudentIds([]);
-            setNotifications(prev => [{ id: Date.now(), text: `עודכן ${reason} ל-${ids.length} תלמידים`, type: 'success' }, ...prev]);
+            setNotifications(prev => [{ id: Date.now() + Math.random(), text: `עודכן ${reason} ל-${ids.length} תלמידים`, type: 'success' }, ...prev]);
           }}
         />
       )}
@@ -16407,22 +16665,49 @@ Instructions:
       )}
 
       {!isPresentationMode && (
-        <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors">
-          <div className="flex items-center gap-3">
-            <span>CLass&scool pro-manager // Ready</span>
-            <span>•</span>
+        <footer className="hidden lg:flex h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest shrink-0 transition-colors" dir="rtl">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 font-bold">מערכת:</span>
+              <span className="text-slate-700 dark:text-slate-200 normal-case">CLass&scool pro-manager</span>
+            </div>
+            
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800" />
+            
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                isFirebaseOnline ? "bg-emerald-500 animate-pulse" : "bg-amber-500 animate-bounce"
+              )} />
+              <span className="text-slate-600 dark:text-slate-300">
+                {isFirebaseOnline ? "חיבור ל-Firebase: פעיל ומאובטח" : "חיבור ל-Firebase: שגיאה (עובד מקומית)"}
+              </span>
+            </div>
+
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800" />
+
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <span className="font-extrabold text-slate-400">שמירה אוטומטית:</span>
+              <span className="text-slate-600 dark:text-slate-300 lowercase font-mono">
+                {lastSaved 
+                  ? new Date(lastSaved).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                  : 'ממתין לסינכרון...'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex gap-4 items-center normal-case">
             <button 
               onClick={() => setViewTypeWithTransition('landing')}
-              className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors hover:underline cursor-pointer flex items-center gap-1 font-black normal-case"
+              className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors hover:underline cursor-pointer flex items-center gap-1 font-black"
             >
               <Home className="w-3.5 h-3.5" />
               <span>דף נחיתה והסברים</span>
             </button>
-          </div>
-          <div className="flex gap-4">
-            <span>{activeConfig.students.length} תלמידים</span>
             <span>•</span>
-            <span>{activeConfig.grid.filter(id => id).length} משובצים</span>
+            <span className="font-extrabold text-slate-700 dark:text-slate-300">{activeConfig.students.length} תלמידים</span>
+            <span>•</span>
+            <span className="font-extrabold text-slate-700 dark:text-slate-300">{activeConfig.grid.filter(id => id).length} משובצים</span>
           </div>
         </footer>
       )}
@@ -16439,7 +16724,7 @@ Instructions:
           onSave={(event: any) => {
              updateCurrentConfig((prev: any) => ({
                ...prev,
-               events: [...(prev.events || []), { ...event, id: Date.now() }]
+               events: [...(prev.events || []), { ...event, id: Date.now() + Math.random() }]
              }));
           }}
         />
