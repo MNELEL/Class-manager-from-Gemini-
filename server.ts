@@ -87,7 +87,7 @@ async function startServer() {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt
       });
 
@@ -95,6 +95,25 @@ async function startServer() {
       res.json({ text });
     } catch (error: any) {
       console.error("AI Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ai/analyze-pedagogy", async (req, res) => {
+    try {
+      const { classData } = req.body;
+      const ai = getGenAI();
+      
+      const prompt = `Analyze the class pedagogical notes: ${JSON.stringify(classData)}. Focus on student group dynamics and provide 3 actionable insights for the teacher in Hebrew.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+      });
+
+      res.json({ analysis: response.text });
+    } catch (error: any) {
+      console.error("AI Pedagogy Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

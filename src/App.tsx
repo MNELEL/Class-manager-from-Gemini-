@@ -29,6 +29,7 @@ import {
 import { generateContent, generateLessonPlan } from './lib/ai';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { ContentManagementView } from './components/ContentManagementView';
 import { LandingPage } from './components/LandingPage';
 import { NoteEditor } from './components/NoteEditor';
@@ -38,6 +39,12 @@ import { LessonsManager } from './components/LessonsManager';
 import { QuickGrades } from './components/QuickGrades';
 import { WeeklySummaryGenerator } from './components/WeeklySummaryGenerator';
 import { Whiteboard } from './components/Whiteboard';
+import { DailySummaryGenerator } from './components/DailySummaryGenerator';
+import { PedagogicalInsights } from './components/PedagogicalInsights';
+import { FastFeedback } from './components/FastFeedback';
+import { CentralCalendar } from './components/CentralCalendar';
+import { PersistentAlerts } from './components/PersistentAlerts';
+import { BehaviorTimeline } from './components/BehaviorTimeline';
 import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
@@ -999,7 +1006,7 @@ const DeskCell = ({
   return (
     <motion.div 
       layout
-      layoutId={`desk-${idx}`}
+      layoutId={studentId ? `desk-${studentId}` : `desk-empty-${idx}`}
       data-student-id={studentId || undefined}
       draggable={(editMode === 'structure' && !isHidden) || (editMode === 'placement' && !!studentId)}
       onDragStart={(e: any) => {
@@ -5185,6 +5192,7 @@ const StudentDetailView = ({
                     </div>
 
                     <div className="space-y-8">
+                       <PedagogicalInsights students={students} />
                        <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[3rem] border border-slate-100 dark:border-slate-700 space-y-6">
                           <h4 className="text-lg font-black text-slate-800 dark:text-white">קשיים ואבחנות (Diagnoses)</h4>
                           <div className="flex flex-wrap gap-3">
@@ -8951,31 +8959,46 @@ const LeaderboardView = ({ students = [], student_points = {}, onBack }: any) =>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[3rem] p-10 shadow-sm">
-         <div className="grid grid-cols-1 gap-4">
-            {sorted.map((s, idx) => (
-               <div key={s.id} className={cn(
-                 "flex items-center justify-between p-6 rounded-3xl border-2 transition-all",
-                 idx === 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-900/50" : 
-                 idx === 1 ? "bg-slate-50 border-slate-200 dark:bg-slate-800/50" :
-                 idx === 2 ? "bg-orange-50 border-orange-200 dark:bg-orange-900/10" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
-               )}>
-                  <div className="flex items-center gap-6">
-                     <div className={cn(
-                       "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm",
-                       idx === 0 ? "bg-amber-400 text-white" :
-                       idx === 1 ? "bg-slate-300 text-slate-600" :
-                       idx === 2 ? "bg-orange-400 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                     )}>
-                        {idx + 1}
-                     </div>
-                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center font-bold text-slate-600 text-xl">
-                           {s.name[0]}
-                        </div>
-                        <div>
-                           <h4 className="text-xl font-black text-slate-800 dark:text-white">{s.name}</h4>
-                           <p className="text-xs font-bold text-slate-400">נקודות מצטברות: {student_points[s.id] || 0}</p>
+      <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button onClick={onBack} className="p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 transition-all shadow-sm">
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h2 className="text-4xl font-black text-slate-900 dark:text-white">יומן התנהגות כיתתי</h2>
+              <p className="text-slate-500 font-medium">תיעוד ומעקב יומיומי אחר הישגי והתנהגות התלמידים.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-4 items-center">
+             <select onChange={(e) => setSelectedStudent(e.target.value)} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                <option value="all">כל התלמידים</option>
+                {currentConfig.students.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+             </select>
+             <button onClick={exportPDF} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg">ייצוא דוח התנהגות</button>
+          </div>
+
+          <div className="flex gap-2">
+            <DailySummaryGenerator students={currentConfig.students} events={currentConfig.events || []} setNotifications={setNotifications} />
+            <BehaviorTimeline logs={logs} />
+          </div>
+          
+          <div className="flex gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm shadow-indigo-100/50">
+             {(['daily', 'weekly', 'monthly'] as const).map(t => (
+               <button
+                 key={t}
+                 onClick={() => setTimeFilter(t)}
+                 className={cn(
+                   "px-6 py-2 rounded-xl text-sm font-bold transition-all",
+                   timeFilter === t ? "bg-brand-600 text-white shadow-lg shadow-brand-500/30" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                 )}
+               >
+                 {t === 'daily' ? 'יומי' : t === 'weekly' ? 'שבועי' : 'חודשי'}
+               </button>
+             ))}
+          </div>
+       </div>
+          <p className="text-xs font-bold text-slate-400">נקודות מצטברות: {student_points[s.id] || 0}</p>
                         </div>
                      </div>
                   </div>
@@ -9169,9 +9192,10 @@ const AnalyticsDashboardView = ({ currentConfig, onBack }: { currentConfig: any,
   );
 };
 
-const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack }: any) => {
+const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack, setNotifications }: any) => {
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
+  const [selectedStudent, setSelectedStudent] = useState<string | 'all'>('all');
   
   const categories = [
     { id: 'excellence', label: 'הצטיינות', icon: '🌟', color: 'bg-amber-500' },
@@ -9186,6 +9210,10 @@ const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack }: any) =>
 
   const logs = useMemo(() => {
     let filtered = (currentConfig.analytics_log || []).filter((l: any) => l.type === 'behavior' || l.categoryId);
+    
+    if (selectedStudent !== 'all') {
+      filtered = filtered.filter((l: any) => l.studentId === selectedStudent);
+    }
     
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
@@ -9216,6 +9244,19 @@ const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack }: any) =>
               <h2 className="text-4xl font-black text-slate-900 dark:text-white">יומן התנהגות כיתתי</h2>
               <p className="text-slate-500 font-medium">תיעוד ומעקב יומיומי אחר הישגי והתנהגות התלמידים.</p>
             </div>
+          </div>
+          
+          <div className="flex gap-4 items-center">
+             <select onChange={(e) => setSelectedStudent(e.target.value)} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                <option value="all">כל התלמידים</option>
+                {currentConfig.students.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+             </select>
+             <button onClick={exportPDF} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg">ייצוא דוח התנהגות</button>
+          </div>
+          
+          <div className="flex gap-2">
+            <DailySummaryGenerator students={currentConfig.students} events={currentConfig.events || []} setNotifications={setNotifications} />
+            <BehaviorTimeline logs={logs} />
           </div>
           
           <div className="flex gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm shadow-indigo-100/50">
@@ -11153,11 +11194,7 @@ export default function App() {
     rows: 6,
     cols: 9,
     grid: Array(6).fill(null).map(() => Array(9).fill(null)) as (string | null)[][],
-    students: [
-      { id: '1', name: 'יוני לוי', preferred: [], forbidden: [], separateFrom: ['2'], height: 'short', groups: ['א'], notes: '', birthday: '2015-05-14' },
-      { id: '2', name: 'ענבר כהן', preferred: ['1'], forbidden: [], keepDistantFrom: ['1'], height: 'tall', groups: ['ב'], notes: '', birthday: '2015-06-20' },
-      { id: '3', name: 'גיל שרון', preferred: [], forbidden: [], height: 'medium', groups: ['א'], notes: '', birthday: '2015-12-10' }
-    ] as Student[],
+    students: [] as Student[],
     hiddenDesks: [] as number[],
     rowGaps: [] as number[],
     columnGaps: [] as number[],
@@ -11210,7 +11247,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management'>('landing');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management' | 'feedback'>('landing');
   const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
   const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
@@ -11335,7 +11372,7 @@ export default function App() {
         console.error("Error reading saved teacher profile", e);
       }
     }
-    return { name: 'שלום מנחם', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' };
+    return { name: 'שלום', role: 'מחנך כיתה ח\' 2', school: 'בית ספר לדוגמה' };
   });
 
   useEffect(() => {
@@ -12750,6 +12787,10 @@ Instructions:
   useEffect(() => {
     localStorage.setItem('class-manager-config', JSON.stringify(currentConfig));
     localStorage.setItem('desk-history', JSON.stringify(deskHistory));
+    
+    if (lastSaved) {
+        setNotifications((prev: any) => [{ id: Date.now(), text: 'השינויים נשמרו בהצלחה', type: 'success' }, ...prev]);
+    }
     setLastSaved(Date.now());
   }, [currentConfig, deskHistory]);
 
@@ -13278,6 +13319,8 @@ Instructions:
     switch (viewType) {
       case 'landing': return <LandingPage onGetStarted={() => setViewTypeWithTransition('dashboard')} />;
       case 'dashboard': return <DashboardView activeConfig={activeConfig} stats={dashboardStats} students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} isDarkMode={isDarkMode} teacherProfile={teacherProfile} setIsTeacherModalOpen={setIsTeacherModalOpen} setViewType={setViewType} />;
+      case 'feedback': return <div className="p-10"><h2 className="text-2xl font-black mb-6">משוב מהיר</h2>{activeConfig.students.map((s:any) => <FastFeedback key={s.id} student={s} setNotifications={setNotifications} />)}</div>;
+      case 'calendar': return <div className="p-10"><CentralCalendar students={activeConfig.students} /></div>;
       case 'attendance': return <AttendanceView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'grades': return <GradesView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
       case 'tasks': return <TasksView students={activeConfig.students} onBack={onBack} updateCurrentConfig={updateCurrentConfig} />;
@@ -13348,7 +13391,7 @@ Instructions:
       case 'rewards': return <RewardsView rewards={activeConfig.rewards} student_points={activeConfig.student_points} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} />;
       case 'leaderboard': return <LeaderboardView students={activeConfig.students} student_points={activeConfig.student_points} onBack={onBackToGrid} />;
       case 'analytics': return <AnalyticsDashboardView currentConfig={activeConfig} onBack={onBackToGrid} />;
-      case 'behaviorLog': return <BehaviorLogView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} />;
+      case 'behaviorLog': return <BehaviorLogView currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} />;
       case 'groups-management': return (
         <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
           <div className="flex items-center gap-6">
@@ -13448,14 +13491,6 @@ Instructions:
     return (
     <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 z-50 shadow-sm transition-colors">
       <div className="flex items-center gap-6">
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-800 group"
-          title={isSidebarOpen ? "סגור תפריט" : "פתח תפריט"}
-        >
-          <Menu className={cn("w-5 h-5 transition-transform stroke-[2.5px]", isSidebarOpen && "rotate-90 text-brand-600")} />
-        </button>
-        
         {viewHistory.length > 0 && (
           <button 
             onClick={goBack}
@@ -14586,6 +14621,7 @@ Instructions:
   return (
     <>
       <ConfirmModal />
+      <PersistentAlerts currentConfig={activeConfig} />
       <AnimatePresence>
         {isViewLoading && (
           <motion.div 

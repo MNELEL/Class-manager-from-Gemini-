@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Clock, MapPin, Trash2, BookOpen, Edit2 } from 'lucide-react';
+import { Plus, Clock, MapPin, Trash2, BookOpen, Edit2, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Student } from '../types';
+import { scheduleCalendarEvent } from '../lib/workspace';
 
 interface Lesson {
     id: string;
@@ -11,6 +12,17 @@ interface Lesson {
     room?: string;
     category?: 'regular' | 'alternative';
 }
+// Helper to get date for next occurrence of a day of the week
+const getNextDateForDay = (dayName: string) => {
+    const daysMap: Record<string, number> = {
+        'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6
+    };
+    const targetDay = daysMap[dayName] !== undefined ? daysMap[dayName] : 0;
+    const now = new Date();
+    const result = new Date(now);
+    result.setDate(now.getDate() + (targetDay + 7 - now.getDay()) % 7);
+    return result;
+};
 
 export const LessonsManager = ({ 
     student, 
@@ -30,6 +42,29 @@ export const LessonsManager = ({
     });
 
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
+
+    const syncToCalendar = async (lesson: Lesson) => {
+        try {
+            const date = getNextDateForDay(lesson.day);
+            const [hours, minutes] = lesson.time.split(':');
+            date.setHours(parseInt(hours), parseInt(minutes));
+            
+            const start = new Date(date);
+            const end = new Date(date);
+            end.setHours(start.getHours() + 1); // Assuming 1 hour lessons
+
+            await scheduleCalendarEvent({
+                summary: `שיעור עם ${student.name}: ${lesson.name}`,
+                location: lesson.room,
+                start: { dateTime: start.toISOString() },
+                end: { dateTime: end.toISOString() }
+            });
+            alert('השיעור סונכרן ליומן בהצלחה!');
+        } catch (err: any) {
+            console.error(err);
+            alert('שגיאה בסנכרון ליומן: ' + err.message);
+        }
+    };
 
     const saveLesson = () => {
         if (!newLesson.name || !newLesson.time) return;
@@ -156,6 +191,13 @@ export const LessonsManager = ({
                                             </div>
                                         </div>
                                         <div className="absolute top-3 left-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button 
+                                                onClick={() => syncToCalendar(lesson)}
+                                                className="p-1.5 text-slate-400 hover:text-brand-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                                                title="סנכרון ליומן"
+                                            >
+                                                <Calendar className="w-3.5 h-3.5" />
+                                            </button>
                                             <button 
                                                 onClick={() => editLesson(lesson)}
                                                 className="p-1.5 text-slate-400 hover:text-brand-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
