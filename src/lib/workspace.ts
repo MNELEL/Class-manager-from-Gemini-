@@ -12,6 +12,7 @@ const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 provider.addScope('https://www.googleapis.com/auth/documents');
 provider.addScope('https://www.googleapis.com/auth/gmail.send');
+provider.addScope('https://www.googleapis.com/auth/gmail.compose');
 provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
 let isSigningIn = false;
@@ -170,6 +171,41 @@ export const sendGmail = async (to: string, subject: string, body: string) => {
     const err = await res.json();
     throw new Error(err.error?.message || 'Failed to send email');
   }
+};
+
+export const createGmailDraft = async (to: string, subject: string, body: string) => {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const utf8Subject = `=?utf-8?B?${btoa(encodeURIComponent(subject).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}?=`;
+  const message = [
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    '',
+    body,
+  ].join('\n');
+
+  const encodedMessage = btoa(message).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: {
+        raw: encodedMessage,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Failed to create draft');
+  }
+  return await res.json();
 };
 
 export const scheduleCalendarEvent = async (event: { summary: string; location?: string; description?: string; start: { dateTime: string }; end: { dateTime: string } }) => {

@@ -35,6 +35,7 @@ import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
 import { TeacherToolkit } from './components/TeacherToolkit';
 import { LessonsManager } from './components/LessonsManager';
+import { WeeklySummaryGenerator } from './components/WeeklySummaryGenerator';
 import { CalendarRange } from 'lucide-react';
 import { 
   Activity,
@@ -10792,7 +10793,8 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     { id: 'export-google', title: 'ייצוא ל-Google Workspace', icon: <CloudLightning className="w-8 h-8 text-brand-600" />, desc: 'ייצוא רשימת תלמידים ל-Docs או גיבוי ל-Drive', status: 'פעיל' },
     { id: 'import-csv', title: 'ייבוא תלמידים מקובץ', icon: <Upload className="w-8 h-8 text-sky-500" />, desc: 'העלאת רשימת תלמידים מקובץ Excel או CSV', status: 'פעיל' },
     { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
-    { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' }
+    { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' },
+    { id: 'summary', title: 'סיכום שבועי להורים', icon: <Mail className="w-8 h-8 text-rose-500" />, desc: 'יצירת טיוטת מייל אוטומטית להורים עם נתוני התנהגות וציונים', status: 'פעיל' }
   ];
 
   const handleExportToGoogleDocs = async () => {
@@ -10869,6 +10871,7 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
             {selectedTool === 'birthdays' && <BirthdayTable students={students} />}
             {selectedTool === 'meetings' && <MeetingPlanner students={students} />}
             {selectedTool === 'ai' && <AIAppGenerator students={students} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />}
+            {selectedTool === 'summary' && <WeeklySummaryGenerator students={students} setNotifications={setNotifications} />}
             {selectedTool === 'templates' && (
               <div className="text-center space-y-8 py-10">
                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-600">
