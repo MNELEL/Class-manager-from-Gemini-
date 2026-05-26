@@ -674,16 +674,60 @@
 
   /* Accessible Print Styles */
   @media print {
-    header, aside, .z-30, button, .toolbar, .no-print {
+    header, 
+    aside, 
+    nav, 
+    button, 
+    .no-print, 
+    .z-30, 
+    .z-[60], 
+    .glass-card, 
+    [title="חזרה לראשי"], 
+    [title="ארגז כלים למורה"] {
       display: none !important;
     }
     
-    body, .flex-col, main {
+    body, html, .flex-col, main, .flex-1, .h-screen, .overflow-hidden {
       background: white !important;
+      color: #0c172a !important;
       height: auto !important;
       overflow: visible !important;
       padding: 0 !important;
       margin: 0 !important;
+    }
+
+    /* Target text and cards for high-contrast print */
+    span, div, h1, h2, h3, h4, p {
+      color: #0c172a !important;
+    }
+
+    .bg-white, [class*="bg-white"], .desk-element, .glass-card, [class*="bg-slate-900"] {
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    #classroom-grid-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      transform: none !important;
+      scale: none !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      background: white !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Normalize scaling and transforms for the grid on print */
+    .ResponsiveGridContainer > div, 
+    [class*="ResponsiveGridContainer"] > div,
+    div[style*="transform-origin"] {
+      transform: none !important;
+      scale: none !important;
+      width: 100% !important;
+      height: auto !important;
     }
 
     .max-w-7xl {
@@ -693,7 +737,7 @@
 
     .shadow-2xl, .shadow-xl, .shadow-lg, .shadow-bento {
       box-shadow: none !important;
-      border: 1px solid #e2e8f0 !important;
+      border: 1px solid #cbd5e1 !important;
     }
   }
 }

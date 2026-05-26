@@ -1354,6 +1354,7 @@ const DeskCell = ({
                <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
               </div>
               
+              
               {overdueTasksCount > 0 && !isPrinting && (
                 <div 
                   title={`${overdueTasksCount} מטלות בפיגור`} 
@@ -1361,6 +1362,80 @@ const DeskCell = ({
                 >
                   <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                   <span>{overdueTasksCount} בפיגור</span>
+                </div>
+              )}
+
+              {/* צ'ק-ליסט סיום יום */}
+              {!isPrinting && editMode === 'placement' && (
+                <div className="mt-2.5 flex flex-col items-center gap-1.5 w-full border-t border-slate-100 dark:border-slate-700/50 pt-2.5">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                      const targetVal = !(chk.participation && chk.equipment && chk.homework);
+                      updateCurrentConfig((prev: any) => ({
+                        ...prev,
+                        students: prev.students.map((s: any) => s.id === student.id ? {
+                          ...s,
+                          checklist: { participation: targetVal, equipment: targetVal, homework: targetVal }
+                        } : s)
+                      }));
+                      if (setNotifications) {
+                        setNotifications((p: any) => [{
+                          id: Date.now() + Math.random(),
+                          text: `צ'ק-ליסט סיום יום עודכן ל-${student.name}`,
+                          type: 'success'
+                        }, ...p]);
+                      }
+                    }}
+                    className={cn(
+                      "w-full py-1 rounded-xl text-[9px] font-black transition-all shadow-sm border whitespace-nowrap text-center flex items-center justify-center gap-1 hover:scale-[1.02] active:scale-95",
+                      (student.checklist?.participation && student.checklist?.equipment && student.checklist?.homework)
+                        ? "bg-emerald-500 border-emerald-600 text-white"
+                        : "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+                    )}
+                    title="בקליק אחד: סמן הכל כהושלם (או בטל הכל)"
+                  >
+                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                    <span>צ'ק-ליסט סיום יום</span>
+                  </button>
+                  
+                  {/* שלוש משימות הצ'קליסט בנפרד */}
+                  <div className="flex gap-1 w-full justify-center">
+                    {(['participation', 'equipment', 'homework'] as const).map(field => {
+                      const isChecked = !!student.checklist?.[field];
+                      const label = field === 'participation' ? 'השתתפות' : field === 'equipment' ? 'ציוד' : 'ש"ב';
+                      const colorClass = field === 'participation' 
+                        ? (isChecked ? "bg-emerald-500 text-white border-emerald-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800 hover:text-emerald-500 hover:border-emerald-200")
+                        : field === 'equipment'
+                        ? (isChecked ? "bg-blue-500 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800 hover:text-blue-500 hover:border-blue-200")
+                        : (isChecked ? "bg-purple-500 text-white border-purple-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800 hover:text-purple-500 hover:border-purple-200");
+                      
+                      return (
+                        <button
+                          key={field}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                            updateCurrentConfig((prev: any) => ({
+                              ...prev,
+                              students: prev.students.map((s: any) => s.id === student.id ? {
+                                ...s,
+                                checklist: { ...chk, [field]: !chk[field] }
+                              } : s)
+                            }));
+                          }}
+                          className={cn(
+                            "flex-1 py-1 rounded-lg text-[9px] font-black border transition-all text-center hover:scale-105",
+                            colorClass
+                          )}
+                          title={field === 'participation' ? 'השתתפות שיעור' : field === 'equipment' ? 'ציוד מלא' : 'שיעורי בית'}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               <div className="hidden" /> {/* dummy
@@ -5498,6 +5573,90 @@ const StudentDetailView = ({
               {activeTab === 'info' && (
                 <>
                   <div className="lg:col-span-2 space-y-8">
+                    {/* צ'ק-ליסט סיום יום של התלמיד */}
+                    <div className="glass-card p-10 rounded-[3.5rem] relative overflow-hidden border-2 border-brand-100 dark:border-brand-900 shadow-xl bg-gradient-to-br from-brand-50/20 via-white to-white dark:from-slate-900 dark:via-slate-900/40 dark:to-slate-900">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-slate-100 dark:border-slate-800 pb-6">
+                        <div>
+                          <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                             <CheckCircle2 className="w-6 h-6 text-brand-600" />
+                             צ'ק-ליסט סיום יום
+                          </h3>
+                          <p className="text-slate-500 font-medium text-sm mt-1">נהל את השתתפות התלמיד, הגעת הציוד והגשת שיעורי הבית בסיום השיעור</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                            const targetVal = !(chk.participation && chk.equipment && chk.homework);
+                            updateStudent('checklist', { participation: targetVal, equipment: targetVal, homework: targetVal });
+                            if (setNotifications) {
+                              setNotifications((p: any) => [{
+                                id: Date.now() + Math.random(),
+                                text: `צ'ק-ליסט סיום יום עודכן ל-${student.name}`,
+                                type: 'success'
+                              }, ...p]);
+                            }
+                          }}
+                          className={cn(
+                            "px-6 py-3 rounded-2xl text-xs font-black transition-all shadow-md border flex items-center justify-center gap-2",
+                            (student.checklist?.participation && student.checklist?.equipment && student.checklist?.homework)
+                              ? "bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700"
+                              : "bg-brand-600 border-brand-700 text-white hover:bg-brand-700"
+                          )}
+                        >
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span>סמן הכל ב-1 קליק</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {(['participation', 'equipment', 'homework'] as const).map(field => {
+                          const isChecked = !!student.checklist?.[field];
+                          const label = field === 'participation' ? 'השתתפות' : field === 'equipment' ? 'ציוד מלא' : 'שיעורי בית';
+                          const desc = field === 'participation' ? 'השתתף והיה פעיל במהלך השיעור' : field === 'equipment' ? 'הביא ספר, מחברת וכלי כתיבה' : 'הכין והגיש את שיעורי הבית';
+                          
+                          const colorClasses = field === 'participation'
+                            ? (isChecked ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-500 text-emerald-950 dark:text-emerald-300" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200")
+                            : field === 'equipment'
+                            ? (isChecked ? "bg-blue-50/80 dark:bg-blue-900/20 border-blue-500 text-blue-950 dark:text-blue-300" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200")
+                            : (isChecked ? "bg-purple-50/80 dark:bg-purple-900/20 border-purple-500 text-purple-950 dark:text-purple-300" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200");
+
+                          return (
+                            <button
+                              key={field}
+                              onClick={() => {
+                                const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                                updateStudent('checklist', { ...chk, [field]: !chk[field] });
+                              }}
+                              className={cn(
+                                "p-5 rounded-3xl border-2 transition-all flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group/item hover:scale-[1.02]",
+                                colorClasses
+                              )}
+                            >
+                              <div className={cn(
+                                "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-sm border",
+                                isChecked 
+                                  ? (field === 'participation' ? "bg-emerald-500 text-white border-emerald-600" : field === 'equipment' ? "bg-blue-500 text-white border-blue-600" : "bg-purple-500 text-white border-purple-600")
+                                  : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-100"
+                              )}>
+                                {field === 'participation' ? 'ה' : field === 'equipment' ? 'צ' : 'ש'}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-sm text-slate-850 dark:text-slate-100">{label}</h4>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1 leading-tight">{desc}</p>
+                              </div>
+                              <div className={cn(
+                                "absolute top-3 left-3 w-3.5 h-3.5 rounded-full border-2",
+                                isChecked 
+                                  ? (field === 'participation' ? "bg-emerald-500 border-white" : field === 'equipment' ? "bg-blue-500 border-white" : "bg-purple-500 border-white")
+                                  : "bg-transparent border-slate-200"
+                              )} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className="glass-card p-10 rounded-[3.5rem] relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600/5 rounded-full -mr-16 -mt-16 blur-2xl" />
                       <h3 className="text-xl font-display font-bold text-slate-800 dark:text-white mb-8 flex items-center gap-3">
@@ -7857,6 +8016,64 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
              </div>
           </div>
           
+          {/* צ'ק-ליסט סיום יום */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">צ'ק-ליסט סיום יום:</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                  const targetVal = !(chk.participation && chk.equipment && chk.homework);
+                  updateStudent('checklist', { participation: targetVal, equipment: targetVal, homework: targetVal });
+                  if (setNotifications) {
+                    setNotifications((p: any) => [{
+                      id: Date.now() + Math.random(),
+                      text: `צ'ק-ליסט סיום יום עודכן ל-${student.name}`,
+                      type: 'success'
+                    }, ...p]);
+                  }
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-xl text-[10px] font-black transition-all shadow-sm border",
+                  (student.checklist?.participation && student.checklist?.equipment && student.checklist?.homework)
+                    ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600"
+                    : "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                )}
+              >
+                סמן הכל בקליק אחד
+              </button>
+            </div>
+            <div className="flex gap-2">
+              {(['participation', 'equipment', 'homework'] as const).map(field => {
+                const isChecked = !!student.checklist?.[field];
+                const label = field === 'participation' ? 'השתתפות' : field === 'equipment' ? 'ציוד מלא' : 'שיעורי בית';
+                const colorClass = field === 'participation'
+                  ? (isChecked ? "bg-emerald-500 text-white border-emerald-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-emerald-500 hover:border-emerald-250")
+                  : field === 'equipment'
+                  ? (isChecked ? "bg-blue-500 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-blue-500 hover:border-blue-250")
+                  : (isChecked ? "bg-purple-500 text-white border-purple-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-purple-500 hover:border-purple-250");
+
+                return (
+                  <button
+                    key={field}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const chk = student.checklist || { participation: false, equipment: false, homework: false };
+                      updateStudent('checklist', { ...chk, [field]: !chk[field] });
+                    }}
+                    className={cn(
+                      "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-all text-center hover:scale-105",
+                      colorClass
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1">
                <Heart className={cn("w-3 h-3", student.preferred?.length > 0 ? "text-rose-500" : "text-slate-300")} />
@@ -14061,6 +14278,25 @@ Instructions:
       setIsExporting(false);
     }
   };
+
+  const handleQuickPrint = () => {
+    // Set printing mode to hide UI elements and fit nicely
+    updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
+    const was3D = is3DView;
+    if (was3D) setIs3DView(false);
+    
+    setNotifications((prev: any) => [
+      { id: Date.now() + Math.random(), text: "מכין הדפסה מהירה...", type: 'info' },
+      ...prev
+    ]);
+
+    // Give DOM layout a brief moment to update before native print
+    setTimeout(() => {
+      window.print();
+      updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: false }));
+      if (was3D) setIs3DView(true);
+    }, 450);
+  };
   
   const exportToExcel = () => {
     const data = activeConfig.students.map((s: any) => ({
@@ -15505,6 +15741,14 @@ Instructions:
                          >
                            <FileDown className="w-4 h-4" />
                            {isExporting ? 'מייצא...' : 'PDF'}
+                         </button>
+                         <button 
+                           onClick={handleQuickPrint}
+                           className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black transition-all flex items-center gap-2"
+                           title="הדפסה מהירה של מפת הישיבה"
+                         >
+                           <Printer className="w-4 h-4" />
+                           הדפסה מהירה
                          </button>
                        </div>
                      )}

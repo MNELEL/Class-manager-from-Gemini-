@@ -32,6 +32,11 @@ async function startServer() {
   };
 
   // API routes
+  // Google Site Verification File Route
+  app.get("/googleb26ca909ee8e1307.html", (req, res) => {
+    res.send("google-site-verification: googleb26ca909ee8e1307.html");
+  });
+
   app.get("/api/health", (req, res) => {
     console.log("Health check pinged");
     res.json({ 
