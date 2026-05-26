@@ -11339,7 +11339,14 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
             {selectedTool === 'meetings' && <MeetingPlanner students={students} />}
             {selectedTool === 'ai' && <AIAppGenerator students={students} googleUser={googleUser} handleGoogleLogin={handleGoogleLogin} setNotifications={setNotifications} />}
             {selectedTool === 'whiteboard' && <Whiteboard />}
-            {selectedTool === 'summary' && <WeeklySummaryGenerator students={students} setNotifications={setNotifications} />}
+            {selectedTool === 'summary' && (
+              <WeeklySummaryGenerator 
+                students={students} 
+                analyticsLog={currentConfig.analytics_log || []} 
+                studentPoints={currentConfig.student_points || {}}
+                setNotifications={setNotifications} 
+              />
+            )}
             {selectedTool === 'templates' && (
               <div className="text-center space-y-8 py-10">
                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-600">
