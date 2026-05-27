@@ -8,9 +8,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.NODE_ENV === "production" 
-    ? (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080) 
-    : 3000;
+  const PORT = 3000;
 
   app.use(express.json());
 
