@@ -915,7 +915,9 @@ const DeskCell = ({
   setSelectedStudentIds,
   isMultiSelectMode = false,
   conflicts = [],
-  isLocked = false
+  isLocked = false,
+  showSeatLabels3D = true,
+  showNames3D = true
 }: any) => {
   const [isOver, setIsOver] = useState(false);
   const isObstruction = currentConfig.obstructions?.includes(idx);
@@ -923,6 +925,35 @@ const DeskCell = ({
   const isPrinting = currentConfig.isPrinting;
   const draggingS = currentConfig.students.find((s: any) => s.id === draggedStudentId);
   const isCompatible = draggingS && draggingS.height === 'short' ? Math.floor(idx / currentConfig.cols) < 2 : true;
+
+  // Calculate student performance score (weighted grades & attributes)
+  const getPerformanceScore = (std: any) => {
+    if (!std) return 0;
+    let baseScore = 80;
+    if (std.grades && std.grades.length > 0) {
+      const gSum = std.grades.reduce((sum: number, g: any) => sum + g.grade, 0);
+      baseScore = Math.round(gSum / std.grades.length);
+    } else {
+      if (std.interestLevel === 'high') baseScore += 10;
+      else if (std.interestLevel === 'low') baseScore -= 10;
+
+      if (std.supportNeeded === 'none') baseScore += 5;
+      else if (std.supportNeeded === 'medium') baseScore -= 5;
+      else if (std.supportNeeded === 'high') baseScore -= 15;
+    }
+    
+    // overdue tasks adjustment
+    const oCount = std.tasks 
+      ? std.tasks.filter((t: any) => t.status !== 'done' && new Date(t.dueDate).getTime() < Date.now()).length 
+      : 0;
+    baseScore -= Math.min(15, oCount * 3);
+    
+    // config points impact (if any)
+    const points = currentConfig.student_points?.[std.id] || 0;
+    baseScore += Math.min(10, Math.max(-15, Math.round(points / 5)));
+
+    return Math.min(100, Math.max(0, baseScore));
+  };
   
   const compatibilityClass = isOver 
     ? (isCompatible 
@@ -1306,7 +1337,35 @@ const DeskCell = ({
         </div>
       )}
       
-      {showDeskNumbers && !isPrinting && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
+       {((is3DView ? showSeatLabels3D : showDeskNumbers) && !isPrinting) && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
+       
+       {is3DView && student && !isPrinting && (
+         <div 
+           className="absolute -top-[124px] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center pointer-events-none select-none transition-all duration-300"
+           style={{ transform: 'translateZ(15px)' }}
+         >
+           <div className={cn(
+             "px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight border shadow-lg flex items-center gap-1.5 whitespace-nowrap",
+             getPerformanceScore(student) >= 85 
+               ? "bg-emerald-500 border-emerald-400 text-white" 
+               : getPerformanceScore(student) >= 70 
+                 ? "bg-amber-500 border-amber-400 text-white" 
+                 : "bg-rose-500 border-rose-400 text-white"
+           )}>
+             <Award className="w-3.5 h-3.5 text-white shrink-0" />
+             <span>ציון ביצוע: {getPerformanceScore(student)}</span>
+           </div>
+           {/* Micro pointer pointing down */}
+           <div className={cn(
+             "w-2 h-2 -mt-1 rotate-45 border-r border-b",
+             getPerformanceScore(student) >= 85 
+               ? "bg-emerald-500 border-emerald-400" 
+               : getPerformanceScore(student) >= 70 
+                 ? "bg-amber-500 border-amber-400" 
+                 : "bg-rose-500 border-rose-400"
+           )} />
+         </div>
+       )}
       
       {student ? (
         <motion.div 
@@ -1351,7 +1410,9 @@ const DeskCell = ({
            )}>
              <div className="flex items-center gap-1 mb-0.5">
                <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-               <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">{student.name}</span>
+               <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">
+                 {showNames3D ? student.name : `שולחן ${idx + 1}`}
+               </span>
               </div>
               
               
@@ -9673,7 +9734,12 @@ const BehaviorLogView = ({ currentConfig, updateCurrentConfig, onBack, setNotifi
           </div>
           
           <div className="flex gap-2">
-            <DailySummaryGenerator students={currentConfig.students} events={currentConfig.events || []} setNotifications={setNotifications} />
+            <DailySummaryGenerator 
+              students={currentConfig.students} 
+              currentConfig={currentConfig} 
+              updateCurrentConfig={updateCurrentConfig} 
+              setNotifications={setNotifications} 
+            />
             <BehaviorTimeline logs={logs} />
           </div>
           
@@ -11261,7 +11327,8 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
     { id: 'meetings', title: 'תכנון אסיפות הורים', icon: <Users className="w-8 h-8 text-blue-500" />, desc: 'מנגנון לשיבוץ וקביעת פגישות ברצף אינטואיטיבי', status: 'פעיל' },
     { id: 'ai', title: 'מחולל משימות AI', icon: <Wrench className="w-8 h-8 text-violet-500" />, desc: 'יצירת מטלות וחומרי למידה בעזרת בינה מלאכותית', status: 'פעיל' },
     { id: 'whiteboard', title: 'לוח למידה', icon: <Activity className="w-8 h-8 text-teal-500" />, desc: 'לוח ציור וכתיבה שיתופי למסך התלמידים', status: 'פעיל' },
-    { id: 'summary', title: 'סיכום שבועי להורים', icon: <Mail className="w-8 h-8 text-rose-500" />, desc: 'יצירת טיוטת מייל אוטומטית להורים עם נתוני התנהגות וציונים', status: 'פעיל' }
+    { id: 'summary', title: 'סיכום שבועי להורים', icon: <Mail className="w-8 h-8 text-rose-500" />, desc: 'יצירת טיוטת מייל אוטומטית להורים עם נתוני התנהגות וציונים', status: 'פעיל' },
+    { id: 'daily-summary', title: 'כלי סיכום פדגוגי יומי (PDF)', icon: <FileText className="w-8 h-8 text-indigo-500" />, desc: 'סיכום יומי המאחד נוכחות תלמידים, נקודות זכות והערות משמעת לקובץ PDF אחד אינטואיטיבי מוכן לשמירה ושליחה', status: 'פעיל' }
   ];
 
   const handleExportToGoogleDocs = async () => {
@@ -11344,6 +11411,14 @@ const ToolsView = ({ onBack, students, currentConfig, updateCurrentConfig, isDar
                 students={students} 
                 analyticsLog={currentConfig.analytics_log || []} 
                 studentPoints={currentConfig.student_points || {}}
+                setNotifications={setNotifications} 
+              />
+            )}
+            {selectedTool === 'daily-summary' && (
+              <DailySummaryGenerator 
+                students={students} 
+                currentConfig={currentConfig} 
+                updateCurrentConfig={updateCurrentConfig} 
                 setNotifications={setNotifications} 
               />
             )}
@@ -11781,6 +11856,8 @@ export default function App() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editMode, setEditMode] = useState<'placement' | 'structure'>('placement');
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
+  const [showSeatLabels3D, setShowSeatLabels3D] = useState(true);
+  const [showNames3D, setShowNames3D] = useState(true);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [aiSortScore, setAiSortScore] = useState<number | null>(null);
@@ -16203,6 +16280,8 @@ Instructions:
                             setSelectedStudentIds={setSelectedStudentIds}
                             isMultiSelectMode={isMultiSelectMode}
                             conflicts={conflicts}
+                            showSeatLabels3D={showSeatLabels3D}
+                            showNames3D={showNames3D}
                           />
                         );
                       })
@@ -16878,6 +16957,78 @@ Instructions:
               </motion.div>
             ))}
           </AnimatePresence>
+        </div>
+      )}
+
+      {isPresentationMode && is3DView && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[250] bg-slate-900/95 dark:bg-black/95 text-white backdrop-blur-md px-6 py-4 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border border-slate-700/50 flex flex-wrap items-center gap-6 justify-center" dir="rtl">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-slate-300">תוויות מושבים:</span>
+            <button 
+              onClick={() => setShowSeatLabels3D(!showSeatLabels3D)}
+              className={cn(
+                "px-4 py-1.5 rounded-xl text-xs font-black transition-all border",
+                showSeatLabels3D 
+                  ? "bg-brand-500 border-brand-400 text-white" 
+                  : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+              )}
+            >
+              {showSeatLabels3D ? 'פעיל' : 'כבוי'}
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-slate-800" />
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-slate-300">שמות תלמידים:</span>
+            <button 
+              onClick={() => setShowNames3D(!showNames3D)}
+              className={cn(
+                "px-4 py-1.5 rounded-xl text-xs font-black transition-all border",
+                showNames3D 
+                  ? "bg-brand-500 border-brand-400 text-white" 
+                  : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+              )}
+            >
+              {showNames3D ? 'גלוי' : 'מוסתר'}
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-slate-800" />
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-slate-300">זווית צפייה:</span>
+            <div className="flex bg-slate-800 p-1 rounded-xl gap-1">
+              {[
+                { id: 'standard', name: 'רגיל' },
+                { id: 'birdsEye', name: 'מבט על' },
+                { id: 'studentLevel', name: 'עיני תלמיד' },
+                { id: 'sideObserver', name: 'תצפית מהצד' }
+              ].map(preset => {
+                const isActive = cameraAngle === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => {
+                      setCameraAngle(preset.id as any);
+                      if (preset.id === 'standard') { setRotationY(0); setRotationX(50); setZoomLevel(0.9); setPanX(0); setPanY(0); }
+                      else if (preset.id === 'birdsEye') { setRotationY(0); setRotationX(80); setZoomLevel(0.85); setPanX(0); setPanY(-100); }
+                      else if (preset.id === 'studentLevel') { setRotationY(0); setRotationX(25); setZoomLevel(1.1); setPanX(0); setPanY(-20); }
+                      else if (preset.id === 'sideObserver') { setRotationY(45); setRotationX(35); setZoomLevel(0.95); setPanX(-55); setPanY(-25); }
+                    }}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-black transition-all",
+                      isActive 
+                        ? "bg-brand-500 text-white shadow-sm" 
+                        : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    {preset.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
