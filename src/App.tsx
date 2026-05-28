@@ -13880,7 +13880,7 @@ Instructions:
       case 'reminders': return <RemindersView config={activeConfig} updateConfig={updateCurrentConfig} students={activeConfig.students} onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
-      case 'content-management': return <ContentManagementView onBack={onBackToGrid} />;
+      case 'content-management': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
       case 'toolkit': return <TeacherToolkit students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaign-display': return (
