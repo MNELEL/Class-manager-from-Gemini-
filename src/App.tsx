@@ -7239,63 +7239,6 @@ const StudentDetailView = ({
                 </div>
               )}
 
-               {activeTab === 'history' && (
-                <div className="lg:col-span-3">
-                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between mb-8">
-                       <div className="flex items-center gap-6">
-                          <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[2.5rem]">
-                             <History className="w-10 h-10 text-amber-600" />
-                          </div>
-                          <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">יומן אירועי התנהגות</h3>
-                       </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      {(() => {
-                        const logs = (currentConfig.analytics_log || [])
-                          .filter((l: any) => l.studentId === student.id)
-                          .sort((a: any, b: any) => b.timestamp - a.timestamp);
-                        
-                        if (logs.length === 0) {
-                          return (
-                            <div className="p-16 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
-                               <p className="font-bold">לא נמצאו אירועים מתועדים לתלמיד זה</p>
-                            </div>
-                          );
-                        }
-
-                        return logs.map((l: any) => {
-                          const category = BEHAVIOR_CATEGORIES.find(c => c.id === l.categoryId);
-                          return (
-                            <div key={l.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-6 hover:shadow-md transition-all">
-                               <div className="flex items-center gap-6">
-                                  <div className="w-14 h-14 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                     {category?.icon || '📝'}
-                                  </div>
-                                  <div>
-                                     <div className="flex items-center gap-3">
-                                        <h4 className="font-black text-slate-800 dark:text-white">{category?.label || 'אירוע'}</h4>
-                                        <span className={cn("text-xs font-black px-2 py-0.5 rounded-full", l.value >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                                           {l.value >= 0 ? `+${l.value}` : l.value} נקודות
-                                        </span>
-                                     </div>
-                                     <p className="text-sm font-medium text-slate-500 mt-1">{l.reason || 'ללא פירוט נוסף'}</p>
-                                  </div>
-                               </div>
-                               <div className="text-left">
-                                  <div className="text-xs font-black text-slate-400">{new Date(l.timestamp).toLocaleDateString('he-IL')}</div>
-                                  <div className="text-xs font-bold text-slate-400 mt-0.5">{new Date(l.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
-                               </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
                {activeTab === 'documents' && (
                  <div className="lg:col-span-3 space-y-8">
                     <div className="glass-card p-12 rounded-[4rem] text-center bg-slate-50 dark:bg-slate-900/50 border-dashed border-2 border-slate-300 dark:border-slate-800 transition-all hover:border-brand-300 relative group overflow-hidden">
@@ -7380,20 +7323,77 @@ const StudentDetailView = ({
                           ))}
                        </div>
                     ) : null}
-                 </div>
+                  </div>
                )}
 
-              {activeTab === 'history' && (
+               {activeTab === 'history' && (
                 <div className="lg:col-span-3">
-                   <div className="glass-card p-12 rounded-[4rem] text-center bg-slate-50 border border-slate-200">
-                      <Clock className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-                      <h4 className="text-xl font-bold text-slate-700 mb-2">היסטוריה משנים קודמות</h4>
-                      <p className="text-sm text-slate-500 mb-4">ייבוא נתונים אוטומטי ממשוב או ממערכות בית ספריות אחרות (בפיתוח)</p>
+                  <div className="glass-card p-12 rounded-[4rem] space-y-10 shadow-sm bg-white/40 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-6">
+                          <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[2.5rem]">
+                             <History className="w-10 h-10 text-amber-600" />
+                          </div>
+                          <h3 className="text-3xl font-black text-slate-900 dark:text-white capitalize">יומן אירועי התנהגות</h3>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(() => {
+                        const logs = (currentConfig.analytics_log || [])
+                          .filter((l: any) => l.studentId === student.id)
+                          .sort((a: any, b: any) => b.timestamp - a.timestamp);
+                        
+                        if (logs.length === 0) {
+                           return (
+                             <div className="p-16 text-center text-slate-500 font-medium bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-705">
+                                <p className="font-bold">לא נמצאו אירועים מתועדים לתלמיד זה</p>
+                             </div>
+                           );
+                         }
+
+                                                  return (
+                           <>
+                             {logs.map((l: any) => {
+                               const category = BEHAVIOR_CATEGORIES.find(c => c.id === l.categoryId);
+                               return (
+                                 <div key={l.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-6 hover:shadow-md transition-all">
+                                    <div className="flex items-center gap-6">
+                                       <div className="w-14 h-14 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-slate-100 dark:border-slate-705">
+                                          {category?.icon || '📝'}
+                                       </div>
+                                       <div>
+                                          <div className="flex items-center gap-3">
+                                             <h4 className="font-black text-slate-800 dark:text-white">{category?.label || 'אירוע'}</h4>
+                                             <span className={cn("text-xs font-black px-2 py-0.5 rounded-full", l.value >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                                                {l.value >= 0 ? `+${l.value}` : l.value} נקודות
+                                             </span>
+                                          </div>
+                                          <p className="text-sm font-medium text-slate-500 mt-1">{l.reason || 'ללא פירוט נוסף'}</p>
+                                       </div>
+                                    </div>
+                                    <div className="text-left">
+                                       <div className="text-xs font-black text-slate-400">{new Date(l.timestamp).toLocaleDateString('he-IL')}</div>
+                                       <div className="text-xs font-bold text-slate-400 mt-0.5">{new Date(l.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    </div>
+                                 </div>
+                               );
+                             })}
+
+                             <div className="glass-card p-12 rounded-[4rem] text-center bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200 mt-10">
+                                <Clock className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                                <h4 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">היסטוריה משנים קודמות</h4>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">ייבוא נתונים אוטומטי ממשוב או ממערכות בית ספריות אחרות (בפיתוח)</p>
+                             </div>
+                           </>
+                         );
+                       })()}
+                     </div>
                    </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
+                 </div>
+               )}
+             </motion.div>
+           </AnimatePresence>
         </div>
       </div>
     </div>
@@ -14319,7 +14319,24 @@ Instructions:
   };
 
   const exportToPDF = async () => {
-    if (!gridRef.current) return;
+    let originalView = viewType;
+    let switchedView = false;
+    
+    if (!gridRef.current) {
+      setViewTypeWithTransition('grid');
+      switchedView = true;
+      // Wait for view transition, layout, and state to settle and gridRef to populate
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    if (!gridRef.current) {
+      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "לא ניתן לייצא: מפת הכיתה אינה טעונה", type: 'error' }, ...prev]);
+      if (switchedView) {
+        setViewTypeWithTransition(originalView);
+      }
+      return;
+    }
+
     setIsExporting(true);
     setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
     
@@ -14360,6 +14377,9 @@ Instructions:
     } finally {
       updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: false }));
       setIsExporting(false);
+      if (switchedView) {
+        setViewTypeWithTransition(originalView);
+      }
     }
   };
 
