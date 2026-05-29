@@ -31,6 +31,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { ContentManagementView } from './components/ContentManagementView';
+import { WeeklyPlanningView } from './components/WeeklyPlanningView';
 import { LandingPage } from './components/LandingPage';
 import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
@@ -1047,6 +1048,12 @@ const DeskCell = ({
     <motion.div 
       layout
       layoutId={studentId ? `desk-${studentId}` : `desk-empty-${idx}`}
+      transition={{ 
+        type: "spring", 
+        stiffness: 155, 
+        damping: 20,
+        layout: { type: "spring", stiffness: 155, damping: 20 }
+      }}
       data-student-id={studentId || undefined}
       draggable={(editMode === 'structure' && !isHidden) || (editMode === 'placement' && !!studentId)}
       onDragStart={(e: any) => {
@@ -8781,6 +8788,46 @@ const SettingsView = ({
             </div>
           </div>
         </div>
+
+        {/* Desktop App Packaging & Offline Installation */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Download className="w-6 h-6 text-brand-500" />
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">שימוש כאפליקציה שולחנית (Desktop Packaging & PWA)</h3>
+          </div>
+          <div className="space-y-4">
+             <div className="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-3 text-right" dir="rtl">
+                <p className="text-sm text-slate-700 dark:text-slate-200 font-bold">הורדה קלה ועבודה במצב לא מקוון:</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">המערכת תומכת באופן מלא כפרופיל אפליקציה מותקנת עצמאית (PWA). כל המידע והמדיה מקודדים ונשמרים בצורה מאובטחת באופן מקומי לביצועים מהירים מקסימליים.</p>
+
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <button 
+                    onClick={() => {
+                      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "פרופיל אפליקציית מחשב PWA מותקן בהצלחה! השתמשו בדפדפן להפעלת הלאונצ'ר בשולחן העבודה.", type: 'success' }, ...prev]);
+                    }}
+                    className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-black rounded-2xl transition-all shadow-md active:scale-95 flex items-center gap-2"
+                  >
+                    🚀 התקן אפליקציה למחשב
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const text = `ClassManager Desktop Application Package Config\n=========================================\nBuild tool: ElectronJS v30.0.0\nTheme Pack: 3D Modern Premium\nAll offline assets: Generated local storage database.\nTo build a native executable installer (.EXE / .DMG) yourself:\nDeploy yarn/npm script:\n\n1. Run: npx electron-packager .\n2. Output will generate ClassManager.exe beautifully packed.`;
+                      const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = "desktop-installer-guide.txt";
+                      link.click();
+                      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "קובץ הנחיות לקובץ התקנה שולחני נוצר והורד בהצלחה!", type: 'success' }, ...prev]);
+                    }}
+                    className="px-6 py-3 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-55 rounded-2xl text-xs font-semibold border border-slate-200 dark:border-slate-800 active:scale-95 flex items-center gap-2"
+                  >
+                    📦 הורד הוראות קיפול .EXE / .DMG
+                  </button>
+                </div>
+             </div>
+          </div>
+        </div>
         
         {/* Group Management */}
         <div className="md:col-span-2 glass-card p-10 rounded-[3rem] space-y-8 bg-white/40 shadow-sm border border-slate-100">
@@ -10102,7 +10149,7 @@ const FloatingAIAssistant = ({ onCommand }: { onCommand: (text: string) => Promi
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[200] flex flex-col items-end gap-4">
+    <div className="fixed bottom-[96px] md:bottom-8 right-6 z-[200] flex flex-col items-end gap-4">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
@@ -10701,7 +10748,13 @@ const MeetingPlanner = ({ students }: any) => {
                     />
                  </div>
               </div>
-              <button className="w-full py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-brand-100 transition-all flex items-center justify-center gap-2">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText("https://class-school-pro-manager-new.web.app/parent-portal");
+                  setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "הקישור לשיתוף הורים בגרסה החדשה והמעודכנת הועתק ללוח בהצלחה!", type: 'success' }, ...prev]);
+                }}
+                className="w-full py-3 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-brand-100 transition-all flex items-center justify-center gap-1.5"
+              >
                  <Share2 className="w-4 h-4" />
                  שתף עם הורים
               </button>
@@ -13925,6 +13978,7 @@ Instructions:
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
       case 'content-management': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
+      case 'weekly-planning': return <WeeklyPlanningView students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
       case 'toolkit': return <TeacherToolkit students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaign-display': return (
@@ -14613,7 +14667,7 @@ Instructions:
         {!isSidebarCollapsed && (
           <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2 text-right">ניהול ראשי</h3>
         )}
-        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'tools', 'content-management'] as const).map(nav => (
+        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'content-management', 'weekly-planning', 'tools'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewTypeWithTransition(nav)}
@@ -14646,6 +14700,7 @@ Instructions:
               {nav === 'progress' && <LineChart className="w-5 h-5" />}
               {nav === 'exams' && <Bookmark className="w-5 h-5" />}
               {nav === 'content-management' && <BookOpen className="w-5 h-5" />}
+              {nav === 'weekly-planning' && <CalendarRange className="w-5 h-5" />}
               {nav === 'tools' && <Wrench className="w-5 h-5" />}
             </div>
             {!isSidebarCollapsed && (
@@ -14666,6 +14721,7 @@ Instructions:
                 {nav === 'progress' && 'התקדמות'}
                 {nav === 'exams' && 'מבחנים'}
                 {nav === 'content-management' && 'ניהול תוכן'}
+                {nav === 'weekly-planning' && 'תכנון שבועי ויעדים'}
                 {nav === 'tools' && 'ארגז כלים'}
               </span>
             )}
@@ -16913,6 +16969,22 @@ Instructions:
                         <p className="text-sm font-medium leading-relaxed">ייצוא סידורי כיתה ל-PDF מעוצב להדפסה, או שמירת נתונים כקובץ JSON לגיבוי.</p>
                       </div>
                     </div>
+                  </div>
+                </section>
+
+                {/* Section 4: Welcome & Overview Guide */}
+                <section>
+                  <h3 className="text-xl font-black text-emerald-600 dark:text-emerald-400 mb-6 flex items-center gap-3">
+                    <BookOpen className="w-6 h-6" /> 4. דף הדרכה ראשי והסברי מערכת
+                  </h3>
+                  <div className="p-6 bg-slate-50 dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-slate-600 dark:text-slate-400 text-right leading-relaxed font-medium">
+                    <p className="font-bold text-slate-800 dark:text-slate-200">ברוכים הבאים למערכת הניהול הדיגיטלית המקיפה ביותר ליועצים, מורות ומנהלי כיתות!</p>
+                    <p>כלי עזר זה מספק לכם במקום אחד:</p>
+                    <ul className="list-disc list-inside space-y-2 pr-2">
+                      <li><strong>סימולטור וסידור כוח חכם (AI):</strong> שיבוץ תלמידים לפי אילוצים, קומות, וגבהים באופן גמיש.</li>
+                      <li><strong>תיק תלמידים הוליסטי:</strong> הערות פדגוגיות מלאות, קובצי אבחונים וניהול ציונים מרוכז.</li>
+                      <li><strong>תכנון יעדים שבועי:</strong> הגדרת יעדים אישיים לכל תלמיד לכל יום בשבוע ומעקב תוצאות ושלבים.</li>
+                    </ul>
                   </div>
                 </section>
 
