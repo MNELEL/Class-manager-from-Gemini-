@@ -247,7 +247,7 @@ export const LessonsManager = ({
                                     type="text"
                                     value={newLesson.name}
                                     onChange={e => setNewLesson({...newLesson, name: e.target.value})}
-                                    placeholder="מתמטיקה, אנגלית..."
+                                    placeholder="גמרא, חומש..."
                                     className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 font-bold"
                                 />
                             </div>

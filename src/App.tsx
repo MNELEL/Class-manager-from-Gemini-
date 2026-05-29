@@ -7303,7 +7303,37 @@ const StudentDetailView = ({
                                    {doc.type.includes('pdf') ? <FileText className="w-7 h-7" /> : <File className="w-7 h-7" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                   <h5 className="font-black text-slate-800 dark:text-white truncate text-base mb-1" title={doc.name}>{doc.name}</h5>
+                                   <h5 className="font-black text-slate-800 dark:text-white truncate text-base mb-1 text-right" title={doc.name}>{doc.name}</h5>
+                                   <div className="mt-2 text-right">
+                                      <label className="text-[9px] font-black text-slate-400 block mb-1">שיוך לנושא בעץ הלימוד:</label>
+                                      <select
+                                         value={doc.associatedTopic || ''}
+                                         onChange={(e) => {
+                                            const selectedVal = e.target.value;
+                                            const updatedDocs = student.documents.map((d: any) => 
+                                               d.id === doc.id ? { ...d, associatedTopic: selectedVal } : d
+                                            );
+                                            updateStudent('documents', updatedDocs);
+                                         }}
+                                         className="w-full text-right p-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer h-7"
+                                      >
+                                         <option value="">-- ללא שיוך --</option>
+                                         {(() => {
+                                            const saved = localStorage.getItem('pedagogy_library_topics');
+                                            if (saved) {
+                                               try {
+                                                  const parsed = JSON.parse(saved);
+                                                  if (Array.isArray(parsed)) return parsed.filter((t: any) => !t.hidden).map((t: any) => t.name);
+                                               } catch (e) {
+                                                  console.error(e);
+                                               }
+                                            }
+                                            return ['גמרא', 'חומש', 'משנה', 'הלכה', 'ביאורי מילים ומילות מפתח בגמרא', 'נביא'];
+                                         })().map((topicName: string) => (
+                                            <option key={topicName} value={topicName}>{topicName}</option>
+                                         ))}
+                                      </select>
+                                   </div>
                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                       <span>{doc.size} KB</span>
                                       <div className="w-1 h-1 rounded-full bg-slate-300" />
@@ -11726,7 +11756,7 @@ export default function App() {
     ] as any[],
     availableLessons: [
       { id: 'math-adv', name: 'מתמטיקה מתקדם', day: 'א', time: '08:00', category: 'regular' },
-      { id: 'english-ext', name: 'אנגלית מורחב', day: 'ב', time: '10:00', category: 'enrichment' },
+      { id: 'english-ext', name: 'ביאורי מילים בגמרא', day: 'ב', time: '10:00', category: 'enrichment' },
       { id: 'science-lab', name: 'מעבדת מדעים', day: 'ד', time: '12:00', category: 'enrichment' },
     ] as any[],
     updatedAt: Date.now(),

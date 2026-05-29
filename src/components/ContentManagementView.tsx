@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
+  FolderOpen,
   BookOpen, 
   FileText, 
   LayoutList, 
@@ -38,9 +39,13 @@ import {
   ListOrdered,
   Eye,
   Columns,
-  AlignRight
+  AlignRight,
+  AlignCenter,
+  AlignLeft,
+  Table
 } from 'lucide-react';
 import Markdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
@@ -58,9 +63,29 @@ type Material = {
     understandings?: string[]; // הבנות פדגוגיות
     options?: string[]; // אופציות התאמה לתלמידים
     order?: string; // הנחיות סדר פדגוגי שפותחו
-    sections?: string[]; // חלקי השיעור
-    status: 'draft' | 'analyzed' | 'organized';
-    attachments?: { id: string; name: string};const DEFAULT_MATERIALS: Material[] = [
+    sections?: string[]; // חלק
+    attachments?: { id: string; name: string; type: string; url: string }[];
+    status?: 'draft' | 'organized' | 'analyzed';
+};
+
+type Topic = {
+    name: string;
+    subtopics: string[];
+    hidden?: boolean;
+};
+
+type UploadedFile = {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+    date: string;
+    topic?: string;
+    subtopic?: string;
+};
+
+const DEFAULT_MATERIALS: Material[] = [
     { 
         id: '1', 
         title: 'סוגיית אלו מציאות וייאוש שלא מדעת', 
@@ -90,25 +115,10 @@ type Material = {
         difficulty: 'hard',
         gradeLevel: 'כיתה ה׳',
         estimatedTime: '90 דקות',
-        details: `# שיעור חומש ורש"י: פרשת וירא - ניסיון עקדת יצחק\n\n### 🎯 מטרות השיעור\n- התלמיד יגדיר ויסביר את המושג "ניסיון" ואמונת האבות העצומה.\n- הבנה שלמילים "קח נא את בנך" יש משמעות עמוקה של חיבה ורצון הבורא.\n- ניתוח פירוש רש"י הקדוש על כל היבטיו פשטניים ומדרשיים.\n\n### 🕰️ שלבי השיעור המרכזיים\n1. **עוררות הרגש והלב (15 דקות)**: שיחה על גודל אמונתו של אברהם אבינו ע"ה.\n2. **הוראה והקראה (30 דקות)**: קריאת הפסוקים ובאור רש"י מילה במילה בעיון.\n3. **עבודה שיתופית בחברותא (30 דקות)**: כתיבת סדר הניסיונות ודיון על מסירות הנפש.\n4. **סיום ושינון (15 דקות)**: שנון פסוקי העקדה בעל פה וסיכום פדגוגי מרומם.`, 
-        status: 'organized',
-        understandings: ['אמונת חכמים ומסירות הנפש של אבות האומה', 'פענוח פירוש רש"י על פי סברות ופירושים פשוטים'],
-        sections: ['עוררות הרגש והלב', 'הוראה והקראה', 'עבודה שיתופית בחברותא', 'סיום ושינון']
-    },
-    { 
-        id: '3', 
-        title: 'דף עבודה חווייתי: משניות מסכת אבות', 
-        type: 'worksheet', 
-        topic: 'משנה', 
-        subtopic: 'מסכת אבות', 
-        tags: ['משנה', 'מסכת אבות', 'מידות טובות', 'שינון'], 
-        difficulty: 'easy',
-        gradeLevel: 'כיתה ו׳',
-        estimatedTime: '45 דקות',
-        details: `# דף עבודה: משניות מסכת אבות - פרק ראשון\n\n### 📝 סקירה מהירה\nדף חזרה חווייתי ושעשועי תורה המיועדים לסייע לתינוקות של בית רבן לחזור ולשנן בדיוק את דברי התנאים הקדושים.\n\n### 📋 תרגיל 1: השלם את דברי התנא\n1. משה קיבל תורה מ__________ ומסרה ליהושע. (סיני / שמיים)\n2. שמעון הצדיק היה משירי כנסת הגדולה. הוא היה אומר, על שלושה דברים העולם עומד: על התורה, ועל ה__________ ועל גמילות חסדים. (עבודה / צדקה)\n3. יהושע בן פרחיה אומר: עשה לך רב, וקנה לך חבר, והוי דן את כל האדם לכף __________. (זכות / חובה)\n\n### 📋 תרגיל 2: שאלות למחשבה ומוסר\n- כיצד אתה יכול ליישם היום בבית הספר או בבית הלכה למעשה את המשנה של "והוי דן את כל האדם לכף זכות"?`, 
-        status: 'draft', 
-        understandings: ['זיהוי נכון של דברי התנאים הקדושים', 'השמשת המשנה הלכה למעשה בחיי היומיום'], 
-        sections: ['מבוא', 'עבודה מודרכת', 'סיכום כיתתי'],
+        details: `# שיעור חומש ורש"י: פרשת וירא - ניסיון עקדת יצחק\n\n### 🎯 מטרות השיעור\n- התלמיד יגדיר ויסביר את המושג "ניסיון" ואמונת האבות העצומה.\n- הבנה שלמילים "קח נא את בנך" יש משמעות עמוקה של חיבה ורצון הבורא.\n- ניתוח פירוש רש"י הקדוש על כל היבטיו פשטניים ומדרשיים.\n\n### 🕰️ שלבי השיעור המרכזיים\n1. **עוררות הרגש והלב (15 דקות)**: שיחה על גודל אמונתו של אברהם אבינו ע"ה.\n2. **הוראה והקראה (30 דקות)**: קריאת הפסוקים וביאור רש"י מילה במילה.`,
+        status: 'analyzed',
+        understandings: ['הבנת המושג ניסיון ודרכי האמונה של אברהם אבינו ע"ה', 'פענוח ביאורי רש"י הקדוש על הפסוקים ביראת שמיים'],
+        sections: ['פתיחה ועוררות הלב', 'הוראה והקראת הפסוקים', 'עבודה עצמית בדפי חזרה', 'שעשועי תורה וסיכום הלכתי'],
         attachments: []
     },
     { 
@@ -128,61 +138,29 @@ type Material = {
     },
     { 
         id: '5', 
-        title: 'עקרונות הדמוקרטיה וזכויות האזרח והפרט', 
+        title: 'מילון מונחי יסוד ושפה בגמרא', 
         type: 'summary', 
-        topic: 'אזרחות', 
-        subtopic: 'ממשל וחברה', 
-        tags: ['אזרחות', 'דמוקרטיה', 'זכויות אזרח', 'חופש הביטוי'], 
-        difficulty: 'medium',
-        gradeLevel: 'כיתה ח׳',
-        estimatedTime: '60 דקות',
-        details: `# סיכום פדגוגי מרכז: ערכי היסוד של הדמוקרטיה\n\n### 🔑 מושגי מפתח\n1. **שלטון העם**: האזרחים הם מקור הסמכות והריבון במדינה.\n2. **הכרעת הרוב**: קבלת החלטות בדרכי שלום על ידי רוב המצביעים, תוך שמירה הדוקה על זכויות המיעוט.\n3. **זכויות הפרט והאדם**: חיים וביטחון, חירות, קניין, שוויון, כבוד והליך הוגן.\n\n### 💬 המלצה לדיון כיתתי מעצים\nהציגו בפני התלמידים דילמה של התנגשות בין זכויות: למשל חופש הביטוי והפגנה לעומת זכות הציבור לחופש התנועה והתחבורה. בקשו מהם להשתמש במפת המקומות שלהם בכיתה על מנת לערוך סדר הצבעות ודיון חופשי מובנה.`, 
-        status: 'organized',
-        understandings: ['הבנה שדמוקרטיה אינה רק שלטון הרוב אלא הגנה הדוקה על זכויות המיעוט', 'יכולת לזהות זכויות מתנגשות בסיטואציות יום-יומיות ולבצע איזון חוקתי פשוט'],
-        sections: ['מושגי היסוד', 'דילמה מעשית לדיון', 'סימולציית הצבעה בכיתה']
-    }
-];
-const DEFAULT_TOPICS: Topic[] = [� אחד שיבצע סימולציה ויסביר לחבריו את סדר הברכות הנכון תוך הגיית הברכות ביראת שמיים שלמה.`, 
-        status: 'organized',
-        understandings: ['ידיעה ברורה של סדרי הברכות וההלכות למעשה', 'קישור ידע ערוך למקרים מעשיים בסעודת שבת או בהפסקת האוכל'],
-        sections: ['מפת הלכות קצרה', 'סימולציית שולחן ברכות', 'רישום תובנות ומבחן קצר']
-    }
-];�לכתי ממוקד: סדר קדימה בברכות הנהנין\n\n### 🔑 מושגי יסוד הלכתיים\n1. **כלל קדימות הברכות:** כאשר יש לפני האדם כמה סוגי אוכל, עליו לברך קודם החשוב והחביב ביותר (מג"ע א"ש - מזונות, גפן, עץ, אדמה, שהכל).\n2. **שבעת המינים:** פירות שנשתבחה בהם ארץ ישראל קודמים בברכה לשאר פירות העץ.\n3. **ברכת היין והפת:** ברכות החשובות ומיוחדות הקובעות ברכה לעצמן ופוטרות מאכלים אחרים.\n\n### 💬 הצעה לדיון וסימולציה כיתתית חיה\nהמלמד יציב על שולחנו מספר פרטי מתיקה, פירות, מיצי פירות וקרקרים. נזמין בכל פעם תלמיד אחד שיבצע סימולציה ויסביר לחבריו את סדר הברכות הנכון תוך הגיית הברכות ביראת שמיים שלמה.`, 
-        status: 'organized',
-        understandings: ['ידיעה ברורה של סדרי הברכות וההלכות למעשה', 'קישור ידע ערוך למקרים מעשיים בסעודת שבת או בהפסקת האוכל'],
-        sections: ['מפת הלכות קצרה', 'סימולציית שולחן ברכות', 'רישום תובנות ומבחן קצר']
-    }
-];birds **sing / are singing** in the garden.\n4. Every morning, Dana **drinks / is drinking** hot cocoa.\n\n### 📋 Exercise 2: Complete the sentences\n- Write the verb in brackets in the correct tense:\n1. He __________ (not play) soccer on Tuesdays.\n2. Look! My dog __________ (run) after the ball.`, 
+        topic: 'ביאורי מילים ומילות מפתח בגמרא', 
+        subtopic: 'לשון הגמרא וארמית', 
+        tags: ['ארמית', 'מונחי מפתח', 'שפה', 'גמרא'], 
+        difficulty: 'easy',
+        gradeLevel: 'כיתה ז׳',
+        estimatedTime: '45 דקות',
+        details: `# ביאורי מילים ומילות מפתח בגמרא\n\n### 🔑 מונחי יסוד נפוצים ופירושם\n1. **תיקו:** תעמוד (תשלם קושיות ואיבעיות) - שאלה שנותרה ללא הכרעה, ותישאר כך עד שיבוא אליהו הנביא להכריע בה.\n2. **קשיא:** קשה - קושיא על שיטה מסוימת שנותרה ללא תירוץ מלא, אך בניגוד לפירכא גמורה אין היא מפריכה לחלוטין את השיטה.\n3. **תניא:** שנינו/שנויה - פתיחה להצגת מקור תנאי (ברייתא).\n4. **מתקיף ליה:** מקיש עליו/מקשה עליו בשאלה הגיונית (סברא).\n5. **מאי קא משמע לן:** מה משמיע לנו? - מה החידוש בדבר זה?\n\n### 📝 תרגיל שנון הלשון\n- השלימו את מילת המפתח המתאימה לכל משפט:\n1. כאשר הגמרא מציגה קושיא מברייתא היא פותחת במילה _________.\n2. שאלה שנותרת בעינה ללא פתרון מסתיימת במילה _________.\n\n---\n\n### 💬 דילוג לקריאה פעילה ושיתופית בחברותא\nהזמינו זוג תלמידים להציג דיון קצר והדגימו בעזרת כרטיסיות מילים כיצד מילת מפתח משנה את כל כיוון הדיון ופניה של הסוגיה הקדושה!`, 
         status: 'draft',
-        understandings: ['זיהוי נכון של מילות רמז בזמנים כמו "every day" לעומת "now"', 'הבנת ההבדל המהותי בסוג הפעולה - מחזורית מול רגעית'],
-        sections: ['סקירה מהירה', 'עבודה עצמית מודרכת', 'בדיקה משותפת'],
-        attachments: [
-            { id: '3a', name: 'Practice Worksheet - Printable.pdf', type: 'pdf', url: 'https://example.com/english_practice.pdf' }
-        ]
-    },
-    { 
-        id: '4', 
-        title: 'עקרונות הדמוקרטיה וזכויות האזרח והפרט', 
-        type: 'summary', 
-        topic: 'אזרחות', 
-        subtopic: 'ממשל וחברה', 
-        tags: ['אזרחות', 'דמוקרטיה', 'זכויות אזרח', 'חופש הביטוי'], 
-        difficulty: 'medium',
-        gradeLevel: 'כיתה ח׳',
-        estimatedTime: '60 דקות',
-        details: `# סיכום פדגוגי מרכז: ערכי היסוד של הדמוקרטיה\n\n### 🔑 מושגי מפתח\n1. **שלטון העם**: האזרחים הם מקור הסמכות והריבון במדינה.\n2. **הכרעת הרוב**: קבלת החלטות בדרכי שלום על ידי רוב המצביעים, תוך שמירה הדוקה על זכויות המיעוט.\n3. **זכויות הפרט והאדם**: חיים וביטחון, חירות, קניין, שוויון, כבוד והליך הוגן.\n\n### 💬 המלצה לדיון כיתתי מעצים\nהציגו בפני התלמידים דילמה של התנגשות בין זכויות: למשל חופש הביטוי והפגנה לעומת זכות הציבור לחופש התנועה והתחבורה. בקשו מהם להשתמש במפת המקומות שלהם בכיתה על מנת לערוך סדר הצבעות ודיון חופשי מובנה.`, 
-        status: 'organized',
-        understandings: ['הבנה שדמוקרטיה אינה רק שלטון הרוב אלא הגנה הדוקה על זכויות המיעוט', 'יכולת לזהות זכויות מתנגשות בסיטואציות יום-יומיות ולבצע איזון חוקתי פשוט'],
-        sections: ['מושגי היסוד', 'דילמה מעשית לדיון', 'סימולציית הצבעה בכיתה']
+        understandings: ['פענוח מילות קישור בארמית המקדמות את הדיון בגמרא', 'יכולת לזהות הבדל בין קושיא לתירוץ לפי מילות המפתח'],
+        sections: ['פתיחה וסקירת שפת הגמרא', 'עבודה עצמית על כרטיסיות מילים', 'שנון משותף ושימוש מדויק'],
+        attachments: []
     }
 ];
 
 const DEFAULT_TOPICS: Topic[] = [
-    { name: 'גמרא', subtopics: ['בבא קמא', 'ברכות', 'אלו מציאות', 'פסחים'] },
-    { name: 'חומש', subtopics: ['חומש בראשית', 'חומש שמות', 'חומש ויקרא', 'פרשת השבוע'] },
-    { name: 'משנה', subtopics: ['מסכת ברכות', 'מסכת אבות', 'מסכת שבת', 'סדר מועד'] },
-    { name: 'הלכה', subtopics: ['הלכות שבת', 'הלכות ברכות', 'קיצור שולחן ערוך', 'משנה ברורה'] },
-    { name: 'נביא', subtopics: ['ספר יהושע', 'ספר שופטים', 'ספר שמואל', 'נביאים ראשונים'] }
+    { name: 'גמרא', subtopics: ['בבא קמא', 'ברכות', 'אלו מציאות', 'פסחים'], hidden: false },
+    { name: 'חומש', subtopics: ['חומש בראשית', 'חומש שמות', 'חומש ויקרא', 'פרשת השבוע'], hidden: false },
+    { name: 'משנה', subtopics: ['מסכת ברכות', 'מסכת אבות', 'מסכת שבת', 'סדר מועד'], hidden: false },
+    { name: 'הלכה', subtopics: ['הלכות שבת', 'הלכות ברכות', 'קיצור שולחן ערוך', 'משנה ברורה'], hidden: false },
+    { name: 'ביאורי מילים ומילות מפתח בגמרא', subtopics: ['מילון מונחי יסוד', 'ארמית', 'מילות קישור'], hidden: false },
+    { name: 'נביא', subtopics: ['ספר יהושע', 'ספר שופטים', 'ספר שמואל', 'נביאים ראשונים'], hidden: false }
 ];
 
 export const ContentManagementView = ({ 
@@ -221,7 +199,79 @@ export const ContentManagementView = ({
         return DEFAULT_TOPICS;
     });
 
-    const [activeTab, setActiveTab] = useState<'materials' | 'lessons' | 'exams' | 'worksheets' | 'questions' | 'summaries' | 'ai_studio'>('materials');
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(() => {
+        const saved = localStorage.getItem('pedagogy_library_uploaded_files');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        return [
+            {
+                id: '1',
+                name: 'מערך שיעור - הלכות ברכות.pdf',
+                type: 'application/pdf',
+                size: 245,
+                url: '#',
+                date: new Date().toISOString(),
+                topic: 'הלכה'
+            },
+            {
+                id: '2',
+                name: 'דוגמאות לברכת הנהנין.xlsx',
+                type: 'document',
+                size: 110,
+                url: '#',
+                date: new Date().toISOString(),
+                topic: 'הלכה'
+            },
+            {
+                id: '3',
+                name: 'משנה ברורה - חלק ג.txt',
+                type: 'text/plain',
+                size: 45,
+                url: '#',
+                date: new Date().toISOString(),
+                topic: 'הלכה'
+            }
+        ];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pedagogy_library_uploaded_files', JSON.stringify(uploadedFiles));
+    }, [uploadedFiles]);
+
+    const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
+    const [customizerTab, setCustomizerTab] = useState<'topics' | 'buttons'>('topics');
+
+    const [customButtonNames, setCustomButtonNames] = useState<Record<string, { label: string, hidden: boolean }>>(() => {
+        const saved = localStorage.getItem('pedagogy_custom_buttons');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        return {
+            materials: { label: 'כל המאגר', hidden: false },
+            lessons: { label: 'מערכי שיעור', hidden: false },
+            worksheets: { label: 'דפי עבודה', hidden: false },
+            exams: { label: 'בחנים ומבחנים', hidden: false },
+            questions: { label: 'בנק שאלות', hidden: false },
+            summaries: { label: 'סיכומי תוכן', hidden: false },
+            files: { label: 'מנהל קבצי עזר', hidden: false },
+            ai_studio: { label: 'מחולל פדגוגי AI', hidden: false },
+        };
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pedagogy_custom_buttons', JSON.stringify(customButtonNames));
+    }, [customButtonNames]);
+
+    const [activeTab, setActiveTab] = useState<'materials' | 'lessons' | 'exams' | 'worksheets' | 'questions' | 'summaries' | 'ai_studio' | 'files'>('materials');
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
@@ -548,6 +598,19 @@ export const ContentManagementView = ({
             
             setTimeout(async () => {
                 await analyzeMaterialWithAI(`נוצר מקובץ שהועלה: ${file.name.replace(/\.[^/.]+$/, "")}\n\n${simulatedText}`);
+                
+                // Save file association
+                const newFileObj: UploadedFile = {
+                    id: Date.now().toString() + Math.random().toString().substring(2, 6),
+                    name: file.name,
+                    type: file.type || 'text/plain',
+                    size: Math.round(file.size / 1024) || 1,
+                    url: '#',
+                    date: new Date().toISOString(),
+                    topic: selectedTopic || undefined
+                };
+                setUploadedFiles(prev => [newFileObj, ...prev]);
+
                 setUploadingFile(false);
                 setUploadProgress(null);
                 setDragActive(false);
@@ -563,6 +626,19 @@ export const ContentManagementView = ({
                 setUploadProgress(100);
                 setTimeout(async () => {
                     await analyzeMaterialWithAI(`מערך שיעור ומצגת הרצאה בנושא: ${file.name.replace(/\.[^/.]+$/, "")}\n\nהתוכן הופק ופוענח בהצלחה מתוך הקובץ הבינארי "${file.name}" (${(file.size / 1024).toFixed(1)} KB) בעזרת מודלי עיבוד שפה מתקדמים.\nמערך שיעור זה מציע מהלך מקיף, כולל הגדרות יסוד, תרגול מעשי והנחיות דיון פדגוגיות ומקצועיות לכיתה.`);
+                    
+                    // Save file association
+                    const newFileObj: UploadedFile = {
+                        id: Date.now().toString() + Math.random().toString().substring(2, 6),
+                        name: file.name,
+                        type: file.type || 'binary/octet-stream',
+                        size: Math.round(file.size / 1024) || 1,
+                        url: '#',
+                        date: new Date().toISOString(),
+                        topic: selectedTopic || undefined
+                    };
+                    setUploadedFiles(prev => [newFileObj, ...prev]);
+
                     setUploadingFile(false);
                     setUploadProgress(null);
                     setDragActive(false);
@@ -780,7 +856,16 @@ export const ContentManagementView = ({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Workspace Customizer */}
+                    <button
+                        onClick={() => setIsCustomizerOpen(true)}
+                        className="px-5 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-black text-sm flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700"
+                        title="התאמת שמות כפתורים ומקצועות"
+                    >
+                        <Sliders className="w-4 h-4 text-slate-500" />
+                        התאמת כפתורים ותחומים
+                    </button>
                     {/* Fast add button */}
                     <button
                         onClick={openAddModal}
@@ -800,31 +885,20 @@ export const ContentManagementView = ({
             </div>
 
             {/* Quick Metrics Visual Cards Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
-                <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl shadow-sm text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">סך הכל חומרים</p>
-                    <p className="text-3xl font-black text-slate-800 dark:text-slate-100 mt-1">{statsBreakdown.total}</p>
-                </div>
-                <div className="p-4 bg-brand-50/20 dark:bg-brand-950/10 border border-brand-100/30 rounded-2xl text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-brand-500">מערכי שיעור</p>
-                    <p className="text-3xl font-black text-brand-600 dark:text-brand-400 mt-1">{statsBreakdown.lessons}</p>
-                </div>
-                <div className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border border-amber-100/30 rounded-2xl text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-amber-500">מבחנים ובחנים</p>
-                    <p className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{statsBreakdown.exams}</p>
-                </div>
-                <div className="p-4 bg-emerald-50/20 dark:bg-emerald-950/10 border border-emerald-100/30 rounded-2xl text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-emerald-500">דפי עבודה</p>
-                    <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{statsBreakdown.worksheets}</p>
-                </div>
-                <div className="p-4 bg-sky-50/20 dark:bg-sky-950/10 border border-sky-100/30 rounded-2xl text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-sky-500">בנק שאלות</p>
-                    <p className="text-3xl font-black text-sky-600 dark:text-sky-400 mt-1">{statsBreakdown.questions}</p>
-                </div>
-                <div className="p-4 bg-indigo-50/20 dark:bg-indigo-950/10 border border-indigo-100/30 rounded-2xl text-right">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-500">סיכומים כלליים</p>
-                    <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{statsBreakdown.summaries}</p>
-                </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+                {[
+                    { id: 'materials', key: 'total', label: customButtonNames.materials?.label || 'כל המאגר', count: statsBreakdown.total, theme: 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-100 dark:border-slate-800/80' },
+                    { id: 'lessons', key: 'lessons', label: customButtonNames.lessons?.label || 'מערכי שיעור', count: statsBreakdown.lessons, theme: 'bg-brand-50/20 dark:bg-brand-950/10 text-brand-600 dark:text-brand-400 border-brand-100/30' },
+                    { id: 'exams', key: 'exams', label: customButtonNames.exams?.label || 'בחנים ומבחנים', count: statsBreakdown.exams, theme: 'bg-amber-50/20 dark:bg-amber-950/10 text-amber-600 dark:text-amber-400 border-amber-100/30' },
+                    { id: 'worksheets', key: 'worksheets', label: customButtonNames.worksheets?.label || 'דפי עבודה', count: statsBreakdown.worksheets, theme: 'bg-emerald-50/20 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 border-emerald-100/30' },
+                    { id: 'questions', key: 'questions', label: customButtonNames.questions?.label || 'בנק שאלות', count: statsBreakdown.questions, theme: 'bg-sky-50/20 dark:bg-sky-950/10 text-sky-600 dark:text-sky-400 border-sky-100/30' },
+                    { id: 'summaries', key: 'summaries', label: customButtonNames.summaries?.label || 'סיכומי תוכן', count: statsBreakdown.summaries, theme: 'bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-600 dark:text-indigo-400 border-indigo-100/30' },
+                ].filter(card => !customButtonNames[card.id]?.hidden).map(card => (
+                    <div key={card.id} className={cn("p-4 border rounded-2xl shadow-sm text-right", card.theme)}>
+                        <p className="text-[10px] uppercase font-black tracking-widest opacity-80">{card.label}</p>
+                        <p className="text-3xl font-black mt-1">{card.count}</p>
+                    </div>
+                ))}
             </div>
 
             {/* Main Tabs Selection Navigation */}
@@ -836,8 +910,9 @@ export const ContentManagementView = ({
                     { id: 'exams', label: 'בחנים ומבחנים', icon: <CheckCircle2 className="w-4 h-4" /> },
                     { id: 'questions', label: 'בנק שאלות', icon: <Lightbulb className="w-4 h-4" /> },
                     { id: 'summaries', label: 'סיכומי תוכן', icon: <Layers className="w-4 h-4" /> },
+                    { id: 'files', label: 'מנהל קבצי עזר', icon: <FolderOpen className="w-4 h-4 text-indigo-500" /> },
                     { id: 'ai_studio', label: 'מחולל פדגוגי AI', icon: <Wand2 className="w-4 h-4 text-amber-500 animate-pulse" /> },
-                ].map((tab) => (
+                ].filter(tab => !customButtonNames[tab.id]?.hidden).map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => {
@@ -852,7 +927,7 @@ export const ContentManagementView = ({
                         )}
                     >
                         {tab.icon}
-                        <span>{tab.label}</span>
+                        <span>{customButtonNames[tab.id]?.label || tab.label}</span>
                     </button>
                 ))}
             </div>
@@ -931,7 +1006,7 @@ export const ContentManagementView = ({
                                     <span className="text-[10px] font-bold opacity-60">({materials.length})</span>
                                 </button>
 
-                                {topics.map(topic => {
+                                {topics.filter(t => !t.hidden).map(topic => {
                                     const count = materials.filter(m => m.topic === topic.name).length;
                                     return (
                                         <div key={topic.name} className="group relative">
@@ -1050,10 +1125,121 @@ export const ContentManagementView = ({
 
                     {/* MATERIALS LIST GRID (9 Columns) */}
                     <div className="lg:col-span-9 space-y-4">
-                        
-                        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
-                            
-                            <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        {activeTab === 'files' ? (
+                            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4 text-right" dir="rtl">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                    <div className="space-y-0.5">
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                            📁 מחלקת קבצים ועדות למידת תלמידים
+                                            {selectedTopic && <span className="text-brand-600">({selectedTopic})</span>}
+                                        </h3>
+                                        <p className="text-[10px] text-slate-400 font-bold">נהל את כל הקבצים המשויכים לנושאי הלימוד וכותרות עץ הלמידה.</p>
+                                    </div>
+
+                                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white rounded-xl text-xs font-black transition-all">
+                                        <Upload className="w-3.5 h-3.5" />
+                                        <span>העלה קובץ חדש</span>
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const newFileObj: UploadedFile = {
+                                                    id: Date.now().toString(),
+                                                    name: file.name,
+                                                    type: file.type || 'plain',
+                                                    size: Math.round(file.size / 1024) || 1,
+                                                    url: '#',
+                                                    date: new Date().toISOString(),
+                                                    topic: selectedTopic || undefined
+                                                };
+                                                setUploadedFiles(prev => [newFileObj, ...prev]);
+                                            }} 
+                                        />
+                                    </label>
+                                </div>
+
+                                {/* Drag over instructions warning or action info */}
+                                <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-350 flex items-center gap-2">
+                                    <span>💡</span>
+                                    <span>באפשרותך לגרור קבצים לתיבת הייבוא המהיר שבצידו הימני של המסך או להעלות אותם ישירות, ולאחר מכן לשייך אותם למקצוע ספציפי בעץ הלימוד!</span>
+                                </div>
+
+                                {/* Files Grid List */}
+                                <div className="space-y-3">
+                                    {uploadedFiles
+                                        .filter(file => !selectedTopic || file.topic === selectedTopic)
+                                        .map(file => {
+                                            const isPDF = file.type?.includes('pdf') || file.name.endsWith('.pdf');
+                                            const isDoc = file.type?.includes('document') || file.name.endsWith('.docx') || file.name.endsWith('.xlsx');
+                                            const isText = file.type?.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md');
+                                            
+                                            return (
+                                                <div 
+                                                    key={file.id}
+                                                    className="p-4 bg-slate-50/50 hover:bg-brand-50/20 dark:bg-slate-800/40 dark:hover:bg-slate-850/50 border border-slate-100 dark:border-slate-800/80 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 transition-all group"
+                                                >
+                                                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                                                        <span className="p-3 bg-white dark:bg-slate-700/80 text-xl rounded-xl shadow-xs border border-slate-100 dark:border-slate-600 flex-shrink-0 flex items-center justify-center">
+                                                            {isPDF ? '🔴' : isDoc ? '📊' : isText ? '📝' : '🔗'}
+                                                        </span>
+                                                        <div className="space-y-1 min-w-0 text-right">
+                                                            <h4 className="font-black text-slate-850 dark:text-slate-100 text-sm leading-snug group-hover:text-brand-600 transition-colors truncate text-right">
+                                                                {file.name}
+                                                            </h4>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase text-right">
+                                                                גודל: {file.size} KB • תאריך: {new Date(file.date).toLocaleDateString('he-IL')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Link to topic selector and delete actions */}
+                                                    <div className="flex items-center flex-wrap gap-2 justify-end">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[10px] font-black text-slate-400">שיוך לעץ הלימוד:</span>
+                                                            <select
+                                                                value={file.topic || ''}
+                                                                onChange={(e) => {
+                                                                    const newTopic = e.target.value;
+                                                                    setUploadedFiles(prev => prev.map(f => f.id === file.id ? { ...f, topic: newTopic || undefined } : f));
+                                                                }}
+                                                                className="text-[10px] font-black p-1.5 focus:border-brand-500 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-white outline-none cursor-pointer text-right"
+                                                            >
+                                                                <option value="">-- ללא שיוך --</option>
+                                                                {topics.filter(t => !t.hidden).map(t => (
+                                                                    <option key={t.name} value={t.name}>{t.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm(`האם אתה בטוח שברצונך למחוק את הקובץ "${file.name}"?`)) {
+                                                                    setUploadedFiles(prev => prev.filter(f => f.id !== file.id));
+                                                                }
+                                                            }}
+                                                            className="p-1.5 text-rose-400 hover:text-rose-605 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all font-black text-xs"
+                                                            title="מחק קובץ חלוטין"
+                                                        >
+                                                            מחק
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                    {uploadedFiles.filter(file => !selectedTopic || file.topic === selectedTopic).length === 0 && (
+                                        <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl space-y-3">
+                                            <FolderOpen className="w-8 h-8 text-slate-350 mx-auto" />
+                                            <p className="text-slate-400 font-extrabold text-xs">לא הועלו קבצים או שאין קבצים הנתונים לסינון הנוכחי.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
                                 <div className="space-y-0.5">
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                                         ✨ חומרי המרכז הפדגוגי 
@@ -1161,8 +1347,8 @@ export const ContentManagementView = ({
                                     </div>
                                 )}
                             </div>
-
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                 </div>
@@ -1203,7 +1389,7 @@ export const ContentManagementView = ({
                                     onChange={(e) => setAiSubject(e.target.value)}
                                     className="w-full p-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 text-xs font-bold rounded-xl text-slate-700 dark:text-white outline-none cursor-pointer focus:border-indigo-400"
                                 >
-                                    {topics.map(t => (
+                                    {topics.filter(t => !t.hidden).map(t => (
                                         <option key={t.name} value={t.name}>{t.name}</option>
                                     ))}
                                     <option value="כללי">כללי / רב תחומי</option>
@@ -1408,7 +1594,7 @@ export const ContentManagementView = ({
                                     </div>
 
                                     {selectedMaterial.details ? (
-                                        <div className="markdown-body text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-4 rounded-xl max-h-96 overflow-y-auto custom-scrollbar border border-slate-100 dark:border-slate-800 prose prose-slate dark:prose-invert">
+                                        <div className="markdown-body text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-4 rounded-xl max-h-96 overflow-y-auto custom-scrollbar border border-slate-100 dark:border-slate-800 prose prose-slate dark:prose-invert text-right font-sans [&_*]:text-right [&_ul]:list-outside [&_ol]:list-outside" dir="rtl" style={{ fontFamily: 'var(--font-sans), sans-serif', direction: 'rtl', textAlign: 'right' }}>
                                             <Markdown>{selectedMaterial.details}</Markdown>
                                         </div>
                                     ) : (
@@ -1769,7 +1955,7 @@ export const ContentManagementView = ({
                                         onChange={(e) => setNewMaterial({ ...newMaterial, topic: e.target.value })}
                                         className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-500 text-xs font-bold rounded-xl text-slate-700 dark:text-white outline-none cursor-pointer"
                                     >
-                                        {topics.map(t => (
+                                        {topics.filter(t => !t.hidden).map(t => (
                                             <option key={t.name} value={t.name}>{t.name}</option>
                                         ))}
                                         <option value="מדעים">מדעים</option>
@@ -1904,150 +2090,275 @@ export const ContentManagementView = ({
                                 </div>
 
                                 {editorMode !== 'preview' && (
-                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-wrap gap-1.5 items-center justify-between">
-                                        <div className="flex flex-wrap gap-1 items-center">
-                                            {/* Formatting Buttons */}
+                                    <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2.5">
+                                        
+                                        {/* Row 1: Basic Text formatting toolbar */}
+                                        <div className="flex flex-wrap gap-1 items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded-lg">
+                                            <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1.5 select-none border-l pl-1.5">בסיסי</span>
+                                            
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('**', '**')}
-                                                className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-xs text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
                                                 title="טקסט מודגש"
                                             >
-                                                <Bold className="w-3 h-3" />
+                                                <Bold className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('*', '*')}
-                                                className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-xs text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
                                                 title="טקסט נטוי"
                                             >
-                                                <Italic className="w-3 h-3" />
+                                                <Italic className="w-3.5 h-3.5" />
                                             </button>
                                             
-                                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1" />
+                                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1.5" />
 
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('# ')}
-                                                className="p-1 px-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
-                                                title="כותרת ראשית"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-[9px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="כותרת ראשית א׳"
                                             >
-                                                <Heading className="w-3 h-3" />
-                                                <span className="text-[9px]">א</span>
+                                                H1
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('## ')}
-                                                className="p-1 px-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
-                                                title="כותרת משנה"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-[9px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="כותרת משנה ב׳"
                                             >
-                                                <Heading className="w-3 h-3" />
-                                                <span className="text-[9px]">ב</span>
+                                                H2
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('### ')}
-                                                className="p-1 px-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
-                                                title="תת כותרת קטנה"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-[9px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="כותרת ג׳ קטנה"
                                             >
-                                                <Heading className="w-3 h-3" />
-                                                <span className="text-[9px]">ג</span>
+                                                H3
                                             </button>
 
-                                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1" />
+                                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1.5" />
 
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('> ')}
-                                                className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
-                                                title="ציטוט או מאמר חז״ל"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-xs text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="ציטוט או מקור חז״ל"
                                             >
-                                                <Quote className="w-3 h-3" />
+                                                <Quote className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('- ')}
-                                                className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-xs text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
                                                 title="רשימת תבליטים"
                                             >
-                                                <List className="w-3 h-3" />
+                                                <List className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('1. ')}
-                                                className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-xs text-slate-700 dark:text-slate-300 flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
                                                 title="רשימה ממוספרת"
                                             >
-                                                <ListOrdered className="w-3 h-3" />
+                                                <ListOrdered className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => insertMarkdown('\n---\n')}
-                                                className="p-1 px-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 rounded text-[9px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
                                                 title="קו מפריד אופקי"
                                             >
                                                 —
                                             </button>
+                                        </div>
+
+                                        {/* Row 2: Torah highlights & custom YESHIVA markup colors */}
+                                        <div className="flex flex-wrap gap-1 items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded-lg">
+                                            <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1.5 select-none border-l pl-1.5">מרקרים פדגוגיים</span>
+                                            
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<span class="bg-yellow-105 dark:bg-yellow-950/45 text-yellow-900 dark:text-yellow-101 px-1.5 py-0.5 rounded font-black border-b-2 border-yellow-405">', '</span>')}
+                                                className="p-1 px-2 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/25 border border-yellow-200 text-[10px] font-extrabold text-yellow-800 dark:text-yellow-400 rounded transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                                                title="מרקר צהוב (סברא, דיון)"
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                                                צהוב סברא
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<span class="bg-emerald-51 dark:bg-emerald-950/45 text-emerald-950 dark:text-emerald-101 px-1.5 py-0.5 rounded font-black border-b-2 border-emerald-405">', '</span>')}
+                                                className="p-1 px-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/25 border border-emerald-200 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400 rounded transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                                                title="מרקר ירוק (מקור, פסוק)"
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                ירוק מקור
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<span class="bg-sky-51 dark:bg-sky-950/45 text-sky-905 dark:text-sky-101 px-1.5 py-0.5 rounded font-black border-b-2 border-sky-405">', '</span>')}
+                                                className="p-1 px-2 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/25 border border-sky-200 text-[10px] font-extrabold text-sky-800 dark:text-sky-400 rounded transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                                                title="מרקר כחול (קושיא, חקירה)"
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-sky-400" />
+                                                כחול קושיא
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<span class="bg-rose-51 dark:bg-rose-950/45 text-rose-955 dark:text-rose-101 px-1.5 py-0.5 rounded font-black border-b-2 border-rose-405">', '</span>')}
+                                                className="p-1 px-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/25 border border-rose-200 text-[10px] font-extrabold text-rose-800 dark:text-rose-400 rounded transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                                                title="מרקר אדום (הלכה פסוקה, תירוץ)"
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                                אדום הלכה
+                                            </button>
 
                                             <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1" />
 
-                                            {/* Specialized Talmud-Torah Quick Formatting */}
                                             <button
                                                 type="button"
-                                                onClick={() => insertMarkdown('\n> **💡 דגש פדגוגי למלמד:**\n> ')}
-                                                className="p-1 px-2 hover:bg-amber-100 dark:hover:bg-amber-950/65 rounded text-[10px] font-bold text-amber-850 dark:text-amber-400 border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 flex items-center gap-0.5 transition-all active:scale-95"
-                                                title="הוספת תיבת דגש פדגוגי למלמד"
+                                                onClick={() => insertMarkdown('<span class="font-serif italic text-amber-900 dark:text-amber-300 leading-relaxed font-semibold text-xs bg-amber-50/20 px-1.5 py-0.5 rounded">', '</span>')}
+                                                className="p-1 px-2 border border-amber-200 dark:border-amber-900 hover:bg-amber-50 rounded text-[10px] font-bold text-amber-800 dark:text-amber-400 transition-all active:scale-95"
+                                                title="גופן כתב רש״י פדגוגי"
                                             >
-                                                💡 דגש פדגוגי
+                                                📜 כתב רש״י
                                             </button>
 
                                             <button
                                                 type="button"
-                                                onClick={() => insertMarkdown('\n> **📜 מקור ותנא:** ')}
-                                                className="p-1 px-2 hover:bg-emerald-100 dark:hover:bg-emerald-950/65 rounded text-[10px] font-bold text-emerald-850 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center gap-0.5 transition-all active:scale-95"
-                                                title="הוספת מקור חז״ל"
+                                                onClick={() => insertMarkdown('<span class="text-rose-600 font-extrabold font-serif">[</span>', '<span class="text-rose-600 font-extrabold font-serif">]</span>')}
+                                                className="p-1 px-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 rounded text-[10px] font-black text-rose-600 dark:text-rose-400 transition-all active:scale-95"
+                                                title="סוגריים מרובעים אדומים"
                                             >
-                                                📜 מקור חז״ל
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => insertMarkdown(' | ')}
-                                                className="p-1 px-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
-                                                title="מפריד חציצה לפסוקים"
-                                            >
-                                                | חציצה
+                                                [סוגריים אדומים]
                                             </button>
                                         </div>
 
-                                        <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
-                                            {/* Custom Template Dropdown selector */}
-                                            <select
-                                                onChange={(e) => {
-                                                    handleInsertTemplate(e.target.value);
-                                                    e.target.value = ''; // Reset select
+                                        {/* Row 3: Alignments & comparisons helper tools */}
+                                        <div className="flex flex-wrap gap-1 items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded-lg">
+                                            <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1.5 select-none border-l pl-1.5">יישור פסקאות ומבנה</span>
+                                            
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<div class="text-right" dir="rtl">\n', '\n</div>')}
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-855 rounded text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="יישור לימין"
+                                            >
+                                                <AlignRight className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<div class="text-center">\n', '\n</div>')}
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-855 rounded text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="יישור למרכז"
+                                            >
+                                                <AlignCenter className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('<div class="text-left" dir="ltr">\n', '\n</div>')}
+                                                className="p-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-855 rounded text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                title="יישור לשמאל"
+                                            >
+                                                <AlignLeft className="w-3.5 h-3.5" />
+                                            </button>
+
+                                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1.5" />
+
+                                            <button
+                                                type="button"
+                                                onClick={() => insertMarkdown('\n| ביאור מקצועי / מונח | מקור הגמרא והמדרש | הגדרה פדגוגית לשינון |\n| :--- | :--- | :--- |\n| הקלד מונח... | הקלד מקור... | הקלד הגדרה... |\n')}
+                                                className="p-1 px-2 border border-indigo-205 bg-indigo-50/10 hover:bg-indigo-50 dark:border-indigo-900 rounded text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 transition-all active:scale-95 flex items-center gap-1"
+                                                title="הוספת טבלת השוואה אקדמית"
+                                            >
+                                                <Table className="w-3 h-3 text-indigo-600" />
+                                                טבלת השוואה פדגוגית
+                                            </button>
+
+                                            <div className="flex-1" />
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(newMaterial.details || '');
+                                                    alert('תוכן החומר הועתק ללוח בהצלחה!');
                                                 }}
-                                                defaultValue=""
-                                                className="p-1 px-2 text-[10px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 rounded font-bold cursor-pointer outline-none shadow-sm"
+                                                className="p-1 px-2 rounded text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5"
                                             >
-                                                <option value="" disabled>📐 טען מבנה פדגוגי ושיעור מוכן</option>
-                                                <option value="gemara">📚 מערך סוגיית גמרא (עיון)</option>
-                                                <option value="chumash">📖 שיעור חומש ופירוש רש״י</option>
-                                                <option value="halacha">⚖️ הלכה למעשה ושעשועי תורה</option>
-                                                <option value="discussion">🤔 דילמה מוסרית לדיון כיתתי</option>
-                                            </select>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => analyzeMaterialWithAI(newMaterial.details || '')}
-                                                disabled={isAIGenerating || !newMaterial.details?.trim()}
-                                                className="p-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 select-none shadow-sm cursor-pointer"
-                                                title="ניתוח AI פדגוגי"
-                                            >
-                                                <Brain className="w-3 h-3" />
-                                                <span>ניתוח AI</span>
+                                                <Copy className="w-3 h-3" />
+                                                העתק הכל
                                             </button>
                                         </div>
+
+                                        {/* Row 4: Specialized templates & AI generator assistant dropdowns */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                {/* Specialized Talmud-Torah Quick Formatting */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => insertMarkdown('\n> **💡 דגש פדגוגי למלמד:**\n> ')}
+                                                    className="p-1 px-2.5 hover:bg-amber-100 dark:hover:bg-amber-950/65 rounded text-[10px] font-bold text-amber-850 dark:text-amber-400 border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 flex items-center gap-0.5 transition-all active:scale-95"
+                                                    title="הוספת תיבת דגש פדגוגי למלמד"
+                                                >
+                                                    💡 דגש פדגוגי
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => insertMarkdown('\n> **📜 מקור ותנא:** ')}
+                                                    className="p-1 px-2.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/65 rounded text-[10px] font-bold text-emerald-850 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center gap-0.5 transition-all active:scale-95"
+                                                    title="הוספת מקור חז״ל"
+                                                >
+                                                    📜 מקור חז״ל
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => insertMarkdown(' | ')}
+                                                    className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-[10px] font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all active:scale-95"
+                                                    title="מפריד חציצה לפסוקים"
+                                                >
+                                                    | חציצה
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5">
+                                                {/* Custom Template Dropdown selector */}
+                                                <select
+                                                    onChange={(e) => {
+                                                        handleInsertTemplate(e.target.value);
+                                                        e.target.value = ''; // Reset select
+                                                    }}
+                                                    defaultValue=""
+                                                    className="p-1.5 px-3 text-[10px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 rounded font-bold cursor-pointer outline-none shadow-sm"
+                                                >
+                                                    <option value="" disabled>📐 טען מבנה פדגוגי ושיעור מוכן</option>
+                                                    <option value="gemara">📚 מערך סוגיית גמרא (עיון)</option>
+                                                    <option value="chumash">📖 שיעור חומש ופירוש רש״י</option>
+                                                    <option value="halacha">⚖️ הלכה למעשה ושעשועי תורה</option>
+                                                    <option value="discussion">🤔 דילמה מוסרית לדיון כיתתי</option>
+                                                </select>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => analyzeMaterialWithAI(newMaterial.details || '')}
+                                                    disabled={isAIGenerating || !newMaterial.details?.trim()}
+                                                    className="p-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 select-none shadow-sm cursor-pointer"
+                                                    title="ניתוח AI פדגוגי"
+                                                >
+                                                    <Brain className="w-3 h-3" />
+                                                    <span>ניתוח AI</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 )}
 
@@ -2064,8 +2375,9 @@ export const ContentManagementView = ({
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, details: e.target.value })}
                                                 placeholder="כאן כותבים את מערך השיעור, המשניות, השאלות או הסיכום הפדגוגי. מומלץ להשתמש בלחצני העיצוב מעל כדי לצבוע, להדגיש ולבנות כותרות מרהיבות לתלמידים..."
                                                 rows={editorMode === 'split' ? 12 : 8}
-                                                className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-brand-500 hover:border-slate-200 dark:hover:border-slate-600 outline-none text-xs font-semibold rounded-xl text-slate-800 dark:text-slate-200 resize-none transition-all custom-scrollbar outline-none min-h-[180px] text-right"
+                                                className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-brand-500 hover:border-slate-200 dark:hover:border-slate-600 outline-none text-xs font-semibold rounded-xl text-slate-800 dark:text-slate-200 resize-none transition-all custom-scrollbar outline-none min-h-[180px] text-right font-sans"
                                                 dir="rtl"
+                                                style={{ fontFamily: 'var(--font-sans), sans-serif', direction: 'rtl', textAlign: 'right' }}
                                             />
                                             <div className="absolute left-3 bottom-2 text-[9px] text-slate-400 font-mono select-none">
                                                 {(newMaterial.details || '').length} תווים
@@ -2081,7 +2393,7 @@ export const ContentManagementView = ({
                                                 <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">תצוגה מקדימה עשירה (חי לעיני המלמד)</span>
                                             </div>
                                             {newMaterial.details ? (
-                                                <div className="markdown-body text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300 p-2 prose prose-slate dark:prose-invert max-w-none text-right" dir="rtl">
+                                                <div className="markdown-body text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300 p-2 prose prose-slate dark:prose-invert max-w-none text-right font-sans [&_*]:text-right [&_ul]:list-outside [&_ol]:list-outside" dir="rtl" style={{ fontFamily: 'var(--font-sans), sans-serif', direction: 'rtl', textAlign: 'right' }}>
                                                     <Markdown>{newMaterial.details}</Markdown>
                                                 </div>
                                             ) : (
@@ -2234,6 +2546,356 @@ export const ContentManagementView = ({
                                 className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-2xl font-black text-xs transition-all"
                             >
                                 ביטול
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
+
+            {/* WORKSPACE CUSTOMIZER MODAL */}
+            {isCustomizerOpen && (
+                <div id="workspace-customizer-modal" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm shadow-2xl" dir="rtl">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-2xl border border-slate-100 dark:border-slate-800 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-705 dark:text-slate-300">
+                                    <Sliders className="w-5 h-5" />
+                                </span>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white">ניהול והתאמת מרחב הלמידה</h3>
+                                    <p className="text-xs text-slate-400">הגדר, שנה שמות או הסתר תחומי דעת, מקצועות וכפתורים במערכת בהתאם לצורכי הכיתה.</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setIsCustomizerOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Custom Tab Toggles */}
+                        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200/40 flex gap-2">
+                            <button
+                                onClick={() => setCustomizerTab('topics')}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
+                                    customizerTab === 'topics' 
+                                        ? "bg-brand-600 text-white" 
+                                        : "hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                )}
+                            >
+                                תחומי דעת ומקצועות
+                            </button>
+                            <button
+                                onClick={() => setCustomizerTab('buttons')}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
+                                    customizerTab === 'buttons' 
+                                        ? "bg-brand-600 text-white" 
+                                        : "hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                )}
+                            >
+                                שמות ותצוגת כפתורים
+                            </button>
+                        </div>
+
+                        {/* Scrollable Content */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-right">
+                            
+                            {customizerTab === 'topics' && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <div>
+                                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 block">תחומי דעת פעילים</span>
+                                            <span className="text-[10px] text-slate-400">התאם את השמות הקיימים, הוסף תתי-נושאים או הסתר תחומים זמנית במערכת.</span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const name = prompt('הכנס שם מקצוע/תחום דעת חדש:');
+                                                if (name) {
+                                                    if (topics.some(t => t.name === name)) {
+                                                        alert('מקצוע זה כבר קיים במערכת!');
+                                                        return;
+                                                    }
+                                                    setTopics(prev => [...prev, { name, subtopics: [], hidden: false }]);
+                                                }
+                                            }}
+                                            className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            תחום דעת חדש
+                                        </button>
+                                    </div>
+
+                                    {/* Topics List Card Loop */}
+                                    <div className="space-y-3">
+                                        {topics.map((topic, topicIdx) => (
+                                            <div key={topic.name} className={cn(
+                                                "p-4 border rounded-2xl flex flex-col gap-3 transition-colors",
+                                                topic.hidden 
+                                                    ? "bg-slate-50/50 dark:bg-slate-900/50 border-dashed border-slate-200 dark:border-slate-850 opacity-60" 
+                                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+                                            )}>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    
+                                                    {/* Editable name & status code */}
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={topic.name}
+                                                            onChange={(e) => {
+                                                                const newName = e.target.value;
+                                                                if (!newName) return;
+                                                                setTopics(prev => prev.map((t, idx) => {
+                                                                    if (idx === topicIdx) {
+                                                                        return { ...t, name: newName };
+                                                                    }
+                                                                    return t;
+                                                                }));
+                                                            }}
+                                                            className="bg-transparent text-sm font-black text-slate-850 dark:text-white border-b border-transparent focus:border-brand-500 hover:border-slate-300 outline-none px-1 py-0.5 flex-1 max-w-[200px]"
+                                                            placeholder="שם מקצוע..."
+                                                        />
+                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded-md">
+                                                            {(topic.subtopics || []).length} תתי-נושאים
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Hide Toggle and Delete */}
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setTopics(prev => prev.map((t, idx) => {
+                                                                    if (idx === topicIdx) {
+                                                                        return { ...t, hidden: !t.hidden };
+                                                                    }
+                                                                    return t;
+                                                                }));
+                                                            }}
+                                                            className={cn(
+                                                                "px-2.5 py-1.5 rounded-xl font-bold text-[10px] transition-all flex items-center gap-1 border",
+                                                                topic.hidden
+                                                                    ? "bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30"
+                                                                    : "bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30"
+                                                            )}
+                                                            title={topic.hidden ? "הצג נושא במערכת" : "הסתר נושא במערכת"}
+                                                        >
+                                                            {topic.hidden ? 'מוסתר מהתצוגה' : 'פעיל במערכת'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm(`האם אתה בטוח שברצונך למחוק את הנושא "${topic.name}" ותתי-נושאיו?`)) {
+                                                                    setTopics(prev => prev.filter((_, idx) => idx !== topicIdx));
+                                                                }
+                                                            }}
+                                                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                            title="מחק תחום"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+
+                                                </div>
+
+                                                {/* Subtopics row */}
+                                                <div className="bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-xl space-y-2">
+                                                    <span className="text-[9px] font-black tracking-wider text-slate-400 uppercase block">תתי-נושאים לימודיים:</span>
+                                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                                        {(topic.subtopics || []).map((sub, sIdx) => (
+                                                            <div key={sIdx} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                                                <span>{sub}</span>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setTopics(prev => prev.map((t, idx) => {
+                                                                            if (idx === topicIdx) {
+                                                                                return { ...t, subtopics: t.subtopics.filter((_, s) => s !== sIdx) };
+                                                                            }
+                                                                            return t;
+                                                                        }));
+                                                                    }}
+                                                                    className="text-slate-400 hover:text-rose-500 font-extrabold"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            onClick={() => {
+                                                                const newSub = prompt('הכנס שם תת-נושא חדש:');
+                                                                if (newSub) {
+                                                                    setTopics(prev => prev.map((t, idx) => {
+                                                                        if (idx === topicIdx) {
+                                                                            return { ...t, subtopics: [...(t.subtopics || []), newSub] };
+                                                                        }
+                                                                        return t;
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="text-[9px] font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 px-2 py-1 rounded-lg border border-dashed border-brand-200 bg-brand-50/20 flex items-center gap-0.5"
+                                                        >
+                                                            <Plus className="w-2.5 h-2.5" />
+                                                            הוסף
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Linked documents list from across all students */}
+                                                {(() => {
+                                                    const linkedDocs = (students || []).reduce((acc: any[], s: any) => {
+                                                        if (s.documents && Array.isArray(s.documents)) {
+                                                            s.documents.forEach((doc: any) => {
+                                                                if (doc.associatedTopic === topic.name) {
+                                                                    acc.push({
+                                                                        studentName: s.name,
+                                                                        ...doc
+                                                                    });
+                                                                }
+                                                            });
+                                                        }
+                                                        return acc;
+                                                    }, []);
+
+                                                    return (
+                                                        <div className="mt-2 bg-indigo-50/25 dark:bg-slate-950/30 p-2.5 rounded-xl border border-indigo-500/10 space-y-1">
+                                                            <div className="flex justify-between items-center text-[9px] font-black tracking-wider text-slate-400 uppercase">
+                                                                <span>קבצים מקושרים מתוך מחלקת קבצים ({linkedDocs.length}):</span>
+                                                            </div>
+                                                            {linkedDocs.length > 0 ? (
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                                                                    {linkedDocs.map((doc, dIdx) => (
+                                                                        <div 
+                                                                            key={doc.id || dIdx} 
+                                                                            className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-2 rounded-lg flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300"
+                                                                        >
+                                                                            <div className="flex items-center gap-1.5 truncate">
+                                                                                <span className="text-[11px]">{doc.type?.includes('pdf') ? '🔴' : '🔗'}</span>
+                                                                                <div className="truncate text-right">
+                                                                                    <span className="block truncate font-black text-slate-700 dark:text-slate-200" title={doc.name}>{doc.name}</span>
+                                                                                    <span className="text-[8px] text-slate-400 font-bold block">תלמיד: {doc.studentName}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const link = document.createElement('a');
+                                                                                    link.href = doc.data;
+                                                                                    link.download = doc.name;
+                                                                                    link.click();
+                                                                                }}
+                                                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-brand-600 select-none cursor-pointer text-xs"
+                                                                                title="הורדת קובץ"
+                                                                            >
+                                                                                📥
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-400 italic">לא קושרו קבצים עדיין לנושא זה ממחלקת קבצים...</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {customizerTab === 'buttons' && (
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <span className="text-xs font-black text-slate-700 dark:text-slate-300 block">עריכת שמות כפתורים וכרטיסיות תצוגה</span>
+                                        <span className="text-[10px] text-slate-400">שנה את השמות המופיעים בכפתורי הניווט הראשיים ובסטטיסטיקות של ספריית הידע או הסתר אותם.</span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {[
+                                            { id: 'materials', defaultLabel: 'כל המאגר' },
+                                            { id: 'lessons', defaultLabel: 'מערכי שיעור' },
+                                            { id: 'worksheets', defaultLabel: 'דפי עבודה' },
+                                            { id: 'exams', defaultLabel: 'בחנים ומבחנים' },
+                                            { id: 'questions', defaultLabel: 'בנק שאלות' },
+                                            { id: 'summaries', defaultLabel: 'סיכומי תוכן' },
+                                            { id: 'ai_studio', defaultLabel: 'מחולל פדגוגי AI' },
+                                        ].map((item) => {
+                                            const custom = customButtonNames[item.id] || { label: item.defaultLabel, hidden: false };
+                                            return (
+                                                <div key={item.id} className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                    <div className="flex-1 space-y-1">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">מפתח כפתור: {item.id} (ברירת מחדל: "{item.defaultLabel}")</span>
+                                                        <input
+                                                            type="text"
+                                                            value={custom.label}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setCustomButtonNames(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: { ...custom, label: val }
+                                                                }));
+                                                            }}
+                                                            className="w-full text-xs font-black text-slate-800 dark:text-white p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none"
+                                                            placeholder="ערוך שם כפתור..."
+                                                        />
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 self-end md:self-center">
+                                                        <button
+                                                            onClick={() => {
+                                                                setCustomButtonNames(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: { ...custom, hidden: !custom.hidden }
+                                                                }));
+                                                            }}
+                                                            className={cn(
+                                                                "px-3 py-2 rounded-xl text-[10px] font-black transition-all border",
+                                                                custom.hidden
+                                                                    ? "bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30"
+                                                                    : "bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30"
+                                                            )}
+                                                        >
+                                                            {custom.hidden ? 'כפתור מוסתר' : 'כפתור פעיל'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* Footer actions */}
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
+                            <button
+                                onClick={() => {
+                                    if (confirm('האם אתה בטוח שברצונך לאפס הכל להגדרות ברירת המחדל המקוריות?')) {
+                                        setTopics(DEFAULT_TOPICS);
+                                        setCustomButtonNames({
+                                            materials: { label: 'כל המאגר', hidden: false },
+                                            lessons: { label: 'מערכי שיעור', hidden: false },
+                                            worksheets: { label: 'דפי עבודה', hidden: false },
+                                            exams: { label: 'בחנים ומבחנים', hidden: false },
+                                            questions: { label: 'בנק שאלות', hidden: false },
+                                            summaries: { label: 'סיכומי תוכן', hidden: false },
+                                            ai_studio: { label: 'מחולל פדגוגי AI', hidden: false },
+                                        });
+                                    }
+                                }}
+                                className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-[10px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                איפוס לברירת מחדל
+                            </button>
+                            <button
+                                onClick={() => setIsCustomizerOpen(false)}
+                                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-black text-xs rounded-xl shadow-md transition-colors"
+                            >
+                                שמירה וסגירה
                             </button>
                         </div>
 
