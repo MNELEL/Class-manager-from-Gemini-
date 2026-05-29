@@ -2439,7 +2439,7 @@ const GradesView = ({ students, onBack, updateCurrentConfig }: { students: any[]
   const [filterSubject, setFilterSubject] = useState<string>('all');
   const [scatterStudentId, setScatterStudentId] = useState<string>('all');
   const [isAddingGrade, setIsAddingGrade] = useState(false);
-  const [newGrade, setNewGrade] = useState({ studentId: '', subject: 'מתמטיקה', grade: 90, testName: '', date: new Date().toISOString().split('T')[0], category: 'quiz' as any });
+  const [newGrade, setNewGrade] = useState({ studentId: '', subject: 'גמרא', grade: 90, testName: '', date: new Date().toISOString().split('T')[0], category: 'quiz' as any });
 
   const categories = [
     { id: 'quiz', label: 'בוחן', color: 'bg-indigo-500' },
@@ -5230,10 +5230,25 @@ const StudentDetailView = ({
   const [activeTab, setActiveTab] = useState<'info' | 'ai' | 'lessons' | 'tasks' | 'pedagogy' | 'reminders' | 'academic' | 'rewards' | 'attendance' | 'diagnostics' | 'communications' | 'documents' | 'history' | 'pedagogical_adjustments'>('info');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(student.name);
+  const [localNotes, setLocalNotes] = useState(student.notes || '');
   
   useEffect(() => {
     setTempName(student.name);
   }, [student.id]);
+
+  useEffect(() => {
+    setLocalNotes(student.notes || '');
+  }, [student.id]);
+
+  useEffect(() => {
+    if (localNotes !== (student.notes || '')) {
+      const timer = setTimeout(() => {
+        updateStudent('notes', localNotes);
+        updateStudent('notesLastUpdated', new Date().toISOString());
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [localNotes, student.id]);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isAnalyzingNotes, setIsAnalyzingNotes] = useState(false);
 
@@ -5331,7 +5346,7 @@ const StudentDetailView = ({
   const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
   const [editingGradeId, setEditingGradeId] = useState<number | null>(null);
   const [gradeForm, setGradeForm] = useState({
-    subject: 'מתמטיקה',
+    subject: 'גמרא',
     category: 'quiz',
     testName: '',
     grade: 90,
@@ -6381,10 +6396,9 @@ const StudentDetailView = ({
                             </label>
                             
                             <textarea
-                              value={student.notes || ''}
+                              value={localNotes}
                               onChange={(e) => {
-                                updateStudent('notes', e.target.value);
-                                updateStudent('notesLastUpdated', new Date().toISOString());
+                                setLocalNotes(e.target.value);
                               }}
                               placeholder="כתבו כאן אתגרי למידה, הערות התנהגות מיוחדות, ורקע כללי לתפקוד התלמיד..."
                               className="w-full bg-amber-50/50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/50 rounded-3xl p-6 font-medium min-h-[150px] text-slate-800 dark:text-slate-200 focus:border-amber-300 outline-none transition-all resize-none shadow-sm placeholder:text-amber-600/40"
@@ -6491,7 +6505,7 @@ const StudentDetailView = ({
                                onChange={(e) => setGradeForm(prev => ({ ...prev, subject: e.target.value }))}
                                className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
                              >
-                               {['מתמטיקה', 'אנגלית', 'עברית (שפה)', 'מדעים', 'תנ״ך', 'היסטוריה', 'אזרחות', 'ספרות', 'גאוגרפיה', 'אמנות', 'מוזיקה', 'חינוך גופני'].map(s => (
+                               {['גמרא', 'חומש', 'משנה', 'הלכה', 'נביא', 'קריאה וכתיבה', 'היסטוריה יהודית', 'מוסר ומידות לקודש'].map(s => (
                                  <option key={s} value={s}>{s}</option>
                                ))}
                              </select>
@@ -6514,7 +6528,7 @@ const StudentDetailView = ({
                              <label className="text-xs font-black text-slate-500 uppercase">שם המטלה/מבחן</label>
                              <input 
                                type="text"
-                               placeholder="לדוגמה: בוחן משוואות כפולות"
+                               placeholder="לדוגמה: בוחן משניות מסכת אבות"
                                value={gradeForm.testName}
                                onChange={(e) => setGradeForm(prev => ({ ...prev, testName: e.target.value }))}
                                className="w-full p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
