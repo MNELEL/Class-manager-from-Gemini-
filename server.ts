@@ -8,7 +8,13 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = (() => {
+    if (process.env.PORT) {
+      const parsed = parseInt(process.env.PORT, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 3000;
+  })();
 
   app.use(express.json());
 
@@ -543,7 +549,9 @@ ${studentsNeedingSupportList}
   }
   
   if (!viteLoaded) {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = typeof __dirname !== "undefined"
+      ? __dirname
+      : path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

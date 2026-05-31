@@ -40,7 +40,7 @@ export interface Student {
   documents?: { id: string, title: string, url: string, date: string, type: 'image' | 'pdf' | 'other' }[];
   pastHistory?: { year: string, teacher: string, summary: string, gradesAvg: number }[];
   tasks?: { id: string, title: string, description: string, dueDate: string, status: 'pending' | 'completed', category: 'homework' | 'project' | 'study' | 'other', priority: 'low' | 'medium' | 'high' }[];
-  lessons?: { id: string, name: string, day: string, time: string, room?: string, category?: 'regular' | 'alternative' }[];
+  lessons?: { id: string, name: string, day: string, time: string, room?: string, category?: 'regular' | 'alternative', goal?: string, status?: 'not_started' | 'in_progress' | 'completed', notes?: string, color?: string }[];
   diagnostics?: { id: string, type: string, description: string, date: string, accommodations: string[] }[];
   status?: string;
   interestLevel?: 'low' | 'medium' | 'high';

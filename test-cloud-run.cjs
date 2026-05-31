@@ -11,12 +11,12 @@ server.stderr.on('data', d => console.error('STDERR:', d.toString()));
 server.on('exit', code => console.log('EXITED:', code));
 
 setTimeout(() => {
-  console.log("Making HTTP request to /api/health...");
-  http.get('http://127.0.0.1:3501/api/health', (res) => {
+  console.log("Making HTTP request to /...");
+  http.get('http://127.0.0.1:3501/', (res) => {
     let data = '';
     res.on('data', chunk => data += chunk);
     res.on('end', () => {
-      console.log("RESPONSE:", res.statusCode, data);
+      console.log("RESPONSE:", res.statusCode, data.substring(0, 200));
       server.kill();
     });
   }).on('error', err => {
