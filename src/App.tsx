@@ -8531,7 +8531,9 @@ const SettingsView = ({
   setIsTeacherModalOpen,
   setIsBulkUpdateOpen,
   customThemes,
-  setCustomThemes
+  setCustomThemes,
+  themeFontOverrides,
+  setThemeFontOverrides
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [isThemeEditorOpen, setIsThemeEditorOpen] = useState(false);
@@ -14609,6 +14611,8 @@ Instructions:
           setIsBulkUpdateOpen={setIsBulkUpdateOpen}
           customThemes={customThemes}
           setCustomThemes={setCustomThemes}
+          themeFontOverrides={themeFontOverrides}
+          setThemeFontOverrides={setThemeFontOverrides}
         />
       );
       case 'studentDetail': {
