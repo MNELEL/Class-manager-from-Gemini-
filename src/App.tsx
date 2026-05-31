@@ -189,19 +189,102 @@ import { twMerge } from 'tailwind-merge';
 import { HDate, HebrewCalendar, Location } from '@hebcal/core';
 
 const BUILT_IN_THEMES = [
-  { id: 'default', color: '#64748b', name: 'קלאסי', background: '#f8fafc', fontDisplay: 'Lexend', fontSans: 'Inter' },
-  { id: 'midnight', color: '#1e3a8a', name: 'חצות', background: '#eff6ff', fontDisplay: 'Montserrat', fontSans: 'Assistant' },
-  { id: 'lavender', color: '#8b5cf6', name: 'לבנדר', background: '#f5f3ff', fontDisplay: 'Outfit', fontSans: 'Heebo' },
-  { id: 'nature', color: '#10b981', name: 'טבע', background: '#ecfdf5', fontDisplay: 'Lexend', fontSans: 'Assistant' },
-  { id: 'ocean', color: '#0ea5e9', name: 'אוקיינוס', background: '#f0f9ff', fontDisplay: 'Montserrat', fontSans: 'Heebo' },
-  { id: 'sunset', color: '#f43f5e', name: 'שקיעה', background: '#fff1f2', fontDisplay: 'Outfit', fontSans: 'Inter' },
-  { id: 'wood', color: '#d97706', name: 'עץ', background: '#fffbeb', fontDisplay: 'Montserrat', fontSans: 'Assistant' },
-  { id: 'royal', color: '#6366f1', name: 'מלכותי', background: '#eef2ff', fontDisplay: 'Lexend', fontSans: 'Inter' },
-  { id: 'matte_green', color: '#16a34a', name: 'ירוק מט', background: '#f0fdf4', fontDisplay: 'Lexend', fontSans: 'Heebo' },
-  { id: 'glowing_yellow', color: '#f59e0b', name: 'צהוב זוהר', background: '#fffbeb', fontDisplay: 'Outfit', fontSans: 'Assistant' },
-  { id: 'festive_stars', color: '#a855f7', name: 'כוכבים חגיגיים', background: '#faf5ff', fontDisplay: 'Montserrat', fontSans: 'Lexend' },
-  { id: 'orange_crush', color: '#f97316', name: 'כתום תוסס', background: '#fff7ed', fontDisplay: 'Outfit', fontSans: 'Heebo' },
-  { id: 'graphite', color: '#4b5563', name: 'גרפיט', background: '#f9fafb', fontDisplay: 'Montserrat', fontSans: 'Inter' },
+  { 
+    id: 'default', 
+    color: '#4a7c9d', 
+    name: 'מודרני נקי (Default)', 
+    desc: 'מראה נקי, מתוחכם ומינימליסטי לעבודה יומיומית ממוקדת',
+    background: '#f8fafc', 
+    fontDisplay: 'Outfit', 
+    fontSans: 'Inter',
+    isDark: false,
+    borderRadius: '1.25rem',
+    cardBg: 'rgba(255, 255, 255, 0.75)',
+    borderColor: 'rgba(241, 245, 249, 0.8)',
+    boxShadow: '0 10px 30px -5px rgba(0,0,0,0.03), 0 4px 12px -2px rgba(0,0,0,0.01)',
+    textColor: '#1e293b',
+    ringColor: 'rgba(0,0,0,0.01)'
+  },
+  { 
+    id: 'fancy_royal', 
+    color: '#800020', 
+    name: 'מהודר קלאסי (Premium)', 
+    desc: 'גווני שמנת חמים, בורדו מלכותי ונגיעות זהב יוקרתיות',
+    background: '#FAF6F0', 
+    fontDisplay: 'Montserrat', 
+    fontSans: 'Assistant',
+    isDark: false,
+    borderRadius: '2.5rem',
+    cardBg: 'rgba(252, 250, 246, 0.95)',
+    borderColor: 'rgba(217, 119, 6, 0.15)',
+    boxShadow: '0 20px 40px -10px rgba(128,0,32,0.05), 0 1px 3px rgba(217,119,6,0.08)',
+    textColor: '#2d1a1e',
+    ringColor: 'rgba(217,119,6,0.05)'
+  },
+  { 
+    id: 'cyber_tech', 
+    color: '#06b6d4', 
+    name: 'הייטק עתידני (Advanced)', 
+    desc: 'ממשק כהה עם קצוות חדים, זוהר נאון דיגיטלי ומראה טכנולוגי',
+    background: '#020617', 
+    fontDisplay: 'Montserrat', 
+    fontSans: 'Heebo',
+    isDark: true,
+    borderRadius: '0.375rem',
+    cardBg: 'rgba(15, 23, 42, 0.85)',
+    borderColor: 'rgba(6, 182, 212, 0.25)',
+    boxShadow: '0 0 25px rgba(6, 182, 212, 0.08), inset 0 1px 1px rgba(255,255,255,0.05)',
+    textColor: '#e2e8f0',
+    ringColor: 'rgba(6,182,212,0.15)'
+  },
+  { 
+    id: 'cosmic_galactic', 
+    color: '#8b5cf6', 
+    name: 'חלל קוסמי (Cosmic)', 
+    desc: 'עולם תנועתי חגיגי עם צבעוניות עמוקה בהשראת גלקסיות רחוקות',
+    background: '#090514', 
+    fontDisplay: 'Outfit', 
+    fontSans: 'Lexend',
+    isDark: true,
+    borderRadius: '1.85rem',
+    cardBg: 'rgba(20, 15, 38, 0.85)',
+    borderColor: 'rgba(139, 92, 246, 0.25)',
+    boxShadow: '0 15px 35px -5px rgba(139, 92, 246, 0.15), 0 0 15px rgba(244, 63, 94, 0.05)',
+    textColor: '#f1f5f9',
+    ringColor: 'rgba(180,85,252,0.1)'
+  },
+  { 
+    id: 'sage_nature', 
+    color: '#2e7d32', 
+    name: 'טבע מרגיע (Sage)', 
+    desc: 'ירוק מרווה וגוונים אורגניים חמים, המפחיתים עומס חזותי ועייפות עיניים',
+    background: '#f4f8f5', 
+    fontDisplay: 'Lexend', 
+    fontSans: 'Assistant',
+    isDark: false,
+    borderRadius: '1.5rem',
+    cardBg: 'rgba(240, 245, 242, 0.9)',
+    borderColor: 'rgba(46, 125, 50, 0.1)',
+    boxShadow: '0 10px 30px -5px rgba(46, 125, 50, 0.03)',
+    textColor: '#1b2e1e',
+    ringColor: 'rgba(46,125,50,0.02)'
+  },
+  { 
+    id: 'chalk_retro', 
+    color: '#1b4332', 
+    name: 'לוח נוסטלגי (Chalkboard)', 
+    desc: 'מחווה פדגוגית לכיתה של פעם - לוח ירוק כהה וציורי גיר עדינים',
+    background: '#0b1f15', 
+    fontDisplay: 'Lexend', 
+    fontSans: 'Heebo',
+    isDark: true,
+    borderRadius: '0.75rem',
+    cardBg: 'rgba(15, 37, 24, 0.95)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    boxShadow: '4px 4px 0px 0px rgba(255, 255, 255, 0.05)',
+    textColor: '#f8fafc',
+    ringColor: 'rgba(255,255,255,0.05)'
+  }
 ];
 
 const getLighterColor = (hex: string, percent: number) => {
@@ -8841,145 +8924,74 @@ const SettingsView = ({
           </div>
         </div>
 
-        {/* Accessibility & Theme */}
-        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+        {/* Advanced Theme & Accessibility Panel */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-8">
           <div className="flex items-center gap-3">
-            <Monitor className="w-6 h-6 text-brand-500" />
-            <h3 className="text-lg font-black text-slate-800">נגישות ומראה</h3>
+            <Palette className="w-6 h-6 text-brand-500" />
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">מראה, עיצוב ונגישות מורחבת</h3>
           </div>
+
+          {/* 1. Predefined Deep Theme Styles (6 Master Styles) */}
           <div className="space-y-4">
-            <button 
-              onClick={() => setAccessibility((prev: any) => ({ ...prev, highContrast: !prev.highContrast }))}
-              className={cn(
-                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                accessibility.highContrast ? "bg-slate-900 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
-              )}
-            >
-              ניגודיות גבוהה
-              {accessibility.highContrast ? <CheckCircle2 className="w-5 h-5 text-brand-400" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
-            </button>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">גודל גופן כללי</label>
-              <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-                {(['small', 'medium', 'large'] as const).map(size => (
-                  <button 
-                    key={size}
-                    onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
-                    className={cn(
-                      "flex-1 py-4 rounded-xl text-sm font-black transition-all",
-                      accessibility.fontSize === size ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm border border-slate-100 dark:border-slate-800" : "text-slate-500"
-                    )}
-                  >
-                    {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-slate-400 font-medium px-2 italic">שינוי זה ישפיע על כל התצוגה באפליקציה.</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+              <span className="text-xs font-black text-slate-500 uppercase tracking-widest">בחר סגנון עיצוב ראשי (ערכת נושא)</span>
+              <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400">משנה פריסה, פינות, רקעים, צבעים וגופנים</span>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">ערכות נושא (פלטת צבעים)</label>
-                <button 
-                  onClick={() => setIsThemeEditorOpen(!isThemeEditorOpen)}
-                  className="p-2 bg-brand-50 dark:bg-brand-900/20 text-brand-600 rounded-lg hover:bg-brand-100 transition-all"
-                  title="צור ערכת נושא חדשה"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
 
-              {isThemeEditorOpen && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-4 mx-2"
-                >
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">שם ערכת הנושא</label>
-                    <input 
-                      type="text" 
-                      value={newTheme.name}
-                      onChange={(e) => setNewTheme(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="למשל: כיתת חלל"
-                      className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 transition-all outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">צבע ראשי</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="color" 
-                        value={newTheme.color}
-                        onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
-                        className="w-12 h-12 bg-transparent border-0 cursor-pointer rounded-lg overflow-hidden shrink-0"
-                      />
-                      <input 
-                        type="text" 
-                        value={newTheme.color}
-                        onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
-                        className="flex-1 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">גופן כותרות</label>
-                        <select 
-                            value={newTheme.fontDisplay}
-                            onChange={(e) => setNewTheme(prev => ({ ...prev, fontDisplay: e.target.value }))}
-                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-display"
-                        >
-                            <option value="Lexend">Lexend</option>
-                            <option value="Montserrat">Montserrat</option>
-                            <option value="Outfit">Outfit</option>
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">גופן טקסט</label>
-                        <select 
-                            value={newTheme.fontSans}
-                            onChange={(e) => setNewTheme(prev => ({ ...prev, fontSans: e.target.value }))}
-                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-sans"
-                        >
-                            <option value="Inter">Inter</option>
-                            <option value="Assistant">Assistant</option>
-                            <option value="Heebo">Heebo</option>
-                            <option value="Lexend">Lexend</option>
-                        </select>
-                    </div>
-                  </div>
-                  <button 
-                    disabled={!newTheme.name}
-                    onClick={() => {
-                      const id = 'custom-' + Date.now();
-                      setCustomThemes([...customThemes, { ...newTheme, id, isCustom: true }]);
-                      setTheme(id);
-                      setNewTheme({ name: '', color: '#6366f1', fontSans: 'Inter', fontDisplay: 'Lexend' });
-                      setIsThemeEditorOpen(false);
-                    }}
-                    className="w-full py-3 bg-brand-600 text-white rounded-xl text-xs font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...BUILT_IN_THEMES, ...customThemes].map((t: any) => {
+                const isActive = theme === t.id;
+                // Merge current font adjustments to show correctly
+                const activeFonts = {
+                  fontDisplay: themeFontOverrides[t.id]?.fontDisplay || t.fontDisplay,
+                  fontSans: themeFontOverrides[t.id]?.fontSans || t.fontSans,
+                };
+                return (
+                  <div 
+                    key={t.id} 
+                    className="relative group"
                   >
-                    שמור ערכת נושא
-                  </button>
-                </motion.div>
-              )}
-
-              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
-                 {[...BUILT_IN_THEMES, ...customThemes].map((t: any) => (
-                  <div key={t.id} className="relative group">
                     <button
                       onClick={() => setTheme(t.id)}
+                      style={{
+                        borderRadius: t.borderRadius || '1.15rem',
+                        borderColor: isActive ? t.color : 'transparent',
+                        boxShadow: isActive ? (t.boxShadow || '0 10px 25px rgba(0,0,0,0.08)') : 'none',
+                        backgroundColor: t.id === 'cyber_tech' ? '#0b1329' : (t.id === 'cosmic_galactic' ? '#130d2b' : (t.id === 'chalk_retro' ? '#0d2417' : (t.id === 'fancy_royal' ? '#FAF6F0' : '#f8fafc')))
+                      }}
                       className={cn(
-                        "w-full p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                        theme === t.id ? "bg-white dark:bg-slate-700 border-brand-500 shadow-md ring-1 ring-brand-100" : "bg-slate-50 dark:bg-slate-800 border-transparent hover:border-slate-200"
+                        "w-full text-right p-5 border-2 transition-all flex flex-col justify-between gap-3 min-h-[140px] focus:outline-none hover:scale-[1.01] cursor-pointer",
+                        isActive ? "dark:bg-slate-800" : "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
                       )}
                     >
-                      <div 
-                        className="w-6 h-6 rounded-lg shadow-sm" 
-                        style={{ backgroundColor: t.color || '#64748b' }}
-                      />
-                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 truncate w-full text-center">{t.name}</span>
+                      <div className="flex justify-between items-start w-full">
+                        <div 
+                          className="w-8 h-8 rounded-full border border-white/20 shadow-sm flex items-center justify-center shrink-0 animate-pulse" 
+                          style={{ backgroundColor: t.color || '#64748b' }}
+                        >
+                          {isActive && <CheckCircle2 className="w-4 h-4 text-white" />}
+                        </div>
+                        {t.isDark ? (
+                          <span className="text-[9px] font-black bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full uppercase">DARK THEME</span>
+                        ) : (
+                          <span className="text-[9px] font-black bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full uppercase">LIGHT THEME</span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs font-black text-slate-800 dark:text-slate-100">{t.name}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-400 leading-tight font-medium font-sans">
+                          {t.desc || 'ערכת נושא מותאמת אישית'}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2 text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                        <span>{activeFonts.fontDisplay}</span>
+                        <span>•</span>
+                        <span>{activeFonts.fontSans}</span>
+                      </div>
                     </button>
+
                     {t.isCustom && (
                       <button 
                         onClick={(e) => {
@@ -8989,15 +9001,236 @@ const SettingsView = ({
                             if (theme === t.id) setTheme('default');
                           }
                         }}
-                        className="absolute -top-1 -right-1 p-1 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-600"
+                        className="absolute top-2 left-2 p-1.5 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-600 z-10"
+                        title="מחק ערכת נושא"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <TrashIcon className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Theme Customizer Panel - Custom font selection for THE selected theme */}
+          {(() => {
+            const activeThemeObj = [...BUILT_IN_THEMES, ...customThemes].find(t => t.id === theme);
+            if (!activeThemeObj) return null;
+            const currentOverride = themeFontOverrides[theme] || {};
+            const displayFont = currentOverride.fontDisplay || activeThemeObj.fontDisplay;
+            const sansFont = currentOverride.fontSans || activeThemeObj.fontSans;
+
+            return (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 space-y-4"
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div className="space-y-0.5 text-right w-full">
+                    <h4 className="text-xs font-black text-slate-700 dark:text-slate-200">התאמת גופנים אישית לערכת הנושא הפעילה</h4>
+                    <p className="text-[10px] text-slate-400 font-medium">כאן ניתן להגדיר פונט ספציפי עבור הסטייל הפעיל: <span className="font-extrabold text-brand-500">{activeThemeObj.name}</span></p>
+                  </div>
+                  {(currentOverride.fontDisplay || currentOverride.fontSans) && (
+                    <button 
+                      onClick={() => {
+                        const next = { ...themeFontOverrides };
+                        delete next[theme];
+                        setThemeFontOverrides(next);
+                      }}
+                      className="text-[10px] text-rose-500 font-bold hover:underline whitespace-nowrap"
+                    >
+                      איפוס ערכי ברירת המחדל
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 text-right">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">גופן כותרות ותצוגה</label>
+                    <select 
+                      value={displayFont}
+                      onChange={(e) => {
+                        setThemeFontOverrides(prev => ({
+                          ...prev,
+                          [theme]: { ...(prev[theme] || {}), fontDisplay: e.target.value }
+                        }));
+                      }}
+                      className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black outline-none font-display text-slate-700 dark:text-slate-300 focus:border-brand-500"
+                    >
+                      <option value="Lexend">Lexend</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Outfit">Outfit</option>
+                      <option value="Assistant">Assistant</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5 text-right">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">גופן טקסט ותוכן כללי</label>
+                    <select 
+                      value={sansFont}
+                      onChange={(e) => {
+                        setThemeFontOverrides(prev => ({
+                          ...prev,
+                          [theme]: { ...(prev[theme] || {}), fontSans: e.target.value }
+                        }));
+                      }}
+                      className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black outline-none font-sans text-slate-700 dark:text-slate-300 focus:border-brand-500"
+                    >
+                      <option value="Inter">Inter</option>
+                      <option value="Assistant">Assistant</option>
+                      <option value="Heebo">Heebo</option>
+                      <option value="Lexend">Lexend</option>
+                    </select>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+
+          {/* 3. Accessibility Controls (High Contrast & Font Sizes) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <div className="space-y-2 text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">הגדרות פרופיל נגישות חזותית</label>
+              <button 
+                onClick={() => setAccessibility((prev: any) => ({ ...prev, highContrast: !prev.highContrast }))}
+                className={cn(
+                  "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm border cursor-pointer",
+                  accessibility.highContrast 
+                    ? "bg-slate-900 border-slate-900 dark:bg-slate-100 dark:border-slate-100 text-white dark:text-slate-950 shadow-lg" 
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800 hover:border-slate-200"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  🛡️ ניגודיות גבוהה מותאמת
+                </span>
+                {accessibility.highContrast 
+                  ? <CheckCircle2 className="w-5 h-5 text-brand-400 dark:text-indigo-600" /> 
+                  : <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-700" />
+                }
+              </button>
+            </div>
+
+            <div className="space-y-2 text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">גודל גופן כללי (מערכת)</label>
+              <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                {(['small', 'medium', 'large'] as const).map(size => (
+                  <button 
+                    key={size}
+                    onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
+                    className={cn(
+                      "flex-1 py-3 rounded-xl text-xs font-black transition-all cursor-pointer",
+                      accessibility.fontSize === size 
+                        ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm border border-slate-100 dark:border-slate-800" 
+                        : "text-slate-500"
+                    )}
+                  >
+                    {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
+                  </button>
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase">מחולל עיצוב עצמי מתקדם</span>
+              <button 
+                onClick={() => setIsThemeEditorOpen(!isThemeEditorOpen)}
+                className="text-xs p-2 text-brand-600 font-bold hover:underline py-1 px-3 bg-brand-50 dark:bg-brand-900/20 rounded-full flex items-center gap-1.5 cursor-pointer"
+              >
+                {isThemeEditorOpen ? 'סגור עורך' : 'צור ערכת נושא אישית משלך'}
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {isThemeEditorOpen && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 mt-4 space-y-4"
+              >
+                <div className="space-y-2 text-right">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">שם הערכה</label>
+                  <input 
+                    type="text" 
+                    value={newTheme.name}
+                    onChange={(e) => setNewTheme(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="למשל: כיתת חלל"
+                    className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 transition-all outline-none"
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">צבע בסיס ראשי</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="color" 
+                      value={newTheme.color}
+                      onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-12 h-12 bg-transparent border-0 cursor-pointer rounded-lg overflow-hidden shrink-0"
+                    />
+                    <input 
+                      type="text" 
+                      value={newTheme.color}
+                      onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
+                      className="flex-1 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-right">
+                  <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">גופן כותרות</label>
+                      <select 
+                          value={newTheme.fontDisplay}
+                          onChange={(e) => setNewTheme(prev => ({ ...prev, fontDisplay: e.target.value }))}
+                          className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-display text-slate-700 dark:text-slate-300"
+                      >
+                          <option value="Lexend">Lexend</option>
+                          <option value="Montserrat">Montserrat</option>
+                          <option value="Outfit">Outfit</option>
+                          <option value="Assistant">Assistant</option>
+                      </select>
+                  </div>
+                  <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">גופן טקסט</label>
+                      <select 
+                          value={newTheme.fontSans}
+                          onChange={(e) => setNewTheme(prev => ({ ...prev, fontSans: e.target.value }))}
+                          className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-sans text-slate-700 dark:text-slate-300"
+                      >
+                          <option value="Inter">Inter</option>
+                          <option value="Assistant">Assistant</option>
+                          <option value="Heebo">Heebo</option>
+                          <option value="Lexend">Lexend</option>
+                      </select>
+                  </div>
+                </div>
+                <button 
+                  disabled={!newTheme.name}
+                  onClick={() => {
+                    const id = 'custom-' + Date.now();
+                    setCustomThemes([...customThemes, { 
+                      ...newTheme, 
+                      id, 
+                      isCustom: true,
+                      borderRadius: '1.25rem',
+                      cardBg: 'rgba(255,255,255,0.75)',
+                      borderColor: 'rgba(0,0,0,0.05)',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+                      textColor: '#1e293b'
+                    }]);
+                    setTheme(id);
+                    setNewTheme({ name: '', color: '#6366f1', fontSans: 'Inter', fontDisplay: 'Lexend' });
+                    setIsThemeEditorOpen(false);
+                  }}
+                  className="w-full py-3 bg-brand-600 text-white rounded-xl text-xs font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  שמור ערכת נושא חדשה במאגר
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
 
@@ -12086,6 +12319,7 @@ export default function App() {
   const [zoomLevel, setZoomLevel] = useState(0.9);
   const [theme, setTheme] = useState<string>('default');
   const [customThemes, setCustomThemes] = useState<any[]>([]);
+  const [themeFontOverrides, setThemeFontOverrides] = useState<Record<string, { fontDisplay?: string, fontSans?: string }>>({});
   const [accentColor, setAccentColor] = useState('#6366f1');
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [isFirebaseOnline, setIsFirebaseOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
@@ -12638,6 +12872,14 @@ export default function App() {
     if (savedTheme) {
       setTheme(savedTheme);
     }
+    const savedOverrides = localStorage.getItem('classManager_themeFontOverrides');
+    if (savedOverrides) {
+      try {
+        setThemeFontOverrides(JSON.parse(savedOverrides));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -12649,41 +12891,48 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    localStorage.setItem('classManager_themeFontOverrides', JSON.stringify(themeFontOverrides));
+  }, [themeFontOverrides]);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     
     // Find the current theme object
-    const currentThemeObj = [...BUILT_IN_THEMES, ...customThemes].find(t => t.id === theme);
+    const foundTheme = [...BUILT_IN_THEMES, ...customThemes].find(t => t.id === theme);
+    const currentThemeObj = foundTheme ? {
+      ...foundTheme,
+      ...(themeFontOverrides[theme] || {})
+    } : null;
     const root = document.documentElement;
 
     if (currentThemeObj) {
-      if (currentThemeObj.isCustom) {
-        const baseColor = currentThemeObj.color;
-        // Generate shades
-        root.style.setProperty('--color-brand-50', getLighterColor(baseColor, 90));
-        root.style.setProperty('--color-brand-100', getLighterColor(baseColor, 80));
-        root.style.setProperty('--color-brand-200', getLighterColor(baseColor, 60));
-        root.style.setProperty('--color-brand-300', getLighterColor(baseColor, 40));
-        root.style.setProperty('--color-brand-400', getLighterColor(baseColor, 20));
-        root.style.setProperty('--color-brand-500', baseColor);
-        root.style.setProperty('--color-brand-600', getDarkerColor(baseColor, 10));
-        root.style.setProperty('--color-brand-700', getDarkerColor(baseColor, 25));
-        root.style.setProperty('--color-brand-800', getDarkerColor(baseColor, 40));
-        root.style.setProperty('--color-brand-900', getDarkerColor(baseColor, 55));
-        root.style.setProperty('--color-brand-950', getDarkerColor(baseColor, 70));
-      } else {
-        // Clear custom color properties if switched back to built-in
-        root.style.removeProperty('--color-brand-50');
-        root.style.removeProperty('--color-brand-100');
-        root.style.removeProperty('--color-brand-200');
-        root.style.removeProperty('--color-brand-300');
-        root.style.removeProperty('--color-brand-400');
-        root.style.removeProperty('--color-brand-500');
-        root.style.removeProperty('--color-brand-600');
-        root.style.removeProperty('--color-brand-700');
-        root.style.removeProperty('--color-brand-800');
-        root.style.removeProperty('--color-brand-900');
-        root.style.removeProperty('--color-brand-950');
+      // Sync dark mode based on theme guidelines
+      if (currentThemeObj.isDark !== undefined) {
+        setIsDarkMode(currentThemeObj.isDark);
       }
+
+      const baseColor = currentThemeObj.color || '#4a7c9d';
+      // Generate shades
+      root.style.setProperty('--color-brand-50', getLighterColor(baseColor, 90));
+      root.style.setProperty('--color-brand-100', getLighterColor(baseColor, 80));
+      root.style.setProperty('--color-brand-200', getLighterColor(baseColor, 60));
+      root.style.setProperty('--color-brand-300', getLighterColor(baseColor, 40));
+      root.style.setProperty('--color-brand-400', getLighterColor(baseColor, 20));
+      root.style.setProperty('--color-brand-500', baseColor);
+      root.style.setProperty('--color-brand-600', getDarkerColor(baseColor, 10));
+      root.style.setProperty('--color-brand-700', getDarkerColor(baseColor, 25));
+      root.style.setProperty('--color-brand-800', getDarkerColor(baseColor, 40));
+      root.style.setProperty('--color-brand-900', getDarkerColor(baseColor, 55));
+      root.style.setProperty('--color-brand-950', getDarkerColor(baseColor, 70));
+
+      // Apply dynamic aesthetics
+      root.style.setProperty('--theme-border-radius', currentThemeObj.borderRadius || '1.25rem');
+      root.style.setProperty('--theme-card-bg', currentThemeObj.cardBg || 'rgba(255, 255, 255, 0.7)');
+      root.style.setProperty('--theme-border-color', currentThemeObj.borderColor || 'rgba(255, 255, 255, 0.15)');
+      root.style.setProperty('--theme-box-shadow', currentThemeObj.boxShadow || '0 10px 30px -5px rgba(0,0,0,0.03)');
+      root.style.setProperty('--theme-text-color', currentThemeObj.textColor || '#1e293b');
+      root.style.setProperty('--theme-ring-color', currentThemeObj.ringColor || 'rgba(0,0,0,0.02)');
+      root.style.setProperty('--theme-app-bg', currentThemeObj.background || '#f8fafc');
 
       // Apply fonts if present
       if (currentThemeObj.fontSans) {
@@ -12697,7 +12946,7 @@ export default function App() {
         root.style.removeProperty('--app-font-display');
       }
     }
-  }, [theme, customThemes]);
+  }, [theme, customThemes, themeFontOverrides]);
 
   const playAlertSound = useCallback(() => {
     try {
@@ -15607,16 +15856,15 @@ Instructions:
 
       <div 
         className={cn(
-        "flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans rtl selection:bg-brand-100 transition-colors",
+        "flex flex-col h-screen overflow-hidden font-sans rtl selection:bg-brand-100 transition-colors",
         isDarkMode && "dark",
-        accessibility.highContrast && "high-contrast grayscale",
-        theme === 'matte_green' && "data-theme-matte_green",
-        theme === 'glowing_yellow' && "data-theme-glowing_yellow",
-        theme === 'festive_stars' && "data-theme-festive_stars"
+        accessibility.highContrast && "high-contrast grayscale"
       )} 
       data-theme={theme}
       style={{ 
-        '--accent-color': accentColor
+        '--accent-color': accentColor,
+        backgroundColor: 'var(--theme-app-bg, #f8fafc)',
+        color: 'var(--theme-text-color, #1e293b)'
       } as React.CSSProperties}
       dir="rtl"
     >
