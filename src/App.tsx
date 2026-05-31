@@ -10989,7 +10989,7 @@ const GroupGenerator = ({ students }: { students: any[] }) => {
                 <Badge className="bg-brand-50 text-brand-600 border-none">{group.members.length} תלמידים</Badge>
               </div>
               <div className="space-y-2 flex-grow">
-                {group.members.map(s => (
+                {group.members.map((s: any) => (
                   <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">{s.name[0]}</div>
                     <span className="font-bold text-slate-700 dark:text-slate-300">{s.name}</span>
@@ -11299,21 +11299,69 @@ const AIAppGenerator = ({ students, googleUser, handleGoogleLogin, setNotificati
            <p className="text-violet-700/70 dark:text-violet-300/50 font-medium">הזינו הנחיה וקבלו מערך שיעור, מטלה או מבחן מותאם אישית לכיתה שלכם.</p>
         </div>
 
-        <div className="relative">
-          <textarea 
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="w-full bg-white dark:bg-slate-900 border-2 border-violet-100 dark:border-violet-800 rounded-[2.5rem] p-8 min-h-[150px] outline-none focus:border-violet-500 font-bold transition-all text-right resize-none shadow-sm"
-            placeholder="מה תרצו ליצור היום? (למשל: מערך שיעור על מערכת השמש הכולל 3 רמות קושי)"
-          />
-          <button 
-            onClick={generate}
-            disabled={isGenerating || !prompt}
-            className="absolute bottom-6 left-6 px-8 py-4 bg-violet-600 text-white rounded-2xl font-bold shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center gap-2"
-          >
-            {isGenerating ? <Activity className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-            {isGenerating ? 'מעבד...' : 'ייצר עכשיו'}
-          </button>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 text-xs font-bold text-violet-700 dark:text-violet-300">
+            <span className="py-2 text-violet-500/70 dark:text-violet-400/50">קיצורי דרך מהירים ליצירה:</span>
+            {[
+              { id: 'lesson_plan', label: 'צור מערך שיעור', prompt: 'אנא כתוב מערך שיעור מפורט בן 45 דקות בנושא: [הזן נושא]. ציין מטרות, פתיח, גוף שיעור, וסיכום.' },
+              { id: 'summary', label: 'סיכום שיעור', prompt: 'כתוב סיכום שיעור קצר וממוקד המסכם את הנקודות המרכזיות מהשיעור בנושא [הזן נושא].' },
+              { id: 'long_summary', label: 'סיכום ערוך ומפורט', prompt: 'צור סיכום או מאמר באורך מלא, מפורט מאוד וברור, המסביר את עקרונות הנושא [הזן נושא] עבור תלמידי הכיתה.' },
+              { id: 'short_summary', label: 'סיכום מקוצר', prompt: 'סכם את הנושא ב-5 נקודות קצרות וברורות בלבד (בולטים הרלוונטיים לחזרה והבנה בסיסית).' },
+              { id: 'work', label: 'צור עבודות', prompt: 'צור דף עבודה או מטלת בית בנושא [הזן נושא] הכולל משימת חקר, כתיבה קצרה, ושאלת בחירה.' },
+              { id: 'riddles', label: 'חידות ושאלות', prompt: 'חבר עשר חידות טריוויה, שאלות אתגר או שאלות רב-ברירה (אמריקאיות) מעניינות לבחינת הידע בנושא [הזן נושא].' },
+              { id: 'review_names', label: 'שמות ומושגים לחזרה', prompt: 'צור רשימה של 15 מושגי מפתח, מונחים, ושמות הרלוונטיים לחזרה למבחן בנושא [הזן נושא], יחד עם הסבר קצר לכל מושג.' },
+              { id: 'modify_files', label: 'שכתוב טקסט לימודי', prompt: 'שכתב, פישט וערוך מחדש את טקסט המקור הבא לרמת הבנה של תלמידים בכיתה, והוסף שאלות הבנה בסוף: [הדבק טקסט חומר לימוד כאן]' }
+            ].map((shortcut) => (
+              <button
+                key={shortcut.id}
+                onClick={() => setPrompt(shortcut.prompt)}
+                className="px-3 py-1.5 bg-violet-100 hover:bg-violet-200 dark:bg-violet-800/30 dark:hover:bg-violet-800/60 rounded-xl transition-all"
+              >
+                {shortcut.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <textarea 
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full bg-white dark:bg-slate-900 border-2 border-violet-100 dark:border-violet-800 rounded-[2.5rem] p-8 pb-20 min-h-[160px] outline-none focus:border-violet-500 font-bold transition-all text-right resize-none shadow-sm"
+              placeholder="מה תרצו ליצור היום? (למשל: שיעור על מערכת השמש, לחצו על הכפתורים למעלה לשבלונות או צרפו חומרים)"
+            />
+            
+            <div className="absolute bottom-6 right-6 flex items-center gap-2">
+              <label className="flex items-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs cursor-pointer shadow-sm">
+                <Upload className="w-4 h-4" />
+                העלה חומר לבסס עליו שאלות/סיכומים
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept=".txt,.csv,.json"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                       const text = ev.target?.result as string;
+                       setPrompt(prev => prev + (prev.trim() ? '\n\n' : '') + `[חומר רקע מצורף - ${file.name}]:\n` + text.substring(0, 5000));
+                       setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `הקובץ ${file.name} צורף בהצלחה לטקסט!`, type: 'success' }, ...prev]);
+                    };
+                    reader.readAsText(file);
+                  }}
+                />
+              </label>
+            </div>
+
+            <button 
+              onClick={generate}
+              disabled={isGenerating || !prompt}
+              className="absolute bottom-6 left-6 px-8 py-3 bg-violet-600 text-white rounded-2xl font-bold shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center gap-2"
+            >
+              {isGenerating ? <Activity className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+              {isGenerating ? 'מעבד...' : 'ייצר עכשיו'}
+            </button>
+          </div>
         </div>
       </div>
 
