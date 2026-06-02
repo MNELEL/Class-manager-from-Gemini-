@@ -1249,11 +1249,11 @@ const DeskCell = ({
       }}
       className={cn(
         "aspect-square rounded-[1.5rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
-        is3DView && !isHidden && "border-b-[12px] border-slate-200 dark:border-slate-800",
-        isPrinting ? "bg-white border-slate-100" : (
-          isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 opacity-80" :
-          isHidden ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-400 hover:bg-brand-50" :
-          !student ? "bg-white/80 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm" : "bg-white dark:bg-slate-900 border border-brand-100 dark:border-brand-900 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
+        is3DView && !isHidden && "border-b-[12px] border-slate-300 dark:border-slate-700",
+        isPrinting ? "bg-white border-slate-200" : (
+          isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-400 dark:border-slate-600 opacity-80" :
+          isHidden ? "border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-500 hover:bg-brand-50" :
+          !student ? "bg-white/80 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 transition-colors shadow-sm" : "bg-white dark:bg-slate-900 border-2 border-brand-300 dark:border-brand-600 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
         ),
         isPlacementLocked && "ring-4 ring-amber-500/30",
         ( (student?.height === 'short' || (student as any)?.rowPreference === 'front') && !isPrinting ) && "shadow-[0_0_25px_rgba(245,158,11,0.3)] ring-2 ring-amber-400/20 bg-amber-50/10",
@@ -1450,6 +1450,30 @@ const DeskCell = ({
         <div className="absolute inset-x-2 top-2 h-0.5 bg-white/20 rounded-full z-10" />
       )}
 
+      {/* Empty Desk Decorations */}
+      {!student && !isHidden && !isObstruction && !isPrinting && (
+        <>
+          {/* Decorative monitor/laptop representation */}
+          <div className={cn(
+            "absolute top-3 left-4 w-10 h-6 bg-slate-800 dark:bg-slate-700 rounded border border-slate-600 dark:border-slate-500 flex flex-col items-center justify-center shadow-inner transition-opacity pointer-events-none z-10",
+            (isHovered || isSelected || isOver) ? "opacity-80" : "opacity-30"
+          )}>
+            <div className="w-5 h-2 bg-slate-900 dark:bg-slate-800 rounded-sm mb-0.5" />
+            <div className="w-2 h-0.5 bg-slate-700 dark:bg-slate-600 rounded-full" />
+          </div>
+
+          {/* Decorative papers */}
+          <div className={cn(
+            "absolute bottom-2 right-4 w-7 h-9 bg-slate-100 dark:bg-slate-800 rounded rotate-12 shadow-sm border border-slate-200/50 dark:border-slate-700 transition-opacity pointer-events-none z-10",
+            (isHovered || isSelected || isOver) ? "opacity-85" : "opacity-35"
+          )} />
+          <div className={cn(
+            "absolute bottom-3 right-5 w-7 h-9 bg-slate-200/50 dark:bg-slate-800/50 rounded -rotate-6 shadow-sm border border-slate-200/50 dark:border-slate-700 transition-opacity pointer-events-none z-10",
+            (isHovered || isSelected || isOver) ? "opacity-80" : "opacity-30"
+          )} />
+        </>
+      )}
+
       {/* 3D Chair representation */}
       {is3DView && !isHidden && !isObstruction && (
         <div 
@@ -1529,9 +1553,28 @@ const DeskCell = ({
            
            <div className={cn(
              "z-10 flex flex-col items-center bg-white dark:bg-slate-800 px-5 py-2.5 rounded-2xl border-2 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] relative w-[90%]",
-             (hasConflict && !isPrinting) ? "border-rose-400 dark:border-rose-900" : "border-slate-400 dark:border-slate-600",
+             (hasConflict && !isPrinting) ? "border-rose-400 dark:border-rose-900" : "border-slate-400 dark:border-slate-500",
               isPrinting && "shadow-none border-slate-200"
            )}>
+             {/* Desk surface details inside student desk */}
+             {!isPrinting && (
+               <>
+                 {/* Decorative monitor/laptop representation */}
+                 <div className={cn(
+                   "absolute top-1.5 left-2 w-7 h-4 bg-slate-800 dark:bg-slate-700 rounded border border-slate-600/50 dark:border-slate-500/50 flex flex-col items-center justify-center shadow-inner transition-opacity pointer-events-none z-10",
+                   (isHovered || isSelected || isOver) ? "opacity-80" : "opacity-35"
+                 )}>
+                   <div className="w-3.5 h-1 bg-slate-900 dark:bg-slate-800 rounded-sm mb-0.5" />
+                   <div className="w-1.5 h-px bg-slate-700 dark:bg-slate-600 rounded-full" />
+                 </div>
+
+                 {/* Decorative papers */}
+                 <div className={cn(
+                   "absolute bottom-1.5 right-2 w-4 h-6 bg-slate-100 dark:bg-slate-700 rounded rotate-12 shadow-sm border border-slate-200/50 dark:border-slate-600/50 transition-opacity pointer-events-none z-10",
+                   (isHovered || isSelected || isOver) ? "opacity-75" : "opacity-30"
+                 )} />
+               </>
+             )}
              <div className="flex items-center gap-1 mb-0.5">
                <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">
@@ -10991,7 +11034,7 @@ const GroupGenerator = ({ students }: { students: any[] }) => {
                 <Badge className="bg-brand-50 text-brand-600 border-none">{group.members.length} תלמידים</Badge>
               </div>
               <div className="space-y-2 flex-grow">
-                {group.members.map((s: any) => (
+                {group.members.map(s => (
                   <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-xs">{s.name[0]}</div>
                     <span className="font-bold text-slate-700 dark:text-slate-300">{s.name}</span>
@@ -11301,69 +11344,21 @@ const AIAppGenerator = ({ students, googleUser, handleGoogleLogin, setNotificati
            <p className="text-violet-700/70 dark:text-violet-300/50 font-medium">הזינו הנחיה וקבלו מערך שיעור, מטלה או מבחן מותאם אישית לכיתה שלכם.</p>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2 text-xs font-bold text-violet-700 dark:text-violet-300">
-            <span className="py-2 text-violet-500/70 dark:text-violet-400/50">קיצורי דרך מהירים ליצירה:</span>
-            {[
-              { id: 'lesson_plan', label: 'צור מערך שיעור', prompt: 'אנא כתוב מערך שיעור מפורט בן 45 דקות בנושא: [הזן נושא]. ציין מטרות, פתיח, גוף שיעור, וסיכום.' },
-              { id: 'summary', label: 'סיכום שיעור', prompt: 'כתוב סיכום שיעור קצר וממוקד המסכם את הנקודות המרכזיות מהשיעור בנושא [הזן נושא].' },
-              { id: 'long_summary', label: 'סיכום ערוך ומפורט', prompt: 'צור סיכום או מאמר באורך מלא, מפורט מאוד וברור, המסביר את עקרונות הנושא [הזן נושא] עבור תלמידי הכיתה.' },
-              { id: 'short_summary', label: 'סיכום מקוצר', prompt: 'סכם את הנושא ב-5 נקודות קצרות וברורות בלבד (בולטים הרלוונטיים לחזרה והבנה בסיסית).' },
-              { id: 'work', label: 'צור עבודות', prompt: 'צור דף עבודה או מטלת בית בנושא [הזן נושא] הכולל משימת חקר, כתיבה קצרה, ושאלת בחירה.' },
-              { id: 'riddles', label: 'חידות ושאלות', prompt: 'חבר עשר חידות טריוויה, שאלות אתגר או שאלות רב-ברירה (אמריקאיות) מעניינות לבחינת הידע בנושא [הזן נושא].' },
-              { id: 'review_names', label: 'שמות ומושגים לחזרה', prompt: 'צור רשימה של 15 מושגי מפתח, מונחים, ושמות הרלוונטיים לחזרה למבחן בנושא [הזן נושא], יחד עם הסבר קצר לכל מושג.' },
-              { id: 'modify_files', label: 'שכתוב טקסט לימודי', prompt: 'שכתב, פישט וערוך מחדש את טקסט המקור הבא לרמת הבנה של תלמידים בכיתה, והוסף שאלות הבנה בסוף: [הדבק טקסט חומר לימוד כאן]' }
-            ].map((shortcut) => (
-              <button
-                key={shortcut.id}
-                onClick={() => setPrompt(shortcut.prompt)}
-                className="px-3 py-1.5 bg-violet-100 hover:bg-violet-200 dark:bg-violet-800/30 dark:hover:bg-violet-800/60 rounded-xl transition-all"
-              >
-                {shortcut.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <textarea 
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border-2 border-violet-100 dark:border-violet-800 rounded-[2.5rem] p-8 pb-20 min-h-[160px] outline-none focus:border-violet-500 font-bold transition-all text-right resize-none shadow-sm"
-              placeholder="מה תרצו ליצור היום? (למשל: שיעור על מערכת השמש, לחצו על הכפתורים למעלה לשבלונות או צרפו חומרים)"
-            />
-            
-            <div className="absolute bottom-6 right-6 flex items-center gap-2">
-              <label className="flex items-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs cursor-pointer shadow-sm">
-                <Upload className="w-4 h-4" />
-                העלה חומר לבסס עליו שאלות/סיכומים
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".txt,.csv,.json"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                       const text = ev.target?.result as string;
-                       setPrompt(prev => prev + (prev.trim() ? '\n\n' : '') + `[חומר רקע מצורף - ${file.name}]:\n` + text.substring(0, 5000));
-                       setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: `הקובץ ${file.name} צורף בהצלחה לטקסט!`, type: 'success' }, ...prev]);
-                    };
-                    reader.readAsText(file);
-                  }}
-                />
-              </label>
-            </div>
-
-            <button 
-              onClick={generate}
-              disabled={isGenerating || !prompt}
-              className="absolute bottom-6 left-6 px-8 py-3 bg-violet-600 text-white rounded-2xl font-bold shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center gap-2"
-            >
-              {isGenerating ? <Activity className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-              {isGenerating ? 'מעבד...' : 'ייצר עכשיו'}
-            </button>
-          </div>
+        <div className="relative">
+          <textarea 
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full bg-white dark:bg-slate-900 border-2 border-violet-100 dark:border-violet-800 rounded-[2.5rem] p-8 min-h-[150px] outline-none focus:border-violet-500 font-bold transition-all text-right resize-none shadow-sm"
+            placeholder="מה תרצו ליצור היום? (למשל: מערך שיעור על מערכת השמש הכולל 3 רמות קושי)"
+          />
+          <button 
+            onClick={generate}
+            disabled={isGenerating || !prompt}
+            className="absolute bottom-6 left-6 px-8 py-4 bg-violet-600 text-white rounded-2xl font-bold shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center gap-2"
+          >
+            {isGenerating ? <Activity className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+            {isGenerating ? 'מעבד...' : 'ייצר עכשיו'}
+          </button>
         </div>
       </div>
 

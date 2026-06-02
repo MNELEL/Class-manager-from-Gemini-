@@ -8,16 +8,22 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = (() => {
+    if (process.env.PORT) {
+      const parsed = parseInt(process.env.PORT, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 3000;
+  })();
 
   app.use(express.json());
 
   let genAI: GoogleGenAI | null = null;
-  const getGenAI = () => {
+  const getGenAI = (): GoogleGenAI => {
     if (!genAI) {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("GEMINI_API_KEY environment variable is required");
+        throw new Error("GEMINI_API_KEY environment variable is required when AI is used.");
       }
       genAI = new GoogleGenAI({ 
         apiKey,

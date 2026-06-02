@@ -12,6 +12,7 @@ import {
   Sparkles,
   UserPlus
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { cn } from '../lib/utils';
 import { Student } from '../types';
 
@@ -27,16 +28,19 @@ export const TeacherToolkit = ({ students, onBack }: { students: Student[], onBa
                 <Sparkles className="w-6 h-6" />
              </div>
              <div>
-                <h1 className="text-2xl font-black text-slate-800 dark:text-white">ארגז כלים למורה</h1>
-                <p className="text-slate-500 text-sm font-medium">כלים מהירים לניהול הכיתה</p>
+                <h1 className="text-2xl font-black text-slate-800 dark:text-white">ארגז כלים לניהול הכיתה</h1>
+                <p className="text-slate-500 text-sm font-medium">כלי עבודה פדגוגיים מהירים</p>
              </div>
           </div>
-          <button 
-            onClick={onBack}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all"
-          >
-            חזרה
-          </button>
+          <div className="flex gap-2">
+             <button onClick={() => {
+                const worksheet = XLSX.utils.json_to_sheet(students);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+                XLSX.writeFile(workbook, "students.xlsx");
+             }} className="px-5 py-3 bg-slate-100 dark:bg-slate-700 rounded-2xl text-slate-700 dark:text-slate-200 font-bold text-sm">ייצוא (Excel)</button>
+             <button onClick={onBack} className="px-6 py-3 bg-slate-800 text-white rounded-2xl font-black text-sm hover:bg-slate-900 transition-all">חזרה</button>
+          </div>
         </div>
 
         <div className="flex gap-4 p-2 bg-slate-200/50 dark:bg-slate-800/50 rounded-[2rem] w-fit mx-auto border border-white/50 dark:border-slate-700/50 backdrop-blur-xl">
