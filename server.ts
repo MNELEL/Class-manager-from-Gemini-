@@ -536,7 +536,8 @@ ${studentsNeedingSupportList}
   let viteLoaded = false;
   if (process.env.NODE_ENV !== "production") {
     try {
-      const { createServer: createViteServer } = await import("vite");
+      const viteModuleName = "vite";
+      const { createServer: createViteServer } = await import(viteModuleName);
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
@@ -549,9 +550,7 @@ ${studentsNeedingSupportList}
   }
   
   if (!viteLoaded) {
-    const distPath = typeof __dirname !== "undefined"
-      ? __dirname
-      : path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

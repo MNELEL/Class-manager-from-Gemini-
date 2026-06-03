@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&family=Heebo:wght@300;400;500;600;700;800;900&family=Lexend:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&family=Heebo:wght@300;400;500;600;700;800;900&family=Lexend:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -625,6 +625,21 @@
     background-size: 50px 50px;
   }
 
+  [data-theme='modern_terminal'] .classroom-floor {
+    background-color: #020617;
+    background-image: 
+      linear-gradient(rgba(16, 185, 129, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+    background-size: 25px 25px;
+  }
+
+  [data-theme='yeshiva_academy'] .classroom-floor {
+    background-color: #FAF5EA;
+    background-image: 
+      radial-gradient(rgba(180, 83, 9, 0.07) 1.5px, transparent 1.5px);
+    background-size: 30px 30px;
+  }
+
   .dark .classroom-floor {
     background-color: #020617;
     background-image: 
@@ -680,7 +695,7 @@
     button, 
     .no-print, 
     .z-30, 
-    .z-[60], 
+    .z-\[60\], 
     .glass-card, 
     [title="חזרה לראשי"], 
     [title="ארגז כלים למורה"] {

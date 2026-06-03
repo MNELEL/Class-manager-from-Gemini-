@@ -284,6 +284,38 @@ const BUILT_IN_THEMES = [
     boxShadow: '4px 4px 0px 0px rgba(255, 255, 255, 0.05)',
     textColor: '#f8fafc',
     ringColor: 'rgba(255,255,255,0.05)'
+  },
+  { 
+    id: 'modern_terminal', 
+    color: '#10b981', 
+    name: 'מסוף טרמינל (Terminal)', 
+    desc: 'עיצוב כהה מהודק בהשראת שורת פקודה - ירוק זוהר, אלמנטים חדים ופונט מונוספייס',
+    background: '#090d16', 
+    fontDisplay: 'JetBrains Mono', 
+    fontSans: 'JetBrains Mono',
+    isDark: true,
+    borderRadius: '0.125rem',
+    cardBg: 'rgba(5, 10, 20, 0.92)',
+    borderColor: '#10b981',
+    boxShadow: '0 0 15px rgba(16, 185, 129, 0.15)',
+    textColor: '#10b981',
+    ringColor: 'rgba(16, 185, 129, 0.25)'
+  },
+  { 
+    id: 'yeshiva_academy', 
+    color: '#b45309', 
+    name: 'היכל האקדמיה והישיבה (Academy)', 
+    desc: 'עיצוב בהיר קלאסי בגווני עץ חמים, נייר קלף וספרים המשרה השראה לימודית מעמיקה ונוסטלגית',
+    background: '#FAF6EF', 
+    fontDisplay: 'Assistant', 
+    fontSans: 'Assistant',
+    isDark: false,
+    borderRadius: '0.5rem',
+    cardBg: '#FCFAF7',
+    borderColor: 'rgba(180, 83, 9, 0.25)',
+    boxShadow: '0 10px 30px -5px rgba(180, 83, 9, 0.08)',
+    textColor: '#451a03',
+    ringColor: 'rgba(180, 83, 9, 0.15)'
   }
 ];
 
@@ -1012,7 +1044,8 @@ const DeskCell = ({
   conflicts = [],
   isLocked = false,
   showSeatLabels3D = true,
-  showNames3D = true
+  showNames3D = true,
+  printConfigOptions
 }: any) => {
   const [isOver, setIsOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1250,7 +1283,11 @@ const DeskCell = ({
       className={cn(
         "aspect-square rounded-[1.5rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
         is3DView && !isHidden && "border-b-[12px] border-slate-300 dark:border-slate-700",
-        isPrinting ? "bg-white border-slate-200" : (
+        isPrinting ? (
+          (!student && !printConfigOptions?.showGridLines)
+            ? "border-none bg-transparent opacity-0 pointer-events-none"
+            : "bg-white border-2 border-slate-300 shadow-none text-slate-800"
+        ) : (
           isObstruction ? "bg-slate-100 dark:bg-slate-800 border-2 border-slate-400 dark:border-slate-600 opacity-80" :
           isHidden ? "border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/10 opacity-60 hover:opacity-100 hover:border-brand-500 hover:bg-brand-50" :
           !student ? "bg-white/80 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 transition-colors shadow-sm" : "bg-white dark:bg-slate-900 border-2 border-brand-300 dark:border-brand-600 shadow-sm ring-2 ring-brand-50 dark:ring-brand-950 hover:ring-brand-200 hover:shadow-lg dark:hover:ring-brand-800 transition-all z-10"
@@ -1451,7 +1488,7 @@ const DeskCell = ({
       )}
 
       {/* Empty Desk Decorations */}
-      {!student && !isHidden && !isObstruction && !isPrinting && (
+      {!student && !isHidden && !isObstruction && (!isPrinting ? true : (printConfigOptions?.showFurniture && printConfigOptions?.showGridLines)) && (
         <>
           {/* Decorative monitor/laptop representation */}
           <div className={cn(
@@ -1484,7 +1521,7 @@ const DeskCell = ({
         </div>
       )}
       
-       {((is3DView ? showSeatLabels3D : showDeskNumbers) && !isPrinting) && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
+       {((is3DView ? showSeatLabels3D : (isPrinting ? printConfigOptions?.showDeskNumbers : showDeskNumbers))) && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400 print:text-slate-500", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
        
        {is3DView && student && !isPrinting && (
          <div 
@@ -1557,7 +1594,7 @@ const DeskCell = ({
               isPrinting && "shadow-none border-slate-200"
            )}>
              {/* Desk surface details inside student desk */}
-             {!isPrinting && (
+             {(!isPrinting || printConfigOptions?.showFurniture) && (
                <>
                  {/* Decorative monitor/laptop representation */}
                  <div className={cn(
@@ -1576,11 +1613,13 @@ const DeskCell = ({
                </>
              )}
              <div className="flex items-center gap-1 mb-0.5">
-               <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+               {!isPrinting && <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />}
                <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">
-                 {showNames3D ? student.name : `שולחן ${idx + 1}`}
+                 {isPrinting
+                   ? (printConfigOptions?.showNames ? student.name : "")
+                   : (showNames3D ? student.name : `שולחן ${idx + 1}`)}
                </span>
-              </div>
+             </div>
               
               
               {overdueTasksCount > 0 && !isPrinting && (
@@ -2330,6 +2369,24 @@ const StudentPickerGrid = ({
   const [filterHeight, setFilterHeight] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [pickerSortBy, setPickerSortBy] = useState<'name' | 'attendance' | 'grade' | 'behavior'>('name');
+
+  const getAttendanceRate = (s: any) => {
+    if (!s.attendance || s.attendance.length === 0) return 100;
+    const total = s.attendance.length;
+    const presentPoints = s.attendance.reduce((sum: number, att: any) => {
+      if (att.status === 'present') return sum + 1;
+      if (att.status === 'late') return sum + 0.7;
+      return sum;
+    }, 0);
+    return (presentPoints / total) * 100;
+  };
+
+  const getAverageGrade = (s: any) => {
+    if (!s.grades || s.grades.length === 0) return 0;
+    const sum = s.grades.reduce((acc: number, g: any) => acc + g.grade, 0);
+    return sum / s.grades.length;
+  };
 
   const studentsInPool = useMemo(() => {
     return students.filter((s: any) => !currentConfig.grid.flat().includes(s.id));
@@ -2390,8 +2447,23 @@ const StudentPickerGrid = ({
       });
     }
 
+    // Sorting logic
+    if (pickerSortBy === 'name') {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    } else if (pickerSortBy === 'attendance') {
+      result = [...result].sort((a, b) => getAttendanceRate(b) - getAttendanceRate(a));
+    } else if (pickerSortBy === 'grade') {
+      result = [...result].sort((a, b) => getAverageGrade(b) - getAverageGrade(a));
+    } else if (pickerSortBy === 'behavior') {
+      result = [...result].sort((a, b) => {
+        const ptsA = currentConfig?.student_points?.[a.id] || 0;
+        const ptsB = currentConfig?.student_points?.[b.id] || 0;
+        return ptsB - ptsA;
+      });
+    }
+
     return result;
-  }, [studentsInPool, searchQuery, filterGroup, filterHeight, filterLocation, currentConfig.groups]);
+  }, [studentsInPool, searchQuery, filterGroup, filterHeight, filterLocation, currentConfig.groups, currentConfig.student_points, pickerSortBy]);
 
   const activeFiltersCount = (filterGroup !== 'all' ? 1 : 0) + (filterHeight !== 'all' ? 1 : 0) + (filterLocation !== 'all' ? 1 : 0);
 
@@ -2426,6 +2498,26 @@ const StudentPickerGrid = ({
               </span>
             )}
           </button>
+        </div>
+
+        {/* Quick Sorting Selector */}
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-1.5 border border-slate-100 dark:border-slate-800/60 shadow-inner">
+          <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest shrink-0">מיון:</span>
+          <select
+            value={pickerSortBy}
+            onChange={(e) => {
+              const val = e.target.value as any;
+              setPickerSortBy(val);
+              if (onSort) onSort(val); // notify parent if needed
+            }}
+            className="flex-1 bg-transparent border-none text-xs font-black text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+          >
+            <option value="name">לפי שם (א - ב)</option>
+            <option value="attendance">לפי אחוזי נוכחות</option>
+            <option value="grade">לפי ממוצע ציונים</option>
+            <option value="behavior">לפי נקודות התנהגות</option>
+          </select>
         </div>
 
         {showFilters && (
@@ -2527,7 +2619,27 @@ const StudentPickerGrid = ({
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-600">
                   {s.name[0]}
                 </div>
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{s.name}</span>
+                <div className="flex flex-col text-right">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{s.name}</span>
+                  {pickerSortBy === 'attendance' && (
+                    <span className="text-[10px] font-extrabold text-emerald-500 dark:text-emerald-400 mt-0.5">
+                      {Math.round(getAttendanceRate(s))}% נוכחות
+                    </span>
+                  )}
+                  {pickerSortBy === 'grade' && (
+                    <span className="text-[10px] font-extrabold text-blue-500 dark:text-blue-400 mt-0.5">
+                      ממוצע ציונים: {Math.round(getAverageGrade(s))}
+                    </span>
+                  )}
+                  {pickerSortBy === 'behavior' && (
+                    <span className={cn(
+                      "text-[10px] font-extrabold mt-0.5",
+                      (currentConfig?.student_points?.[s.id] || 0) >= 0 ? "text-amber-500 dark:text-amber-450" : "text-rose-500 dark:text-rose-450"
+                    )}>
+                      נק׳ התנהגות: {currentConfig?.student_points?.[s.id] || 0}
+                    </span>
+                  )}
+                </div>
               </div>
               <button 
                 onClick={() => onQuickPrefs(s.id)}
@@ -12447,6 +12559,16 @@ export default function App() {
   const [showDeskNumbers, setShowDeskNumbers] = useState(false);
   const [showSeatLabels3D, setShowSeatLabels3D] = useState(true);
   const [showNames3D, setShowNames3D] = useState(true);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printType, setPrintType] = useState<'pdf' | 'html'>('pdf');
+  const [printConfigOptions, setPrintConfigOptions] = useState({
+    showFurniture: true,
+    showNames: true,
+    showDeskNumbers: true,
+    showStudentList: true,
+    showHeader: true,
+    showGridLines: true
+  });
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [aiSortScore, setAiSortScore] = useState<number | null>(null);
@@ -14929,7 +15051,17 @@ Instructions:
     setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "סידור הישיבה אופס בהצלחה", type: 'info' }, ...prev]);
   };
 
-  const exportToPDF = async () => {
+  const exportToPDF = () => {
+    setPrintType('pdf');
+    setIsPrintModalOpen(true);
+  };
+
+  const handleQuickPrint = () => {
+    setPrintType('html');
+    setIsPrintModalOpen(true);
+  };
+
+  const executeExportToPDF = async () => {
     let originalView = viewType;
     let switchedView = false;
     
@@ -14948,6 +15080,7 @@ Instructions:
       return;
     }
 
+    setIsPrintModalOpen(false);
     setIsExporting(true);
     setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "מכין קובץ להדפסה...", type: 'info' }, ...prev]);
     
@@ -14994,7 +15127,8 @@ Instructions:
     }
   };
 
-  const handleQuickPrint = () => {
+  const executeQuickPrint = () => {
+    setIsPrintModalOpen(false);
     // Set printing mode to hide UI elements and fit nicely
     updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
     const was3D = is3DView;
@@ -16543,7 +16677,7 @@ Instructions:
                           </div>
                         )}
                         {/* Print Header only for PDF */}
-                        {isPrinting && (
+                        {isPrinting && printConfigOptions?.showHeader && (
                           <div className="w-full text-center mb-12 py-8 bg-slate-50 rounded-[3rem] border-2 border-slate-100 px-6">
                              <h1 className="text-4xl font-black text-slate-900">מפת הושבה: {activeConfig.name}</h1>
                              <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
@@ -16961,6 +17095,7 @@ Instructions:
                             conflicts={conflicts}
                             showSeatLabels3D={showSeatLabels3D}
                             showNames3D={showNames3D}
+                            printConfigOptions={printConfigOptions}
                           />
                         );
                       })
@@ -17316,6 +17451,126 @@ Instructions:
           </div>
         )}
 
+        {isPrintModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" dir="rtl">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              className="bg-white rounded-[2.5rem] shadow-2xl p-8 max-w-2xl w-full flex flex-col gap-6"
+            >
+              <div className="flex items-center justify-between border-b pb-4 border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center text-brand-600">
+                    <Printer className="w-6 h-6" />
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-2xl font-black text-slate-900">הגדרות הדפסה וייצוא</h2>
+                    <p className="text-slate-400 font-bold text-xs mt-0.5">בחר אילו אלמנטים יופיעו במפת הישיבה ובקובץ המופק</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsPrintModalOpen(false)} 
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
+                {[
+                  {
+                    key: 'showNames',
+                    title: 'הצגת שמות תלמידים',
+                    subtitle: 'שמות התלמידים המשובצים על גבי השולחן',
+                    icon: <GraduationCap className="w-5 h-5" />
+                  },
+                  {
+                    key: 'showDeskNumbers',
+                    title: 'הצגת מספרי שולחן',
+                    subtitle: 'מספור רץ של שולחנות הכיתה (#1, #2...)',
+                    icon: <Grid3X3 className="w-5 h-5" />
+                  },
+                  {
+                    key: 'showFurniture',
+                    title: 'עיצוב וקישוטי שולחן',
+                    subtitle: 'רהיטים, מחשבים ודפים דקורטיביים',
+                    icon: <Computer className="w-5 h-5" />
+                  },
+                  {
+                    key: 'showGridLines',
+                    title: 'שולחנות ריקים/רשת',
+                    subtitle: 'הצגת גבולות של שולחנות פנויים',
+                    icon: <Grid className="w-5 h-5" />
+                  },
+                  {
+                    key: 'showHeader',
+                    title: 'כרטיסיית כותרת ומורה',
+                    subtitle: 'שם מורה, תאריך ופרטי כיתה בראש עמוד',
+                    icon: <FileText className="w-5 h-5" />
+                  },
+                  {
+                    key: 'showStudentList',
+                    title: 'רשימת תלמידים שמית ומדווחת',
+                    subtitle: 'נספח ממוין אלפביתית עם מיקומי השולחן',
+                    icon: <ClipboardList className="w-5 h-5" />
+                  }
+                ].map((opt) => (
+                  <div key={opt.key} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-brand-200 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-brand-50 text-brand-600 rounded-xl">
+                        {opt.icon}
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-slate-800 block text-xs md:text-sm leading-tight mb-0.5">{opt.title}</span>
+                        <span className="text-[10px] md:text-xs text-slate-400 font-bold leading-tight block">{opt.subtitle}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setPrintConfigOptions((prev: any) => ({ ...prev, [opt.key]: !prev[opt.key] }))}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                        printConfigOptions[opt.key as keyof typeof printConfigOptions] ? "bg-brand-600" : "bg-slate-200"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                          printConfigOptions[opt.key as keyof typeof printConfigOptions] ? "-translate-x-5" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-slate-100">
+                <button 
+                  onClick={() => setIsPrintModalOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black hover:bg-slate-200 transition-colors"
+                >
+                  ביטול
+                </button>
+                <button 
+                  onClick={printType === 'pdf' ? executeExportToPDF : executeQuickPrint}
+                  className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black shadow-lg shadow-brand-100 hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  {printType === 'pdf' ? (
+                     <>
+                       <Download className="w-5 h-5" />
+                       ייצוא והורדת PDF
+                     </>
+                  ) : (
+                     <>
+                       <Printer className="w-5 h-5" />
+                       פתח מסך הדפסה מהירה
+                     </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isAIPanelOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-brand-900/10 backdrop-blur-md">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[3rem] shadow-2xl p-8 max-w-2xl w-full flex flex-col gap-6">
@@ -17345,7 +17600,7 @@ Instructions:
                    </div>
 
                    {/* PDF Alphabetical Student List - Advanced Version */}
-                   {isPrinting && (
+                   {isPrinting && printConfigOptions?.showStudentList && (
                      <div className="w-full mt-24 px-12 pb-20">
                         <div className="h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent w-full mb-16" />
                         <div className="flex items-center gap-4 mb-10">
