@@ -3,7 +3,7 @@ const http = require('http');
 
 console.log("Spawning server...");
 const server = cp.spawn('node', ['dist/server.cjs'], { 
-  env: { ...process.env, NODE_ENV: 'production', PORT: '3501' }
+  env: { ...process.env, NODE_ENV: 'production', TEST_PORT: '3501' }
 });
 
 server.stdout.on('data', d => console.log('STDOUT:', d.toString()));

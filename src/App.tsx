@@ -190,118 +190,6 @@ import { HDate, HebrewCalendar, Location } from '@hebcal/core';
 
 const BUILT_IN_THEMES = [
   { 
-    id: 'default', 
-    color: '#4a7c9d', 
-    name: 'מודרני נקי (Default)', 
-    desc: 'מראה נקי, מתוחכם ומינימליסטי לעבודה יומיומית ממוקדת',
-    background: '#f8fafc', 
-    fontDisplay: 'Outfit', 
-    fontSans: 'Inter',
-    isDark: false,
-    borderRadius: '1.25rem',
-    cardBg: 'rgba(255, 255, 255, 0.75)',
-    borderColor: 'rgba(241, 245, 249, 0.8)',
-    boxShadow: '0 10px 30px -5px rgba(0,0,0,0.03), 0 4px 12px -2px rgba(0,0,0,0.01)',
-    textColor: '#1e293b',
-    ringColor: 'rgba(0,0,0,0.01)'
-  },
-  { 
-    id: 'fancy_royal', 
-    color: '#800020', 
-    name: 'מהודר קלאסי (Premium)', 
-    desc: 'גווני שמנת חמים, בורדו מלכותי ונגיעות זהב יוקרתיות',
-    background: '#FAF6F0', 
-    fontDisplay: 'Montserrat', 
-    fontSans: 'Assistant',
-    isDark: false,
-    borderRadius: '2.5rem',
-    cardBg: 'rgba(252, 250, 246, 0.95)',
-    borderColor: 'rgba(217, 119, 6, 0.15)',
-    boxShadow: '0 20px 40px -10px rgba(128,0,32,0.05), 0 1px 3px rgba(217,119,6,0.08)',
-    textColor: '#2d1a1e',
-    ringColor: 'rgba(217,119,6,0.05)'
-  },
-  { 
-    id: 'cyber_tech', 
-    color: '#06b6d4', 
-    name: 'הייטק עתידני (Advanced)', 
-    desc: 'ממשק כהה עם קצוות חדים, זוהר נאון דיגיטלי ומראה טכנולוגי',
-    background: '#020617', 
-    fontDisplay: 'Montserrat', 
-    fontSans: 'Heebo',
-    isDark: true,
-    borderRadius: '0.375rem',
-    cardBg: 'rgba(15, 23, 42, 0.85)',
-    borderColor: 'rgba(6, 182, 212, 0.25)',
-    boxShadow: '0 0 25px rgba(6, 182, 212, 0.08), inset 0 1px 1px rgba(255,255,255,0.05)',
-    textColor: '#e2e8f0',
-    ringColor: 'rgba(6,182,212,0.15)'
-  },
-  { 
-    id: 'cosmic_galactic', 
-    color: '#8b5cf6', 
-    name: 'חלל קוסמי (Cosmic)', 
-    desc: 'עולם תנועתי חגיגי עם צבעוניות עמוקה בהשראת גלקסיות רחוקות',
-    background: '#090514', 
-    fontDisplay: 'Outfit', 
-    fontSans: 'Lexend',
-    isDark: true,
-    borderRadius: '1.85rem',
-    cardBg: 'rgba(20, 15, 38, 0.85)',
-    borderColor: 'rgba(139, 92, 246, 0.25)',
-    boxShadow: '0 15px 35px -5px rgba(139, 92, 246, 0.15), 0 0 15px rgba(244, 63, 94, 0.05)',
-    textColor: '#f1f5f9',
-    ringColor: 'rgba(180,85,252,0.1)'
-  },
-  { 
-    id: 'sage_nature', 
-    color: '#2e7d32', 
-    name: 'טבע מרגיע (Sage)', 
-    desc: 'ירוק מרווה וגוונים אורגניים חמים, המפחיתים עומס חזותי ועייפות עיניים',
-    background: '#f4f8f5', 
-    fontDisplay: 'Lexend', 
-    fontSans: 'Assistant',
-    isDark: false,
-    borderRadius: '1.5rem',
-    cardBg: 'rgba(240, 245, 242, 0.9)',
-    borderColor: 'rgba(46, 125, 50, 0.1)',
-    boxShadow: '0 10px 30px -5px rgba(46, 125, 50, 0.03)',
-    textColor: '#1b2e1e',
-    ringColor: 'rgba(46,125,50,0.02)'
-  },
-  { 
-    id: 'chalk_retro', 
-    color: '#1b4332', 
-    name: 'לוח נוסטלגי (Chalkboard)', 
-    desc: 'מחווה פדגוגית לכיתה של פעם - לוח ירוק כהה וציורי גיר עדינים',
-    background: '#0b1f15', 
-    fontDisplay: 'Lexend', 
-    fontSans: 'Heebo',
-    isDark: true,
-    borderRadius: '0.75rem',
-    cardBg: 'rgba(15, 37, 24, 0.95)',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    boxShadow: '4px 4px 0px 0px rgba(255, 255, 255, 0.05)',
-    textColor: '#f8fafc',
-    ringColor: 'rgba(255,255,255,0.05)'
-  },
-  { 
-    id: 'modern_terminal', 
-    color: '#10b981', 
-    name: 'מסוף טרמינל (Terminal)', 
-    desc: 'עיצוב כהה מהודק בהשראת שורת פקודה - ירוק זוהר, אלמנטים חדים ופונט מונוספייס',
-    background: '#090d16', 
-    fontDisplay: 'JetBrains Mono', 
-    fontSans: 'JetBrains Mono',
-    isDark: true,
-    borderRadius: '0.125rem',
-    cardBg: 'rgba(5, 10, 20, 0.92)',
-    borderColor: '#10b981',
-    boxShadow: '0 0 15px rgba(16, 185, 129, 0.15)',
-    textColor: '#10b981',
-    ringColor: 'rgba(16, 185, 129, 0.25)'
-  },
-  { 
     id: 'yeshiva_academy', 
     color: '#b45309', 
     name: 'היכל האקדמיה והישיבה (Academy)', 
@@ -8534,129 +8422,41 @@ const StudentCard = ({ student, currentConfig, updateCurrentConfig, setNotificat
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4"
+          className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4 text-right"
         >
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">גובה עבור הושבה</label>
-                <div className="flex gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
-                   {(['short', 'medium', 'tall'] as const).map(h => (
-                     <button
-                       key={h}
-                       onClick={(e) => { e.stopPropagation(); updateStudent('height', h); }}
-                       className={cn(
-                         "flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all",
-                         student.height === h ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                       )}
-                     >
-                       {h === 'short' ? 'קדמי' : h === 'medium' ? 'אמצע' : 'אחור'}
-                     </button>
-                   ))}
-                </div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">גובה עבור הושבה</label>
+                <select 
+                  value={student.height || 'medium'} 
+                  onChange={e => updateStudent('height', e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 outline-none focus:border-brand-500"
+                >
+                  <option value="short">קדמי (נמוך)</option>
+                  <option value="medium">בינוני (רגיל)</option>
+                  <option value="tall">אחורי (גבוה)</option>
+                </select>
              </div>
              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">קבוצת לימוד</label>
-                <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
-                   {(currentConfig.groups || []).map((g: any) => (
-                     <button
-                       key={g.id}
-                       onClick={(e) => { 
-                         e.stopPropagation(); 
-                         const current = student.groups || [];
-                         updateStudent('groups', current.includes(g.id) ? current.filter((cg: string) => cg !== g.id) : [...current, g.id]);
-                       }}
-                       className={cn(
-                         "px-3 py-1.5 rounded-lg text-[9px] font-black transition-all",
-                         student.groups?.includes(g.id) ? "bg-white dark:bg-slate-700 text-brand-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                       )}
-                     >
-                       {g.name}
-                     </button>
-                   ))}
-                   {(currentConfig.groups || []).length === 0 && <span className="text-[9px] text-slate-400 p-1">אין קבוצות מוגדרות</span>}
-                </div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">העדפת שורה</label>
+                <select 
+                  value={student.rowPreference || 'any'} 
+                  onChange={e => updateStudent('rowPreference', e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 outline-none focus:border-brand-500"
+                >
+                  <option value="any">ללא העדפה</option>
+                  <option value="front">קדמית</option>
+                  <option value="middle">אמצעית</option>
+                  <option value="back">אחורית</option>
+                </select>
              </div>
-          </div>
-          
-          {/* צ'ק-ליסט סיום יום */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200">צ'ק-ליסט סיום יום:</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const chk = student.checklist || { participation: false, equipment: false, homework: false };
-                  const targetVal = !(chk.participation && chk.equipment && chk.homework);
-                  updateStudent('checklist', { participation: targetVal, equipment: targetVal, homework: targetVal });
-                  if (setNotifications) {
-                    setNotifications((p: any) => [{
-                      id: Date.now() + Math.random(),
-                      text: `צ'ק-ליסט סיום יום עודכן ל-${student.name}`,
-                      type: 'success'
-                    }, ...p]);
-                  }
-                }}
-                className={cn(
-                  "px-3 py-1 rounded-xl text-[10px] font-black transition-all shadow-sm border",
-                  (student.checklist?.participation && student.checklist?.equipment && student.checklist?.homework)
-                    ? "bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600"
-                    : "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                )}
-              >
-                סמן הכל בקליק אחד
-              </button>
-            </div>
-            <div className="flex gap-2">
-              {(['participation', 'equipment', 'homework'] as const).map(field => {
-                const isChecked = !!student.checklist?.[field];
-                const label = field === 'participation' ? 'השתתפות' : field === 'equipment' ? 'ציוד מלא' : 'שיעורי בית';
-                const colorClass = field === 'participation'
-                  ? (isChecked ? "bg-emerald-500 text-white border-emerald-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-emerald-500 hover:border-emerald-250")
-                  : field === 'equipment'
-                  ? (isChecked ? "bg-blue-500 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-blue-500 hover:border-blue-250")
-                  : (isChecked ? "bg-purple-500 text-white border-purple-600 shadow-sm" : "bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-purple-500 hover:border-purple-250");
-
-                return (
-                  <button
-                    key={field}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const chk = student.checklist || { participation: false, equipment: false, homework: false };
-                      updateStudent('checklist', { ...chk, [field]: !chk[field] });
-                    }}
-                    className={cn(
-                      "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-all text-center hover:scale-105",
-                      colorClass
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-1">
-               <Heart className={cn("w-3 h-3", student.preferred?.length > 0 ? "text-rose-500" : "text-slate-300")} />
-               <span className="text-[10px] font-bold text-slate-500">{student.preferred?.length || 0} העדפות</span>
-            </div>
-            <div className="flex items-center gap-1">
-               <Ban className={cn("w-3 h-3", student.forbidden?.length > 0 ? "text-slate-600" : "text-slate-300")} />
-               <span className="text-[10px] font-bold text-slate-500">{student.forbidden?.length || 0} הרחקות</span>
-            </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onClick(); }} 
-              className="px-4 py-2 bg-brand-600 text-white rounded-xl text-[10px] font-black hover:bg-brand-700 shadow-lg shadow-brand-100"
-            >
-              פרופיל מלא
-            </button>
           </div>
         </motion.div>
       )}
     </motion.div>
   );
 };
+
 const SettingsView = ({ 
   onBack, 
   handleFileImport, 
@@ -8664,18 +8464,19 @@ const SettingsView = ({
   setAiWeights, 
   accessibility, 
   setAccessibility, 
-  theme,
-  setTheme,
+  theme, 
+  setTheme, 
   accentColor,
   setAccentColor,
   currentConfig, 
   updateCurrentConfig, 
-  setNotifications,
+  setNotifications, 
+  loadExampleData,
+  exportToPDF,
+  exportToJSON,
   selectedStudentId,
   setSelectedStudentId,
   setViewType,
-  exportToPDF,
-  exportToJSON,
   isAddStudentOpen,
   setIsAddStudentOpen,
   newStudent,
@@ -8691,195 +8492,58 @@ const SettingsView = ({
   setThemeFontOverrides
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [isThemeEditorOpen, setIsThemeEditorOpen] = useState(false);
-  const [newTheme, setNewTheme] = useState({ name: '', color: '#6366f1', fontSans: 'Inter', fontDisplay: 'Lexend' });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterHeight, setFilterHeight] = useState<string>("all");
-  const [filterGroup, setFilterGroup] = useState<string>("all");
-  const [filterLocation, setFilterLocation] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("newest");
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'points' | 'height' | 'newest' | 'oldest'>('name');
+  const [filterGroup, setFilterGroup] = useState('all');
+  const [filterHeight, setFilterHeight] = useState('all');
+  const [filterLocation, setFilterLocation] = useState('all');
   const [studentToDelete, setStudentToDelete] = useState<any>(null);
-  
+
   const filteredStudents = useMemo(() => {
-    let result = currentConfig.students.filter((s: any) => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    if (filterHeight !== 'all') {
-      result = result.filter((s: any) => s.height === filterHeight);
+    let result = [...(currentConfig.students || [])];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s => s.name?.toLowerCase().includes(q));
     }
-    
-    if (filterGroup !== 'all') {
-      if (filterGroup === 'none') {
-        result = result.filter((s: any) => !s.groups || s.groups.length === 0);
-      } else {
-        result = result.filter((s: any) => s.groups?.includes(filterGroup));
-      }
+    if (filterGroup && filterGroup !== 'all') {
+      result = result.filter(s => s.groups?.includes(filterGroup));
     }
-
-    if (filterLocation !== 'all') {
-      result = result.filter((s: any) => {
-        if (filterLocation === 'front') {
-          return s.rowPreference === 'front' || s.height === 'short' || s.supportNeeded === 'high';
-        }
-        if (filterLocation === 'back') {
-          return s.rowPreference === 'back' || s.height === 'tall';
-        }
-        if (filterLocation === 'window') {
-          const envs = s.environmentPreferences || [];
-          return envs.some((e: string) => e === 'חלון' || e === 'window' || e.includes('חלון') || e.includes('window')) || 
-                 s.areaPref?.special === 'window_or_microwave';
-        }
-        if (filterLocation === 'door') {
-          const envs = s.environmentPreferences || [];
-          return envs.some((e: string) => e === 'דלת' || e === 'door' || e.includes('דלת') || e.includes('door'));
-        }
-        if (filterLocation === 'quiet') {
-          const envs = s.environmentPreferences || [];
-          return envs.some((e: string) => e === 'שקט' || e === 'quiet' || e.includes('שקט') || e.includes('quiet')) || 
-                 s.areaPref?.isolated;
-        }
-        return true;
+    if (filterHeight && filterHeight !== 'all') {
+      result = result.filter(s => s.height === filterHeight);
+    }
+    if (filterLocation && filterLocation !== 'all') {
+      result = result.filter(s => s.rowPreference === filterLocation);
+    }
+    if (sortBy === 'name') {
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'));
+    } else if (sortBy === 'newest') {
+      result.sort((a, b) => {
+        const idA = String(a.id);
+        const idB = String(b.id);
+        return idB.localeCompare(idA);
       });
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => {
+        const idA = String(a.id);
+        const idB = String(b.id);
+        return idA.localeCompare(idB);
+      });
+    } else if (sortBy === 'points') {
+      const pts = currentConfig.student_points || {};
+      result.sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+    } else if (sortBy === 'height') {
+      const val = (h: string) => h === 'short' ? 0 : h === 'medium' ? 1 : 2;
+      result.sort((a, b) => val(a.height) - val(b.height));
     }
-    
-    if (sortBy === 'newest') {
-      result = [...result].reverse();
-    } else if (sortBy === 'name') {
-      result = [...result].sort((a: any, b: any) => a.name.localeCompare(b.name, 'he'));
-    }
-    
     return result;
-  }, [currentConfig.students, searchQuery, filterHeight, filterGroup, filterLocation, sortBy]);
-
-  const loadExampleData = () => {
-    if (confirm("פעולה זו תחליף את כל נתוני התלמידים והמבנה הנוכחיים בנתוני הדוגמה המלאים. האם להמשיך?")) {
-      const demoStudents = [
-        "נתי אורדמן", "אוריאל אנסבכר", "חיים בן פורת", "דניאל גוטרמן",
-        "חיים גולדמן", "ניסים דיין", "מוישי הריסון", "אברימי זיאת",
-        "ציקי יורקוביץ", "מיכאל יעקובי", "אלחנן כהן", "כתריאל לוי",
-        "מלאכי לינצר", "אליהו מויאל", "מאיר מיימון", "נדב מלול",
-        "איתמר משולם", "אביתר עמר", "מנחם פודור", "גידי פולסקי",
-        "יהונתן פז", "ישי כוחלני", "יוסף קמחי", "בן ציון קצב",
-        "נדב רובין", "יהונתן רוזן", "אברהם ריין", "אריאל שטאובר"
-      ].map((name, i) => ({
-        id: (i + 1).toString(),
-        name,
-        preferred: [] as string[],
-        forbidden: [] as string[],
-        height: (i % 3 === 0 ? 'short' : i % 3 === 1 ? 'medium' : 'tall') as any,
-        groups: (i < 8 ? ['קבוצת אומנות'] : i < 16 ? ['נבחרת כדורסל'] : []) as string[],
-        areaPref: {} as any,
-        notes: i === 0 ? 'תלמיד מצטיין, עוזר לאחרים' : ''
-      }));
-
-      // Set some point balances
-      const student_points: Record<string, number> = {};
-      demoStudents.forEach(s => {
-        student_points[s.id] = Math.floor(Math.random() * 500);
-      });
-
-      // Create a 6x6 grid
-      const rows = 6;
-      const cols = 6;
-      const grid = Array(rows * cols).fill(null);
-      
-      // Place students in the grid
-      demoStudents.forEach((s, i) => {
-        if (i < 30) {
-          // Fill from front to back, leaving some gaps
-          const row = Math.floor(i / 5);
-          const col = i % 5;
-          grid[row * cols + col] = s.id;
-        }
-      });
-
-      const demoCampaigns = [
-        {
-          id: 'camp-demo-1',
-          title: 'מבצע ניקיון כיתתי',
-          target: 100,
-          status: 'active',
-          type: 'points',
-          progress: {} as Record<string, number>
-        },
-        {
-          id: 'camp-demo-2',
-          title: 'אלוף הקריאה',
-          target: 50,
-          status: 'active',
-          type: 'points',
-          progress: {} as Record<string, number>
-        },
-        {
-          id: 'camp-good-behavior',
-          title: 'Practice Good Behavior',
-          description: 'Awarding students for consistent positive behavior in class, aiming for 1000 points total.',
-          targetPoints: 1000,
-          type: 'class-wide',
-          category: 'behavior',
-          startDate: '2024-07-28',
-          endDate: '2024-12-31',
-          reward: 'Extra 15 minutes of free time',
-          status: 'active',
-          progress: {} as Record<string, number>
-        }
-      ];
-
-      // Add progress to some students
-      demoStudents.forEach(s => {
-        if (Math.random() > 0.5) {
-          demoCampaigns[0].progress[s.id] = Math.floor(Math.random() * 80);
-        }
-      });
-
-      const demoFurniture = [
-        { id: 'f-demo-1', type: 'board', x: 100, y: -20, width: 400, height: 100, rotation: 0 },
-        { id: 'f-demo-2', type: 'cabinet', x: -150, y: 300, width: 80, height: 150, rotation: 10 },
-        { id: 'f-demo-3', type: 'plant', x: 600, y: 100, width: 100, height: 100, rotation: 0 },
-        { id: 'f-demo-4', type: 'rug', x: 150, y: 400, width: 300, height: 200, rotation: 0 }
-      ];
-
-      const demoGroups = [
-        { id: 'קבוצת אומנות', name: 'קבוצת אומנות', constraint: 'together' },
-        { id: 'נבחרת כדורסל', name: 'נבחרת כדורסל', constraint: 'separate' }
-      ];
-
-      updateCurrentConfig({
-        id: Date.now() + Math.random().toString(),
-        name: "כיתת הדגמה מקצועית",
-        rows,
-        cols,
-        grid,
-        students: demoStudents,
-        groups: demoGroups,
-        hiddenDesks: [35], // Hide bottom-right corner for example
-        rowGaps: [2],
-        columnGaps: [3],
-        campaigns: demoCampaigns,
-        furniture: demoFurniture,
-        student_points,
-        analytics_log: [
-          { type: 'points', studentId: '1', value: 50, timestamp: Date.now() - 86400000 },
-          { type: 'points', studentId: '2', value: 30, timestamp: Date.now() - 172800000 }
-        ],
-        rewards: [
-          { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
-          { id: 'rev-2', title: 'ממתק קטן', price: 50, stock: 20, icon: 'Zap' },
-          { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
-          { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
-        ]
-      });
-
-      setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "נתוני ההדגמה המלאים נטענו בהצלחה!", type: 'success' }, ...prev]);
-    }
-  };
+  }, [currentConfig.students, searchQuery, filterGroup, filterHeight, filterLocation, sortBy, currentConfig.student_points]);
 
 
   return (
     <div className="p-8 space-y-10 h-full overflow-y-auto max-w-5xl mx-auto custom-scrollbar">
       <input type="file" ref={fileRef} className="hidden" accept=".xlsx, .xls, .csv, .json" onChange={handleFileImport} />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" dir="rtl">
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
@@ -8903,7 +8567,7 @@ const SettingsView = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Teacher Profile Section */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" dir="rtl">
             <User className="w-6 h-6 text-brand-500" />
             <h3 className="text-lg font-black text-slate-800 dark:text-white">פרופיל מורה</h3>
           </div>
@@ -8947,44 +8611,9 @@ const SettingsView = ({
           </p>
         </div>
 
-        {/* Theme Configuration */}
-        <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
-            <Palette className="w-6 h-6 text-brand-500" />
-            <h3 className="text-lg font-black text-slate-800">ערכות נושא וצבעים</h3>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              {(['default', 'nature', 'ocean', 'sunset', 'royal'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                    theme === t ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 uppercase">צבע מבטא (Accent Color)</label>
-              <input 
-                type="color" 
-                value={accentColor} 
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="w-full h-10 rounded-xl cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* AI Parameters */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" dir="rtl">
             <Sparkles className="w-6 h-6 text-indigo-500" />
             <h3 className="text-lg font-black text-slate-800">פרמטרים AI</h3>
           </div>
@@ -9012,7 +8641,7 @@ const SettingsView = ({
 
         {/* Advanced AI */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" dir="rtl">
             <Brain className="w-6 h-6 text-brand-500" />
             <h3 className="text-lg font-black text-slate-800">הגדרות AI מתקדמות</h3>
           </div>
@@ -9040,12 +8669,12 @@ const SettingsView = ({
             </div>
 
             <div className="space-y-3">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block">פרומפט מערכת (AI System Prompt)</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block font-sans text-right">פרומפט מערכת (AI System Prompt)</label>
               <textarea 
                 value={aiWeights.customSystemPrompt}
                 onChange={(e) => setAiWeights((prev: any) => ({ ...prev, customSystemPrompt: e.target.value }))}
                 placeholder="הזן הוראות מיוחדות ל-AI..."
-                className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-medium text-slate-800 dark:text-slate-200 focus:border-brand-300 outline-none transition-all min-h-[100px] resize-none"
+                className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-medium text-slate-800 dark:text-slate-200 focus:border-brand-300 outline-none transition-all min-h-[100px] resize-none text-right"
               />
             </div>
           </div>
@@ -9053,7 +8682,7 @@ const SettingsView = ({
 
         {/* Privacy Settings */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" dir="rtl">
             <Shield className="w-6 h-6 text-brand-500" />
             <h3 className="text-lg font-black text-slate-800">הגדרות פרטיות ומידע</h3>
           </div>
@@ -9061,8 +8690,8 @@ const SettingsView = ({
             <button 
               onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, shareWithColleagues: !prev.privacy?.shareWithColleagues } }))}
               className={cn(
-                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                currentConfig.privacy?.shareWithColleagues ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm cursor-pointer",
+                currentConfig.privacy?.shareWithColleagues ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100 hover:border-slate-250 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300"
               )}
             >
               שיתוף נתונים עם עמיתים
@@ -9071,323 +8700,13 @@ const SettingsView = ({
             <button 
               onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, privacy: { ...prev.privacy, anonymizeNames: !prev.privacy?.anonymizeNames } }))}
               className={cn(
-                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm",
-                currentConfig.privacy?.anonymizeNames ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100"
+                "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm cursor-pointer",
+                currentConfig.privacy?.anonymizeNames ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-50 text-slate-600 border border-slate-100 hover:border-slate-250 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300"
               )}
             >
               הצגת שמות תלמידים (אנונימיזציה)
               {currentConfig.privacy?.anonymizeNames ? <CheckCircle2 className="w-5 h-5 text-indigo-300" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-200" />}
             </button>
-          </div>
-        </div>
-
-        {/* Advanced Theme & Accessibility Panel */}
-        <div className="glass-card p-8 rounded-[3rem] space-y-8">
-          <div className="flex items-center gap-3">
-            <Palette className="w-6 h-6 text-brand-500" />
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">מראה, עיצוב ונגישות מורחבת</h3>
-          </div>
-
-          {/* 1. Predefined Deep Theme Styles (6 Master Styles) */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-widest">בחר סגנון עיצוב ראשי (ערכת נושא)</span>
-              <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400">משנה פריסה, פינות, רקעים, צבעים וגופנים</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...BUILT_IN_THEMES, ...customThemes].map((t: any) => {
-                const isActive = theme === t.id;
-                // Merge current font adjustments to show correctly
-                const activeFonts = {
-                  fontDisplay: themeFontOverrides[t.id]?.fontDisplay || t.fontDisplay,
-                  fontSans: themeFontOverrides[t.id]?.fontSans || t.fontSans,
-                };
-                return (
-                  <div 
-                    key={t.id} 
-                    className="relative group"
-                  >
-                    <button
-                      onClick={() => setTheme(t.id)}
-                      style={{
-                        borderRadius: t.borderRadius || '1.15rem',
-                        borderColor: isActive ? t.color : 'transparent',
-                        boxShadow: isActive ? (t.boxShadow || '0 10px 25px rgba(0,0,0,0.08)') : 'none',
-                        backgroundColor: t.id === 'cyber_tech' ? '#0b1329' : (t.id === 'cosmic_galactic' ? '#130d2b' : (t.id === 'chalk_retro' ? '#0d2417' : (t.id === 'fancy_royal' ? '#FAF6F0' : '#f8fafc')))
-                      }}
-                      className={cn(
-                        "w-full text-right p-5 border-2 transition-all flex flex-col justify-between gap-3 min-h-[140px] focus:outline-none hover:scale-[1.01] cursor-pointer",
-                        isActive ? "dark:bg-slate-800" : "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
-                      )}
-                    >
-                      <div className="flex justify-between items-start w-full">
-                        <div 
-                          className="w-8 h-8 rounded-full border border-white/20 shadow-sm flex items-center justify-center shrink-0 animate-pulse" 
-                          style={{ backgroundColor: t.color || '#64748b' }}
-                        >
-                          {isActive && <CheckCircle2 className="w-4 h-4 text-white" />}
-                        </div>
-                        {t.isDark ? (
-                          <span className="text-[9px] font-black bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full uppercase">DARK THEME</span>
-                        ) : (
-                          <span className="text-[9px] font-black bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full uppercase">LIGHT THEME</span>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-100">{t.name}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-400 leading-tight font-medium font-sans">
-                          {t.desc || 'ערכת נושא מותאמת אישית'}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2 text-[9px] font-mono text-slate-400 dark:text-slate-500">
-                        <span>{activeFonts.fontDisplay}</span>
-                        <span>•</span>
-                        <span>{activeFonts.fontSans}</span>
-                      </div>
-                    </button>
-
-                    {t.isCustom && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('למחוק ערכת נושא זו?')) {
-                            setCustomThemes(customThemes.filter(ct => ct.id !== t.id));
-                            if (theme === t.id) setTheme('default');
-                          }
-                        }}
-                        className="absolute top-2 left-2 p-1.5 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-600 z-10"
-                        title="מחק ערכת נושא"
-                      >
-                        <TrashIcon className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Theme Customizer Panel - Custom font selection for THE selected theme */}
-          {(() => {
-            const activeThemeObj = [...BUILT_IN_THEMES, ...customThemes].find(t => t.id === theme);
-            if (!activeThemeObj) return null;
-            const currentOverride = themeFontOverrides[theme] || {};
-            const displayFont = currentOverride.fontDisplay || activeThemeObj.fontDisplay;
-            const sansFont = currentOverride.fontSans || activeThemeObj.fontSans;
-
-            return (
-              <motion.div 
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-6 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div className="space-y-0.5 text-right w-full">
-                    <h4 className="text-xs font-black text-slate-700 dark:text-slate-200">התאמת גופנים אישית לערכת הנושא הפעילה</h4>
-                    <p className="text-[10px] text-slate-400 font-medium">כאן ניתן להגדיר פונט ספציפי עבור הסטייל הפעיל: <span className="font-extrabold text-brand-500">{activeThemeObj.name}</span></p>
-                  </div>
-                  {(currentOverride.fontDisplay || currentOverride.fontSans) && (
-                    <button 
-                      onClick={() => {
-                        const next = { ...themeFontOverrides };
-                        delete next[theme];
-                        setThemeFontOverrides(next);
-                      }}
-                      className="text-[10px] text-rose-500 font-bold hover:underline whitespace-nowrap"
-                    >
-                      איפוס ערכי ברירת המחדל
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-right">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">גופן כותרות ותצוגה</label>
-                    <select 
-                      value={displayFont}
-                      onChange={(e) => {
-                        setThemeFontOverrides(prev => ({
-                          ...prev,
-                          [theme]: { ...(prev[theme] || {}), fontDisplay: e.target.value }
-                        }));
-                      }}
-                      className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black outline-none font-display text-slate-700 dark:text-slate-300 focus:border-brand-500"
-                    >
-                      <option value="Lexend">Lexend</option>
-                      <option value="Montserrat">Montserrat</option>
-                      <option value="Outfit">Outfit</option>
-                      <option value="Assistant">Assistant</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5 text-right">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">גופן טקסט ותוכן כללי</label>
-                    <select 
-                      value={sansFont}
-                      onChange={(e) => {
-                        setThemeFontOverrides(prev => ({
-                          ...prev,
-                          [theme]: { ...(prev[theme] || {}), fontSans: e.target.value }
-                        }));
-                      }}
-                      className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black outline-none font-sans text-slate-700 dark:text-slate-300 focus:border-brand-500"
-                    >
-                      <option value="Inter">Inter</option>
-                      <option value="Assistant">Assistant</option>
-                      <option value="Heebo">Heebo</option>
-                      <option value="Lexend">Lexend</option>
-                    </select>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
-
-          {/* 3. Accessibility Controls (High Contrast & Font Sizes) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <div className="space-y-2 text-right">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">הגדרות פרופיל נגישות חזותית</label>
-              <button 
-                onClick={() => setAccessibility((prev: any) => ({ ...prev, highContrast: !prev.highContrast }))}
-                className={cn(
-                  "w-full p-4 rounded-2xl flex items-center justify-between transition-all font-black text-sm border cursor-pointer",
-                  accessibility.highContrast 
-                    ? "bg-slate-900 border-slate-900 dark:bg-slate-100 dark:border-slate-100 text-white dark:text-slate-950 shadow-lg" 
-                    : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800 hover:border-slate-200"
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  🛡️ ניגודיות גבוהה מותאמת
-                </span>
-                {accessibility.highContrast 
-                  ? <CheckCircle2 className="w-5 h-5 text-brand-400 dark:text-indigo-600" /> 
-                  : <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-700" />
-                }
-              </button>
-            </div>
-
-            <div className="space-y-2 text-right">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">גודל גופן כללי (מערכת)</label>
-              <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-                {(['small', 'medium', 'large'] as const).map(size => (
-                  <button 
-                    key={size}
-                    onClick={() => setAccessibility((prev: any) => ({ ...prev, fontSize: size }))}
-                    className={cn(
-                      "flex-1 py-3 rounded-xl text-xs font-black transition-all cursor-pointer",
-                      accessibility.fontSize === size 
-                        ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm border border-slate-100 dark:border-slate-800" 
-                        : "text-slate-500"
-                    )}
-                  >
-                    {size === 'small' ? 'קטן' : size === 'medium' ? 'בינוני' : 'גדול'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase">מחולל עיצוב עצמי מתקדם</span>
-              <button 
-                onClick={() => setIsThemeEditorOpen(!isThemeEditorOpen)}
-                className="text-xs p-2 text-brand-600 font-bold hover:underline py-1 px-3 bg-brand-50 dark:bg-brand-900/20 rounded-full flex items-center gap-1.5 cursor-pointer"
-              >
-                {isThemeEditorOpen ? 'סגור עורך' : 'צור ערכת נושא אישית משלך'}
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {isThemeEditorOpen && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 mt-4 space-y-4"
-              >
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">שם הערכה</label>
-                  <input 
-                    type="text" 
-                    value={newTheme.name}
-                    onChange={(e) => setNewTheme(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="למשל: כיתת חלל"
-                    className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 transition-all outline-none"
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">צבע בסיס ראשי</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="color" 
-                      value={newTheme.color}
-                      onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
-                      className="w-12 h-12 bg-transparent border-0 cursor-pointer rounded-lg overflow-hidden shrink-0"
-                    />
-                    <input 
-                      type="text" 
-                      value={newTheme.color}
-                      onChange={(e) => setNewTheme(prev => ({ ...prev, color: e.target.value }))}
-                      className="flex-1 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-right">
-                  <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">גופן כותרות</label>
-                      <select 
-                          value={newTheme.fontDisplay}
-                          onChange={(e) => setNewTheme(prev => ({ ...prev, fontDisplay: e.target.value }))}
-                          className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-display text-slate-700 dark:text-slate-300"
-                      >
-                          <option value="Lexend">Lexend</option>
-                          <option value="Montserrat">Montserrat</option>
-                          <option value="Outfit">Outfit</option>
-                          <option value="Assistant">Assistant</option>
-                      </select>
-                  </div>
-                  <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">גופן טקסט</label>
-                      <select 
-                          value={newTheme.fontSans}
-                          onChange={(e) => setNewTheme(prev => ({ ...prev, fontSans: e.target.value }))}
-                          className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none font-sans text-slate-700 dark:text-slate-300"
-                      >
-                          <option value="Inter">Inter</option>
-                          <option value="Assistant">Assistant</option>
-                          <option value="Heebo">Heebo</option>
-                          <option value="Lexend">Lexend</option>
-                      </select>
-                  </div>
-                </div>
-                <button 
-                  disabled={!newTheme.name}
-                  onClick={() => {
-                    const id = 'custom-' + Date.now();
-                    setCustomThemes([...customThemes, { 
-                      ...newTheme, 
-                      id, 
-                      isCustom: true,
-                      borderRadius: '1.25rem',
-                      cardBg: 'rgba(255,255,255,0.75)',
-                      borderColor: 'rgba(0,0,0,0.05)',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-                      textColor: '#1e293b'
-                    }]);
-                    setTheme(id);
-                    setNewTheme({ name: '', color: '#6366f1', fontSans: 'Inter', fontDisplay: 'Lexend' });
-                    setIsThemeEditorOpen(false);
-                  }}
-                  className="w-full py-3 bg-brand-600 text-white rounded-xl text-xs font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  שמור ערכת נושא חדשה במאגר
-                </button>
-              </motion.div>
-            )}
           </div>
         </div>
 
@@ -9684,7 +9003,7 @@ const SettingsView = ({
                   <span className="text-xs font-black text-slate-500 uppercase">מיון לפי:</span>
                   <select 
                     value={sortBy} 
-                    onChange={e => setSortBy(e.target.value)}
+                    onChange={e => setSortBy(e.target.value as any)}
                     className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="newest">תאריך הוספה (חדש קודם)</option>
@@ -12474,7 +11793,7 @@ export default function App() {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(0.9);
-  const [theme, setTheme] = useState<string>('default');
+  const [theme, setTheme] = useState<string>('yeshiva_academy');
   const [customThemes, setCustomThemes] = useState<any[]>([]);
   const [themeFontOverrides, setThemeFontOverrides] = useState<Record<string, { fontDisplay?: string, fontSans?: string }>>({});
   const [accentColor, setAccentColor] = useState('#6366f1');
@@ -12799,6 +12118,82 @@ export default function App() {
     setNotifications(prev => [{ id: Date.now() + Math.random(), text: `יובאו ${predefined.length} תלמידים מהרשימה המוכנה!`, type: 'success' }, ...prev]);
   };
 
+  const loadExampleData = () => {
+    const demoStudents = [
+      { id: 's-demo-1', name: 'יוסף חיים לוי', height: 'short' as const, rowPreference: 'front' as const, groups: ['קבוצת אומנות'], preferred: ['s-demo-2'], forbidden: ['s-demo-4'], notes: 'זקוק לישיבה קרובה ללוח בשל קשיי ראייה קלים.', noteTags: ['ראייה'], successes: 'השתפר מאוד בריכוז במהלך השיעור האחרון.', interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: ['מצטיין'], environmentPreferences: [] },
+      { id: 's-demo-2', name: 'אברהם ישעיהו כהן', height: 'medium' as const, rowPreference: 'any' as const, groups: ['קבוצת אומנות'], preferred: ['s-demo-1'], forbidden: [] as string[], notes: '', noteTags: [] as string[], successes: '', interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-3', name: 'משה מאיר קליין', height: 'tall' as const, rowPreference: 'back' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'רוצה לשבת מאחור כדי לא להסתיר לאחרים.', successes: 'פעיל מאוד בשיעורים ומסייע לחבריו.', successesCount: 2, points: 90, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: ['עוזר מרצון'], environmentPreferences: [] as string[] },
+      { id: 's-demo-4', name: 'פנחס דוד מזרחי', height: 'short' as const, rowPreference: 'any' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: ['s-demo-1'], notes: 'נוטה לפטפט כאשר יושב קרוב ליוסף חיים.', noteTags: ['משמעת'], successes: '', successesCount: 0, points: 40, interestLevel: 'low' as const, supportNeeded: 'medium' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-5', name: 'ישראל יעקב רבינוביץ', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: ['s-demo-6'], forbidden: [] as string[], notes: 'עובד היטב בקבוצות קטנות.', successes: 'הפגין התקדמות מרשימה במבחן האחרון בגמרא.', successesCount: 4, points: 210, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-6', name: 'שמואל אליעזר שטרן', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: ['s-demo-5'], forbidden: [] as string[], notes: '', successes: '', successesCount: 1, points: 80, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-7', name: 'אריה לייב פרידמן', height: 'tall' as const, rowPreference: 'back' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-8', name: 'אלחנן צבי הורוביץ', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'מרכיב משקפיים, מומלץ להושיבו בשורה קדמית.', noteTags: ['ראייה'], successes: '', successesCount: 0, points: 0, interestLevel: 'medium' as const, supportNeeded: 'low' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-9', name: 'נחום יצחק ברגר', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: 'תלמיד שקט ורציני ביותר.', successesCount: 3, points: 150, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-10', name: 'יהושע זאב פלדמן', height: 'tall' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-11', name: 'מנחם מענדל גולדשטיין', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: 's-demo-12', name: 'שמעון ראובן הלוי', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'קל להסחת דעת, מומלץ להושיב רחוק מדלת או חלון.', noteTags: ['קשב'], successes: '', successesCount: 0, points: 0, interestLevel: 'low' as const, supportNeeded: 'high' as const, tags: [] as string[], environmentPreferences: [] as string[] }
+    ];
+
+    const demoCampaigns = [
+      { id: 'c-demo-1', title: 'מבצע שינון משניות ברכות', target: 200, icon: 'BookOpen', progress: {} as Record<string, number> },
+      { id: 'c-demo-2', title: 'התנהגות מופתית בתפילת שחרית', target: 100, icon: 'CheckSquare', progress: {} as Record<string, number> }
+    ];
+
+    demoStudents.forEach(s => {
+      if (Math.random() > 0.5) {
+        demoCampaigns[0].progress[s.id] = Math.floor(Math.random() * 80);
+      }
+    });
+
+    const demoFurniture = [
+      { id: 'f-demo-1', type: 'board', x: 300, y: -20, width: 600, height: 120, rotation: 0 },
+      { id: 'f-demo-2', type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
+      { id: 'f-demo-3', type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
+    ];
+
+    const demoGroups = [
+      { id: 'קבוצת אומנות', name: 'קבוצת אומנות', constraint: 'together' },
+      { id: 'נבחרת כדורסל', name: 'נבחרת כדורסל', constraint: 'separate' }
+    ];
+
+    const student_points: Record<string, number> = {
+      's-demo-1': 120,
+      's-demo-2': 150,
+      's-demo-3': 90,
+      's-demo-4': 40,
+      's-demo-5': 210,
+      's-demo-6': 80
+    };
+
+    updateCurrentConfig({
+      id: Date.now() + Math.random().toString(),
+      name: "ישיבת עטרת התורה - כיתה ט'",
+      rows: 6,
+      cols: 9,
+      grid: Array(6).fill(null).map(() => Array(9).fill(null)),
+      students: demoStudents,
+      groups: demoGroups,
+      hiddenDesks: [35],
+      rowGaps: [2],
+      columnGaps: [3],
+      campaigns: demoCampaigns,
+      furniture: demoFurniture,
+      student_points,
+      analytics_log: [
+        { type: 'points', studentId: 's-demo-1', value: 50, timestamp: Date.now() - 86400000 },
+        { type: 'points', studentId: 's-demo-2', value: 30, timestamp: Date.now() - 172800000 }
+      ],
+      rewards: [
+        { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
+        { id: 'rev-2', title: 'ממתק קטן לכבוד שבת', price: 50, stock: 20, icon: 'Zap' },
+        { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
+        { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
+      ]
+    });
+
+    setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "נתוני ההדגמה הישיבתיים נטענו בהצלחה!", type: 'success' }, ...prev]);
+  };
+
   const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -13036,8 +12431,10 @@ export default function App() {
       setCustomThemes(JSON.parse(savedCustomThemes));
     }
     const savedTheme = localStorage.getItem('classManager_theme');
-    if (savedTheme) {
+    if (savedTheme && BUILT_IN_THEMES.some(t => t.id === savedTheme)) {
       setTheme(savedTheme);
+    } else {
+      setTheme('yeshiva_academy');
     }
     const savedOverrides = localStorage.getItem('classManager_themeFontOverrides');
     if (savedOverrides) {
@@ -14712,6 +14109,7 @@ Instructions:
           currentConfig={currentConfig}
           updateCurrentConfig={updateCurrentConfig}
           setNotifications={setNotifications}
+          loadExampleData={loadExampleData}
           exportToPDF={exportToPDF}
           exportToJSON={exportToJSON}
           selectedStudentId={selectedStudentId}
