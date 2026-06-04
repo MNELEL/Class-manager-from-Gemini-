@@ -6,22 +6,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 async function startServer() {
-  console.log("SERVER: Starting server...");
-  const app = express();
-  const PORT = (() => {
-    if (process.env.TEST_PORT) {
-      const parsed = parseInt(process.env.TEST_PORT, 10);
-      if (!isNaN(parsed)) return parsed;
-    }
-    if (process.env.PORT) {
-      const parsed = parseInt(process.env.PORT, 10);
-      if (!isNaN(parsed)) return parsed;
-    }
-    return 3000;
-  })();
+  console.log("SERVER_INIT: Starting startServer function...");
+  console.log(`SERVER_INIT: NODE_ENV=${process.env.NODE_ENV}`);
+  console.log(`SERVER_INIT: PORT=${process.env.PORT || 'not set (defaulting to 3000)'}`);
 
+  const app = express();
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  console.log(`SERVER_INIT: Resolved PORT=${PORT}`);
   app.use(express.json());
 
+  console.log("SERVER_INIT: Initializing AI fallbacks...");
   let genAI: GoogleGenAI | null = null;
   const getGenAI = (): GoogleGenAI => {
     if (!genAI) {
@@ -440,15 +435,13 @@ ${studentsNeedingSupportList}
       const { prompt, systemInstruction, model } = req.body;
       const ai = getGenAI();
       
-      const response = await ai.models.generateContent({
+      const interaction = await ai.interactions.create({
         model: model || "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: systemInstruction || "You are a helpful assistant for teachers."
-        }
+        input: prompt,
+        system_instruction: systemInstruction || "You are a helpful assistant for teachers."
       });
 
-      const text = response.text;
+      const text = interaction.output_text;
       res.json({ text });
     } catch (error: any) {
       console.warn("Gemini AI API Error. Activating local generator fallback:", error);
@@ -486,12 +479,12 @@ ${studentsNeedingSupportList}
         Format the output in a clean Markdown structure.
       `;
 
-      const response = await ai.models.generateContent({
+      const interaction = await ai.interactions.create({
         model: "gemini-3.5-flash",
-        contents: prompt
+        input: prompt
       });
 
-      const text = response.text;
+      const text = interaction.output_text;
       res.json({ text });
     } catch (error: any) {
       console.warn("Gemini AI API Lesson Plan Error. Activating local generator fallback:", error);
@@ -518,12 +511,12 @@ ${studentsNeedingSupportList}
       
       const prompt = `Analyze the class pedagogical notes: ${JSON.stringify(classData)}. Focus on student group dynamics and provide 3 actionable insights for the teacher in Hebrew.`;
 
-      const response = await ai.models.generateContent({
+      const interaction = await ai.interactions.create({
         model: "gemini-3.5-flash",
-        contents: prompt,
+        input: prompt,
       });
 
-      res.json({ analysis: response.text });
+      res.json({ analysis: interaction.output_text });
     } catch (error: any) {
       console.warn("Gemini AI API Pedagogy Error. Activating local analyzer fallback:", error);
       try {

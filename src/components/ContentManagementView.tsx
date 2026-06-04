@@ -239,9 +239,25 @@ export const ContentManagementView = ({
         ];
     });
 
+    const [generalDocuments, setGeneralDocuments] = useState<UploadedFile[]>(() => {
+        const saved = localStorage.getItem('pedagogy_library_general_documents');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        return [];
+    });
+
     useEffect(() => {
         localStorage.setItem('pedagogy_library_uploaded_files', JSON.stringify(uploadedFiles));
     }, [uploadedFiles]);
+
+    useEffect(() => {
+        localStorage.setItem('pedagogy_library_general_documents', JSON.stringify(generalDocuments));
+    }, [generalDocuments]);
 
     const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
     const [customizerTab, setCustomizerTab] = useState<'topics' | 'buttons'>('topics');
@@ -271,7 +287,7 @@ export const ContentManagementView = ({
         localStorage.setItem('pedagogy_custom_buttons', JSON.stringify(customButtonNames));
     }, [customButtonNames]);
 
-    const [activeTab, setActiveTab] = useState<'materials' | 'lessons' | 'exams' | 'worksheets' | 'questions' | 'summaries' | 'ai_studio' | 'files'>('materials');
+    const [activeTab, setActiveTab] = useState<'materials' | 'lessons' | 'exams' | 'worksheets' | 'questions' | 'summaries' | 'ai_studio' | 'files' | 'general_docs'>('materials');
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
@@ -911,6 +927,7 @@ export const ContentManagementView = ({
                     { id: 'questions', label: 'בנק שאלות', icon: <Lightbulb className="w-4 h-4" /> },
                     { id: 'summaries', label: 'סיכומי תוכן', icon: <Layers className="w-4 h-4" /> },
                     { id: 'files', label: 'מנהל קבצי עזר', icon: <FolderOpen className="w-4 h-4 text-indigo-500" /> },
+                    { id: 'general_docs', label: 'מסמכים כיתתיים כלליים', icon: <BookMarked className="w-4 h-4 text-emerald-500" /> },
                     { id: 'ai_studio', label: 'מחולל פדגוגי AI', icon: <Wand2 className="w-4 h-4 text-amber-500 animate-pulse" /> },
                 ].filter(tab => !customButtonNames[tab.id]?.hidden).map((tab) => (
                     <button
@@ -1125,7 +1142,7 @@ export const ContentManagementView = ({
 
                     {/* MATERIALS LIST GRID (9 Columns) */}
                     <div className="lg:col-span-9 space-y-4">
-                        {activeTab === 'files' ? (
+                            {activeTab === 'files' ? (
                             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4 text-right" dir="rtl">
                                 <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
                                     <div className="space-y-0.5">
@@ -1160,13 +1177,11 @@ export const ContentManagementView = ({
                                     </label>
                                 </div>
 
-                                {/* Drag over instructions warning or action info */}
                                 <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-350 flex items-center gap-2">
                                     <span>💡</span>
                                     <span>באפשרותך לגרור קבצים לתיבת הייבוא המהיר שבצידו הימני של המסך או להעלות אותם ישירות, ולאחר מכן לשייך אותם למקצוע ספציפי בעץ הלימוד!</span>
                                 </div>
 
-                                {/* Files Grid List */}
                                 <div className="space-y-3">
                                     {uploadedFiles
                                         .filter(file => !selectedTopic || file.topic === selectedTopic)
@@ -1194,7 +1209,6 @@ export const ContentManagementView = ({
                                                         </div>
                                                     </div>
 
-                                                    {/* Link to topic selector and delete actions */}
                                                     <div className="flex items-center flex-wrap gap-2 justify-end">
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="text-[10px] font-black text-slate-400">שיוך לעץ הלימוד:</span>
@@ -1235,6 +1249,50 @@ export const ContentManagementView = ({
                                             <p className="text-slate-400 font-extrabold text-xs">לא הועלו קבצים או שאין קבצים הנתונים לסינון הנוכחי.</p>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        ) : activeTab === 'general_docs' ? (
+                            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4 text-right" dir="rtl">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                        📚 מסמכים כיתתיים כלליים
+                                    </h3>
+                                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-black transition-all">
+                                        <Upload className="w-3.5 h-3.5" />
+                                        <span>העלה מסמך חדש לכיתה</span>
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const newDocObj: UploadedFile = {
+                                                    id: Date.now().toString(),
+                                                    name: file.name,
+                                                    type: file.type || 'plain',
+                                                    size: Math.round(file.size / 1024) || 1,
+                                                    url: '#',
+                                                    date: new Date().toISOString(),
+                                                };
+                                                setGeneralDocuments(prev => [newDocObj, ...prev]);
+                                            }} 
+                                        />
+                                    </label>
+                                </div>
+                                <div className="space-y-3">
+                                    {generalDocuments.map(doc => (
+                                        <div key={doc.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <FileText className="w-5 h-5 text-emerald-600" />
+                                                <span className="font-bold text-sm">{doc.name}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => setGeneralDocuments(prev => prev.filter(d => d.id !== doc.id))}
+                                                className="text-rose-500 font-bold text-xs"
+                                            >מחק</button>
+                                        </div>
+                                    ))}
+                                    {generalDocuments.length === 0 && <p className="text-slate-400 text-center text-sm font-bold p-8">טרם הועלו מסמכים כלליים.</p>}
                                 </div>
                             </div>
                         ) : (

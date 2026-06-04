@@ -89,6 +89,7 @@ export interface ClassroomConfig {
   events?: ClassroomEvent[];
   student_points?: Record<string, number>;
   analytics_log?: any[];
+  documents?: any[];
 }
 
 export interface Campaign {

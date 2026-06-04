@@ -40,7 +40,28 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      target: 'es2022'
+      target: 'es2022',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('xlsx') || id.includes('exceljs') || id.includes('codepage')) {
+                return 'vendor-xlsx';
+              }
+              if (id.includes('recharts') || id.includes('d3') || id.includes('victory') || id.includes('react-resize-detector')) {
+                return 'vendor-charts';
+              }
+              if (id.includes('react-dom') || id.includes('react-quill') || id.includes('quill')) {
+                return 'vendor-editor';
+              }
+              if (id.includes('@google/genai')) {
+                return 'vendor-ai';
+              }
+              return 'vendor-core';
+            }
+          }
+        }
+      }
     },
     esbuild: {
       target: 'es2022'

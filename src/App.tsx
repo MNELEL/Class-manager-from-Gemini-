@@ -33,6 +33,8 @@ import 'jspdf-autotable';
 import { ContentManagementView } from './components/ContentManagementView';
 import { WeeklyPlanningView } from './components/WeeklyPlanningView';
 import { LandingPage } from './components/LandingPage';
+import { ClassroomRaffle } from './components/ClassroomRaffle';
+import { KnowledgeHub } from './components/KnowledgeHub';
 import { NoteEditor } from './components/NoteEditor';
 import { ReminderManager } from './components/ReminderManager';
 import { TeacherToolkit } from './components/TeacherToolkit';
@@ -102,6 +104,7 @@ import {
   Info,
   Layers,
   Layout,
+  Library,
   LayoutDashboard,
   LayoutGrid,
   Lightbulb,
@@ -950,7 +953,8 @@ const DeskCell = ({
   isLocked = false,
   showSeatLabels3D = true,
   showNames3D = true,
-  printConfigOptions
+  printConfigOptions,
+  isAddingCustomDesk = false
 }: any) => {
   const [isOver, setIsOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1150,6 +1154,14 @@ const DeskCell = ({
         transformStyle: 'preserve-3d',
       }}
       onClick={() => {
+        if (isAddingCustomDesk) {
+          updateCurrentConfig((prev: any) => ({
+            ...prev,
+            hiddenDesks: prev.hiddenDesks.filter((i: number) => i !== idx),
+            obstructions: (prev.obstructions || []).filter((i: number) => i !== idx)
+          }));
+          return;
+        }
         if (isMultiSelectMode && studentId) {
           setSelectedStudentIds((prev: string[]) => 
             prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
@@ -5330,6 +5342,13 @@ const StudentQuickPrefsModal = ({
     onClose();
   };
 
+  const onShowHistory = () => {
+    if (studentIdx !== -1) {
+      (window as any).showSeatHistory?.(studentIdx);
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
       <motion.div
@@ -5356,10 +5375,24 @@ const StudentQuickPrefsModal = ({
         <div className="space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
            {isPlaced && (
              <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
-               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                 <Zap className="w-3 h-3 text-amber-500" />
-                 תובנות מיקום ותלמידים סמוכים
-               </h3>
+               <div className="flex justify-between items-center">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Zap className="w-3 h-3 text-amber-500" />
+                   תובנות מיקום ותלמידים סמוכים
+                 </h3>
+                 <button 
+                  onClick={() => {
+                    // Trigger history in parent by closing this and opening that
+                    // We need to pass down a prop for this
+                    (window as any).showSeatHistory?.(studentIdx);
+                    onClose();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 rounded-xl text-[10px] font-black transition-all"
+                 >
+                   <History className="w-3.5 h-3.5" />
+                   היסטוריית המקום
+                 </button>
+               </div>
                
                <div className="space-y-3">
                  <div className="space-y-2">
@@ -5493,6 +5526,34 @@ const StudentQuickPrefsModal = ({
                <option value="medium">אמצע הכיתה (סטנדרטי)</option>
                <option value="tall">מאחור (גבוה)</option>
              </select>
+           </div>
+           
+           <div className="space-y-2">
+             <label className="text-sm font-black text-slate-700 dark:text-slate-300">שיוך לקבוצה</label>
+             <div className="flex flex-wrap gap-2">
+               {currentConfig.groups.map((group: any) => {
+                 const isSelected = localStudent.groups?.includes(group.id);
+                 return (
+                   <button
+                     key={group.id}
+                     onClick={() => {
+                        const newGroups = localStudent.groups?.includes(group.id)
+                          ? localStudent.groups.filter((id: string) => id !== group.id)
+                          : [...(localStudent.groups || []), group.id];
+                        setLocalStudent({ ...localStudent, groups: newGroups });
+                     }}
+                     className={cn(
+                       "px-3 py-1.5 rounded-xl text-sm font-bold transition-all border",
+                       isSelected 
+                         ? "bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-400" 
+                         : "bg-white border-slate-200 text-slate-500 hover:border-brand-300 hover:text-brand-600 dark:bg-slate-900 dark:border-slate-700"
+                     )}
+                   >
+                     {group.name}
+                   </button>
+                 );
+               })}
+             </div>
            </div>
         </div>
 
@@ -8572,10 +8633,30 @@ const SettingsView = ({
         </div>
         <div className="flex gap-4">
           <button 
-            onClick={loadExampleData}
-            className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100"
+            onClick={() => {
+              const confirmReset = window.confirm("האם אתה בטוח שברצנך למחוק את כל הנתונים ולאפס את המערכת? פעולה זו תמחק את כל התלמידים, הניקוד והשיבוצים באופן קבוע.");
+              if (confirmReset) {
+                updateCurrentConfig((prev: any) => ({
+                  ...prev,
+                  students: [],
+                  grid: Array(prev.rows || 6).fill(null).map(() => Array(prev.cols || 9).fill(null)),
+                  student_points: {},
+                  student_rewards: {},
+                  student_achievements: {},
+                  analytics_log: [],
+                  availableLessons: [],
+                  rewards: [],
+                  achievements: [],
+                  events: [],
+                  reminders: [],
+                  campaigns: []
+                }));
+                setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "המערכת אופסה לחלוטין בהצלחה", type: 'success' }, ...prev]);
+              }
+            }}
+            className="px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl text-xs font-black hover:bg-rose-100 transition-all border border-rose-100"
           >
-            טען נתוני דמו
+            איפוס נתוני כיתה
           </button>
           <Badge className="bg-brand-50 text-brand-600 border-brand-200 p-2">v3.2.1</Badge>
         </div>
@@ -9089,11 +9170,11 @@ const SettingsView = ({
                       description="הוסיפו תלמידים ידנית או יבאו קובץ Excel כדי להתחיל בשיבוץ."
                       action={
                         <button 
-                          onClick={loadExampleData}
+                          onClick={() => setIsAddStudentOpen(true)}
                           className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black shadow-xl hover:bg-brand-700 transition-all flex items-center gap-2 active:scale-95"
                         >
-                          <Zap className="w-5 h-5" />
-                          טען נתוני דוגמה מהסימולציה
+                          <UserPlus className="w-5 h-5" />
+                          הוספת תלמיד ידנית
                         </button>
                       }
                     />
@@ -11745,11 +11826,7 @@ export default function App() {
        { id: 'f2', type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
        { id: 'f3', type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
     ] as any[],
-    availableLessons: [
-      { id: 'math-adv', name: 'מתמטיקה מתקדם', day: 'א', time: '08:00', category: 'regular' },
-      { id: 'english-ext', name: 'ביאורי מילים בגמרא', day: 'ב', time: '10:00', category: 'enrichment' },
-      { id: 'science-lab', name: 'מעבדת מדעים', day: 'ד', time: '12:00', category: 'enrichment' },
-    ] as any[],
+    availableLessons: [] as any[],
     updatedAt: Date.now(),
     columnGapSize: 32,
     rowGapSize: 32,
@@ -11761,28 +11838,20 @@ export default function App() {
     events: [] as any[],
     reminders: [] as any[],
     campaigns: [] as any[],
-    rewards: [
-      { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
-      { id: 'rev-2', title: 'ממתק קטן', price: 50, stock: 20, icon: 'Zap' },
-      { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
-      { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
-    ] as any[],
+    rewards: [] as any[],
     student_points: {} as Record<string, number>,
     student_rewards: {} as Record<string, any[]>,
-    achievements: [
-      { id: 'ach-1', title: 'תולעת ספרים', description: 'קרא 5 ספרים מהספרייה הכיתתית', icon: 'BookOpen', points: 100 },
-      { id: 'ach-2', title: 'עוזר נאמן', description: 'שימש כעוזר מורה במשך שבוע', icon: 'UserCircle2', points: 150 },
-      { id: 'ach-3', title: 'אלוף הנוכחות', description: 'חודש שלם ללא איחורים או חיסורים', icon: 'CheckCircle2', points: 300 }
-    ] as any[],
+    achievements: [] as any[],
     student_achievements: {} as Record<string, string[]>,
-    analytics_log: [] as any[]
+    analytics_log: [] as any[],
+    documents: [] as any[]
   }));
 
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management' | 'feedback' | 'weekly-planning'>('landing');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management' | 'feedback' | 'weekly-planning'>('dashboard');
   const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
   const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
@@ -11814,6 +11883,7 @@ export default function App() {
   const [customThemes, setCustomThemes] = useState<any[]>([]);
   const [themeFontOverrides, setThemeFontOverrides] = useState<Record<string, { fontDisplay?: string, fontSans?: string }>>({});
   const [accentColor, setAccentColor] = useState('#6366f1');
+  const [isAILogicModalOpen, setIsAILogicModalOpen] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [isFirebaseOnline, setIsFirebaseOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -11914,6 +11984,8 @@ export default function App() {
   const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
   const [isIssuesPanelOpen, setIsIssuesPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [poolSearchQuery, setPoolSearchQuery] = useState('');
+  const [poolSortBy, setPoolSortBy] = useState<'default' | 'name'>('default');
   const [sortBy, setSortBy] = useState<'name' | 'row' | 'col'>('name');
   const [accessibility, setAccessibility] = useState({ highContrast: false, fontSize: 'medium' });
 
@@ -13355,6 +13427,9 @@ Instructions:
 
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isKnowledgeHubOpen, setIsKnowledgeHubOpen] = useState(false);
+  const [isRaffleOpen, setIsRaffleOpen] = useState(false);
+  const [isAddingCustomDesk, setIsAddingCustomDesk] = useState(false);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [activeDeskIdx, setActiveDeskIdx] = useState<number | null>(null);
 
@@ -13461,11 +13536,19 @@ Instructions:
     setLastSaved(Date.now());
   }, [currentConfig, deskHistory]);
 
-  const studentsInPool = useMemo(() => currentConfig.students.filter(s => {
-    const isPlaced = currentConfig.grid.flat().includes(s.id);
-    const matchesFilter = selectedGroups.length === 0 || (s.groups && s.groups.some((g: string) => selectedGroups.includes(g)));
-    return !isPlaced && matchesFilter;
-  }), [currentConfig.students, currentConfig.grid, selectedGroups]);
+  const studentsInPool = useMemo(() => {
+    let pool = currentConfig.students.filter(s => {
+      const isPlaced = currentConfig.grid.flat().includes(s.id);
+      const matchesFilter = selectedGroups.length === 0 || (s.groups && s.groups.some((g: string) => selectedGroups.includes(g)));
+      const matchesSearch = !poolSearchQuery.trim() || s.name.toLowerCase().includes(poolSearchQuery.toLowerCase());
+      return !isPlaced && matchesFilter && matchesSearch;
+    });
+
+    if (poolSortBy === 'name') {
+      pool.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    }
+    return pool;
+  }, [currentConfig.students, currentConfig.grid, selectedGroups, poolSearchQuery, poolSortBy]);
 
   const handleDrop = (deskIdx: number) => {
     if (!draggedStudentId) return;
@@ -13640,8 +13723,8 @@ Instructions:
           const newStudents = studentStubs.map(({ row, id, name }) => {
             const preferred = row[1] ? row[1].toString().split(',').map((s: string) => s.trim()).map((s: string) => nameToIdMap.get(s) || s) : [];
             const forbidden = row[2] ? row[2].toString().split(',').map((s: string) => s.trim()).map((s: string) => nameToIdMap.get(s) || s) : [];
-            const rawGroups = row[4] ? row[4].toString().split(',').map((s: string) => s.trim()) : [];
-            rawGroups.forEach(g => importedGroups.add(g));
+            const rawGroups: string[] = row[4] ? (row[4].toString().split(',').map((s: string) => s.trim()).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i) as string[]) : [];
+            rawGroups.forEach((g: string) => importedGroups.add(g));
 
             let height = 'medium';
             const hVal = (row[3] || '').toString().toLowerCase();
@@ -14340,6 +14423,22 @@ Instructions:
           <div className="w-px h-8 bg-slate-100 dark:bg-slate-800 mx-1" />
 
           <button 
+            onClick={() => setIsRaffleOpen(true)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
+            title="הגרלת תלמיד"
+          >
+            <Trophy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+          <button 
+            onClick={() => setIsKnowledgeHubOpen(true)}
+            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
+            title="מרכז ידע כיתתי"
+          >
+            <Library className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+
+          <button 
             onClick={() => {
               setIsPresentationMode(true);
               setViewType('grid');
@@ -15001,6 +15100,32 @@ Instructions:
               >
                 <Plus className="w-4 h-4" />
                 הוסף למאגר
+              </button>
+            </div>
+          </div>
+
+          {/* Student Pool Search & Filter */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 flex flex-col gap-2">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text"
+                value={poolSearchQuery}
+                onChange={(e) => setPoolSearchQuery(e.target.value)}
+                placeholder="חפש תלמיד במאגר..."
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl pr-9 pl-3 py-2 text-xs focus:ring-1 focus:ring-brand-500 outline-none text-slate-700 dark:text-slate-200 font-bold"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setPoolSortBy(poolSortBy === 'name' ? 'default' : 'name')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black transition-all border",
+                  poolSortBy === 'name' ? "bg-brand-50 border-brand-200 text-brand-600" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500"
+                )}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>מיון אלפבית {poolSortBy === 'name' ? 'פעיל' : ''}</span>
               </button>
             </div>
           </div>
@@ -15994,9 +16119,20 @@ Instructions:
                          </div>
                          <button 
                             onClick={() => updateCurrentConfig((prev: any) => ({ ...prev, hiddenDesks: [], obstructions: [] }))}
-                            className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-colors"
+                            disabled={activeConfig.hiddenDesks.length === 0 && activeConfig.obstructions.length === 0}
+                            className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                          >
-                           איפוס שולחנות
+                           החזרת כל השולחנות
+                         </button>
+                         <button 
+                            onClick={() => setIsAddingCustomDesk(!isAddingCustomDesk)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5",
+                              isAddingCustomDesk ? "bg-amber-100 text-amber-700 ring-2 ring-amber-200" : "bg-brand-50 text-brand-600 hover:bg-brand-100"
+                            )}
+                         >
+                           <Layout className="w-3.5 h-3.5" />
+                           {isAddingCustomDesk ? 'בטל הוספה' : 'הוסף מושב אישי'}
                          </button>
                        </div>
                      ) : (
@@ -16035,7 +16171,7 @@ Instructions:
 
                       {/* Grid Content */}
                      <ResponsiveGridContainer is3DView={is3DView}>
-                       <div ref={gridRef} className="relative w-full flex flex-col items-center" id="classroom-grid-container">
+                       <div ref={gridRef} className="relative w-full flex flex-col items-center justify-center shadow-lg bg-white/40 dark:bg-slate-900/10 backdrop-blur-sm rounded-[3rem] border-4 border-dashed border-slate-300 dark:border-slate-700/50 p-6 wood-plank-pattern" id="classroom-grid-container">
                          {editMode === 'placement' && !isPrinting && !isPresentationMode && (
                            <button
                              onClick={() => {
@@ -16071,6 +16207,12 @@ Instructions:
                                 <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 leading-relaxed">
                                   ה-AI מתחשב באילוצי גובה, קשרי חברים וצרכים לימודיים בסידורו על גבי המפה.
                                 </p>
+                                <button 
+                                  onClick={() => setIsAILogicModalOpen(true)}
+                                  className="text-[10px] font-black text-indigo-600 underline hover:text-indigo-800"
+                                >
+                                  למידה נוספת...
+                                </button>
                               </div>
                               <button
                                 onClick={() => setShowAITooltip(false)}
@@ -16759,6 +16901,72 @@ Instructions:
           setViewType={setViewTypeWithTransition}
           setSelectedStudentId={setSelectedStudentId}
         />
+        {isAILogicModalOpen && (
+          <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-800 rounded-[3rem] p-10 max-w-2xl w-full shadow-2xl space-y-8 text-right" dir="rtl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-8 h-8 text-brand-600" />
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white">לוגיקת הסידור של ה-AI</h2>
+                </div>
+                <button onClick={() => setIsAILogicModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="space-y-6 text-slate-600 dark:text-slate-300 leading-relaxed">
+                <section className="space-y-2">
+                  <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-emerald-500" />
+                    אילוצי גובה וראייה
+                  </h3>
+                  <p className="text-sm font-bold">האלגוריתם מזהה תלמידים שהוגדרו כ"נמוכים" או בעלי צרכים קשביים ומתעדף את שיבוצם בשורות הראשונות (1-2) כדי להבטיח קשר עין רציף עם המורה והלוח.</p>
+                </section>
+                <section className="space-y-2">
+                  <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    דינמיקה חברתית
+                  </h3>
+                  <p className="text-sm font-bold">ה-AI מנתח את רשימות ה"מועדפים" וה"אסורים" של כל תלמיד. הוא מנסה למקסם את מספר החברים שיושבים בסמיכות (שכנים ב-8 כיוונים) תוך הקפדה מוחלטת על הפרדת תלמידים שהוגדר שיש להפריד ביניהם.</p>
+                </section>
+                <section className="space-y-2">
+                  <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-amber-500" />
+                    אופטימיזציה של מבנה הכיתה
+                  </h3>
+                  <p className="text-sm font-bold">האלגוריתם משקלל את כל הנתונים בו-זמנית ומבצע אלפי סימולציות כדי למצוא את המצב שבו יש מינימום חריגות מהכללים (Violations) ומקסימום שביעות רצון פדגוגית.</p>
+                </section>
+              </div>
+              <button 
+                onClick={() => setIsAILogicModalOpen(false)}
+                className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black shadow-lg shadow-brand-200 hover:bg-brand-700 transition-all"
+              >
+                הבנתי, תודה!
+              </button>
+            </motion.div>
+          </div>
+        )}
+        {isKnowledgeHubOpen && (
+          <KnowledgeHub 
+            onClose={() => setIsKnowledgeHubOpen(false)}
+            onAddDocument={(doc) => {
+              updateCurrentConfig((prev: any) => ({
+                ...prev,
+                documents: [...(prev.documents || []), doc]
+              }));
+            }}
+            onDeleteDocument={(docId) => {
+              updateCurrentConfig((prev: any) => ({
+                ...prev,
+                documents: (prev.documents || []).filter((d: any) => d.id !== docId)
+              }));
+            }}
+            documents={activeConfig.documents || []}
+          />
+        )}
+        {isRaffleOpen && (
+          <ClassroomRaffle 
+            students={activeConfig.students}
+            onClose={() => setIsRaffleOpen(false)}
+          />
+        )}
         {isProfileModalOpen && (
           <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-800 rounded-[3rem] p-10 max-w-md w-full shadow-2xl space-y-8" dir="rtl">
@@ -16825,7 +17033,7 @@ Instructions:
                 <div className="space-y-4">
                   {deskHistory[activeDeskIdx] && deskHistory[activeDeskIdx].length > 0 ? (
                     deskHistory[activeDeskIdx].map((name, i) => (
-                      <div key={`${name}-${i}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div key={`${name}-${activeDeskIdx}-${i}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <span className="font-black text-slate-700">{name}</span>
                         <span className="text-xs font-black text-slate-500">לפני {i + 1} שינויים</span>
                       </div>
