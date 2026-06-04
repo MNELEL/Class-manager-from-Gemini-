@@ -1105,10 +1105,10 @@ export const ContentManagementView = ({
                                         ייבוא חומר מהיר ב-AI
                                     </h4>
                                     <p className="text-[10px] text-indigo-100 leading-relaxed font-semibold mb-3">
-                                        גררו או בחרו קובץ טקסט/מערך שיעור קיים מהמחשב, וה-AI יפרק אותו אוטומטית למדורים, הבנות ותגיות מובנות!
+                                        גררו או בחרו קובץ (טקסט, PDF, Excel, תמונה, Word) מהמחשב, וה-AI יפרק אותו אוטומטית למדורים, הבנות ותגיות מובנות!
                                     </p>
                                     <label className="cursor-pointer block text-center p-2 bg-white/20 hover:bg-white/35 rounded-xl text-xs font-black transition-all">
-                                        <input type="file" className="hidden" onChange={handleFileUpload} />
+                                        <input type="file" className="hidden" onChange={handleFileUpload} accept=".txt,.json,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.doc,.docx" />
                                         בחירת קובץ
                                     </label>
                                     {dragActive && (

@@ -3,7 +3,6 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
-process.env.NODE_ENV = process.env.NODE_ENV || "production";
 dotenv.config();
 
 async function startServer() {
