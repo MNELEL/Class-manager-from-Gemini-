@@ -7,6 +7,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || "production";
 dotenv.config();
 
 async function startServer() {
+  console.log("SERVER: Starting server...");
   const app = express();
   const PORT = (() => {
     if (process.env.TEST_PORT) {

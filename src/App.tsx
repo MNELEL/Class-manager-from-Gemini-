@@ -326,142 +326,159 @@ function areAdjacent(idx1: number, idx2: number, cols: number) {
  * Calculates conflicts for the current layout
  */
 function calculateConflicts(config: any) {
+  if (!config || !config.grid) return [];
   const { grid, students, cols } = config;
   const conflicts: { type: 'forbidden' | 'missing_pref' | 'height' | 'special', studentId1: string, studentId2?: string, deskIdx1: number, deskIdx2?: number, message: string }[] = [];
   
-  // 1. Adjacency Based Conflicts (Forbidden / Group Escape)
-  grid.forEach((id1: string | null, idx1: number) => {
-    if (!id1) return;
-    const s1 = students.find((s: any) => s.id === id1);
-    if (!s1) return;
-    
-    // Check neighbors
-    grid.forEach((id2: string | null, idx2: number) => {
-      if (!id2 || idx1 === idx2) return;
-      if (areAdjacent(idx1, idx2, cols)) {
-        const s2 = students.find((s:any)=>s.id===id2);
-        if (!s2) return;
+  grid.forEach((row: any, r: number) => {
+    if (!Array.isArray(row)) return;
+    row.forEach((id1: string | null, c: number) => {
+      if (!id1) return;
+      const s1 = students.find((s: any) => s.id === id1);
+      if (!s1) return;
+      const idx1 = r * cols + c;
+      
+      // 1. Adjacency Based Conflicts
+      grid.forEach((row2: any, r2: number) => {
+        if (!Array.isArray(row2)) return;
+        row2.forEach((id2: string | null, c2: number) => {
+          if (!id2 || (r === r2 && c === c2)) return;
+          const idx2 = r2 * cols + c2;
+          
+          if (areAdjacent(idx1, idx2, cols)) {
+            const s2 = students.find((s: any) => s.id === id2);
+            if (!s2) return;
 
-        // Manual Forbidden
-        if (s1.forbidden?.includes(id2) || s1.separateFrom?.includes(id2)) {
+            // Manual Forbidden
+            if (s1.forbidden?.includes(id2) || (s1 as any).separateFrom?.includes(id2)) {
+              conflicts.push({
+                type: 'forbidden',
+                studentId1: id1,
+                studentId2: id2,
+                deskIdx1: idx1,
+                deskIdx2: idx2,
+                message: `${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
+              });
+            }
+
+            // Group Separate Constraint
+            s1.groups?.forEach((gId: string) => {
+               const group = config.groups?.find((g: any) => g.id === gId);
+               if (group?.constraint === 'separate' && s2.groups?.includes(gId)) {
+                  conflicts.push({
+                     type: 'forbidden',
+                     studentId1: id1,
+                     studentId2: id2,
+                     deskIdx1: idx1,
+                     deskIdx2: idx2,
+                     message: `קונפליקט בקבוצה ${group.name}: ${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
+                  });
+               }
+            });
+          }
+        });
+      });
+
+      // 2. Group Together Constraint
+      s1.groups?.forEach((gId: string) => {
+         const group = config.groups?.find((g: any) => g.id === gId);
+         if (group?.constraint === 'together') {
+            let hasGroupMemberAdjacent = false;
+            grid.forEach((rT: any, rTIdx: number) => {
+              if (!Array.isArray(rT)) return;
+              rT.forEach((idT: string | null, cT: number) => {
+                 if (!idT || (r === rTIdx && c === cT)) return;
+                 const idxT = rTIdx * cols + cT;
+                 if (areAdjacent(idx1, idxT, cols)) {
+                    const sT = students.find((s: any) => s.id === idT);
+                    if (sT?.groups?.includes(gId)) hasGroupMemberAdjacent = true;
+                 }
+              });
+            });
+
+            if (!hasGroupMemberAdjacent) {
+               const otherMembersInClass = students.filter((s: any) => {
+                  if (s.id === s1.id || !s.groups?.includes(gId)) return false;
+                  // Check if this other member is placed in the grid
+                  return grid.some((rP: any) => Array.isArray(rP) && rP.includes(s.id));
+               });
+               
+               if (otherMembersInClass.length > 0) {
+                  conflicts.push({
+                     type: 'special',
+                     studentId1: id1,
+                     deskIdx1: idx1,
+                     message: `${s1.name} מבודד מחבריו לקבוצת ${group.name}.`
+                  });
+               }
+            }
+         }
+      });
+
+      // 3. Height Conflict
+      if (s1.height === 'short') {
+        if (r >= 3) { 
           conflicts.push({
-            type: 'forbidden',
+            type: 'height',
             studentId1: id1,
-            studentId2: id2,
             deskIdx1: idx1,
-            deskIdx2: idx2,
-            message: `${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
+            message: `${s1.name} נמוך/קדמי יושב רחוק מדי.`
           });
         }
-
-        // Group Separate Constraint
-        s1.groups?.forEach((gId: string) => {
-           const group = config.groups?.find((g: any) => g.id === gId);
-           if (group?.constraint === 'separate' && s2.groups?.includes(gId)) {
-              conflicts.push({
-                 type: 'forbidden',
-                 studentId1: id1,
-                 studentId2: id2,
-                 deskIdx1: idx1,
-                 deskIdx2: idx2,
-                 message: `קונפליקט בקבוצה ${group.name}: ${s1.name} ו-${s2.name} אמורים להיות מופרדים.`
-              });
-           }
-        });
       }
-    });
 
-    // 2. Group Together Constraint (Isolation Check)
-    s1.groups?.forEach((gId: string) => {
-       const group = config.groups?.find((g: any) => g.id === gId);
-       if (group?.constraint === 'together') {
-          const hasGroupMemberAdjacent = grid.some((id2: string | null, idx2: number) => {
-             if (!id2 || idx1 === idx2 || !areAdjacent(idx1, idx2, cols)) return false;
-             const s2 = students.find((s:any)=>s.id===id2);
-             return s2?.groups?.includes(gId);
+      // 4. Row Preference
+      if (s1.rowPreference && s1.rowPreference !== 'any') {
+        const totalRows = grid.length;
+        let violated = false;
+        let targetName = '';
+        
+        if (s1.rowPreference === 'front' && r >= 2) {
+          violated = true;
+          targetName = 'קדמית';
+        } else if (s1.rowPreference === 'middle' && (r < 1 || r > totalRows - 2)) {
+          violated = true;
+          targetName = 'אמצעית';
+        } else if (s1.rowPreference === 'back' && r < totalRows - 2) {
+          violated = true;
+          targetName = 'אחורית';
+        }
+        
+        if (violated) {
+          conflicts.push({
+            type: 'missing_pref',
+            studentId1: id1,
+            deskIdx1: idx1,
+            message: `${s1.name} מעדיף שורה ${targetName}.`
           });
-          if (!hasGroupMemberAdjacent) {
-             const otherMembersInClass = students.filter((s:any) => s.id !== s1.id && s.groups?.includes(gId) && grid.includes(s.id));
-             if (otherMembersInClass.length > 0) {
-                conflicts.push({
-                   type: 'special',
-                   studentId1: id1,
-                   deskIdx1: idx1,
-                   message: `${s1.name} מבודד מחבריו לקבוצת ${group.name}.`
-                });
-             }
-          }
-       }
+        }
+      }
+
+      // 5. Corner Preference
+      if (s1.cornerPreference) {
+        const isCorner = c === 0 || c === cols - 1;
+        if (!isCorner) {
+          conflicts.push({
+            type: 'missing_pref',
+            studentId1: id1,
+            deskIdx1: idx1,
+            message: `${s1.name} מעדיף לשבת בפינה או בקצה.`
+          });
+        }
+      }
+      
+      // 6. Special Area Prefs
+      if (s1.areaPref?.special === 'window_or_microwave') {
+        if (c !== 0 && c !== cols - 1) {
+          conflicts.push({
+            type: 'special',
+            studentId1: id1,
+            deskIdx1: idx1,
+            message: `${s1.name} ביקש לשבת בקצה הכיתה.`
+          });
+        }
+      }
     });
-
-    // 2. Height Conflict (Short student in back)
-    if (s1.height === 'short') {
-      const row = Math.floor(idx1 / cols);
-      if (row >= 3) { // Front is usually first 2-3 rows
-        conflicts.push({
-          type: 'height',
-          studentId1: id1,
-          deskIdx1: idx1,
-          message: `${s1.name} נמוך/קדמי יושב רחוק מדי.`
-        });
-      }
-    }
-
-    // 2.1 Row Preference Conflict
-    if (s1.rowPreference && s1.rowPreference !== 'any') {
-      const row = Math.floor(idx1 / cols);
-      const totalRows = Math.ceil(grid.length / cols);
-      
-      let violated = false;
-      let targetName = '';
-      
-      if (s1.rowPreference === 'front' && row >= 2) {
-        violated = true;
-        targetName = 'קדמית';
-      } else if (s1.rowPreference === 'middle' && (row < 1 || row > totalRows - 2)) {
-        violated = true;
-        targetName = 'אמצעית';
-      } else if (s1.rowPreference === 'back' && row < totalRows - 2) {
-        violated = true;
-        targetName = 'אחורית';
-      }
-      
-      if (violated) {
-        conflicts.push({
-          type: 'missing_pref',
-          studentId1: id1,
-          deskIdx1: idx1,
-          message: `${s1.name} מעדיף שורה ${targetName}.`
-        });
-      }
-    }
-
-    // 2.2 Corner Preference Conflict
-    if (s1.cornerPreference) {
-      const col = idx1 % cols;
-      const isCorner = col === 0 || col === cols - 1;
-      if (!isCorner) {
-        conflicts.push({
-          type: 'missing_pref',
-          studentId1: id1,
-          deskIdx1: idx1,
-          message: `${s1.name} מעדיף לשבת בפינה או בקצה.`
-        });
-      }
-    }
-    
-    // 3. Special Area Prefs
-    if (s1.areaPref?.special === 'window_or_microwave') {
-      const col = idx1 % cols;
-      if (col !== 0 && col !== cols - 1) {
-        conflicts.push({
-          type: 'special',
-          studentId1: id1,
-          deskIdx1: idx1,
-          message: `${s1.name} ביקש לשבת בקצה הכיתה.`
-        });
-      }
-    }
   });
   
   return conflicts;
@@ -9003,7 +9020,7 @@ const SettingsView = ({
                   <span className="text-xs font-black text-slate-500 uppercase">מיון לפי:</span>
                   <select 
                     value={sortBy} 
-                    onChange={e => setSortBy(e.target.value as any)}
+                    onChange={e => setSortBy(e.target.value as 'name' | 'points' | 'height' | 'newest' | 'oldest')}
                     className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="newest">תאריך הוספה (חדש קודם)</option>
@@ -11706,7 +11723,7 @@ export default function App() {
     await logout();
     setNotifications(prev => [{ id: Date.now() + Math.random(), text: 'התנתקת מחשבון Google', type: 'info' }, ...prev]);
   };
-  const [currentConfig, setCurrentConfig] = useState({
+  const [currentConfig, setCurrentConfig] = useState(() => ({
     id: '1',
     name: 'כיתת מצוינות א׳',
     rows: 6,
@@ -11759,7 +11776,7 @@ export default function App() {
     ] as any[],
     student_achievements: {} as Record<string, string[]>,
     analytics_log: [] as any[]
-  });
+  }));
 
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
@@ -12119,24 +12136,25 @@ export default function App() {
   };
 
   const loadExampleData = () => {
+    const timestamp = Date.now();
     const demoStudents = [
-      { id: 's-demo-1', name: 'יוסף חיים לוי', height: 'short' as const, rowPreference: 'front' as const, groups: ['קבוצת אומנות'], preferred: ['s-demo-2'], forbidden: ['s-demo-4'], notes: 'זקוק לישיבה קרובה ללוח בשל קשיי ראייה קלים.', noteTags: ['ראייה'], successes: 'השתפר מאוד בריכוז במהלך השיעור האחרון.', interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: ['מצטיין'], environmentPreferences: [] },
-      { id: 's-demo-2', name: 'אברהם ישעיהו כהן', height: 'medium' as const, rowPreference: 'any' as const, groups: ['קבוצת אומנות'], preferred: ['s-demo-1'], forbidden: [] as string[], notes: '', noteTags: [] as string[], successes: '', interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-3', name: 'משה מאיר קליין', height: 'tall' as const, rowPreference: 'back' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'רוצה לשבת מאחור כדי לא להסתיר לאחרים.', successes: 'פעיל מאוד בשיעורים ומסייע לחבריו.', successesCount: 2, points: 90, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: ['עוזר מרצון'], environmentPreferences: [] as string[] },
-      { id: 's-demo-4', name: 'פנחס דוד מזרחי', height: 'short' as const, rowPreference: 'any' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: ['s-demo-1'], notes: 'נוטה לפטפט כאשר יושב קרוב ליוסף חיים.', noteTags: ['משמעת'], successes: '', successesCount: 0, points: 40, interestLevel: 'low' as const, supportNeeded: 'medium' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-5', name: 'ישראל יעקב רבינוביץ', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: ['s-demo-6'], forbidden: [] as string[], notes: 'עובד היטב בקבוצות קטנות.', successes: 'הפגין התקדמות מרשימה במבחן האחרון בגמרא.', successesCount: 4, points: 210, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-6', name: 'שמואל אליעזר שטרן', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: ['s-demo-5'], forbidden: [] as string[], notes: '', successes: '', successesCount: 1, points: 80, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-7', name: 'אריה לייב פרידמן', height: 'tall' as const, rowPreference: 'back' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-8', name: 'אלחנן צבי הורוביץ', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'מרכיב משקפיים, מומלץ להושיבו בשורה קדמית.', noteTags: ['ראייה'], successes: '', successesCount: 0, points: 0, interestLevel: 'medium' as const, supportNeeded: 'low' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-9', name: 'נחום יצחק ברגר', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: 'תלמיד שקט ורציני ביותר.', successesCount: 3, points: 150, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-10', name: 'יהושע זאב פלדמן', height: 'tall' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-11', name: 'מנחם מענדל גולדשטיין', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
-      { id: 's-demo-12', name: 'שמעון ראובן הלוי', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'קל להסחת דעת, מומלץ להושיב רחוק מדלת או חלון.', noteTags: ['קשב'], successes: '', successesCount: 0, points: 0, interestLevel: 'low' as const, supportNeeded: 'high' as const, tags: [] as string[], environmentPreferences: [] as string[] }
+      { id: `s-demo-1-${timestamp}`, name: 'יוסף חיים לוי', height: 'short' as const, rowPreference: 'front' as const, groups: ['קבוצת אומנות'], preferred: [`s-demo-2-${timestamp}`], forbidden: [`s-demo-4-${timestamp}`], notes: 'זקוק לישיבה קרובה ללוח בשל קשיי ראייה קלים.', noteTags: ['ראייה'], successes: 'השתפר מאוד בריכוז במהלך השיעור האחרון.', interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: ['מצטיין'], environmentPreferences: [] },
+      { id: `s-demo-2-${timestamp}`, name: 'אברהם ישעיהו כהן', height: 'medium' as const, rowPreference: 'any' as const, groups: ['קבוצת אומנות'], preferred: [`s-demo-1-${timestamp}`], forbidden: [] as string[], notes: '', noteTags: [] as string[], successes: '', interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-3-${timestamp}`, name: 'משה מאיר קליין', height: 'tall' as const, rowPreference: 'back' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'רוצה לשבת מאחור כדי לא להסתיר לאחרים.', successes: 'פעיל מאוד בשיעורים ומסייע לחבריו.', successesCount: 2, points: 90, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: ['עוזר מרצון'], environmentPreferences: [] as string[] },
+      { id: `s-demo-4-${timestamp}`, name: 'פנחס דוד מזרחי', height: 'short' as const, rowPreference: 'any' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: [`s-demo-1-${timestamp}`], notes: 'נוטה לפטפט כאשר יושב קרוב ליוסף חיים.', noteTags: ['משמעת'], successes: '', successesCount: 0, points: 40, interestLevel: 'low' as const, supportNeeded: 'medium' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-5-${timestamp}`, name: 'ישראל יעקב רבינוביץ', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: [`s-demo-6-${timestamp}`], forbidden: [] as string[], notes: 'עובד היטב בקבוצות קטנות.', successes: 'הפגין התקדמות מרשימה במבחן האחרון בגמרא.', successesCount: 4, points: 210, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-6-${timestamp}`, name: 'שמואל אליעזר שטרן', height: 'medium' as const, rowPreference: 'middle' as const, groups: [] as string[], preferred: [`s-demo-5-${timestamp}`], forbidden: [] as string[], notes: '', successes: '', successesCount: 1, points: 80, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-7-${timestamp}`, name: 'אריה לייב פרידמן', height: 'tall' as const, rowPreference: 'back' as const, groups: ['נבחרת כדורסל'], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-8-${timestamp}`, name: 'אלחנן צבי הורוביץ', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'מרכיב משקפיים, מומלץ להושיבו בשורה קדמית.', noteTags: ['ראייה'], successes: '', successesCount: 0, points: 0, interestLevel: 'medium' as const, supportNeeded: 'low' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-9-${timestamp}`, name: 'נחום יצחק ברגר', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: 'תלמיד שקט ורציני ביותר.', successesCount: 3, points: 150, noteTags: [] as string[], interestLevel: 'high' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-10-${timestamp}`, name: 'יהושע זאב פלדמן', height: 'tall' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-11-${timestamp}`, name: 'מנחם מענדל גולדשטיין', height: 'medium' as const, rowPreference: 'any' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: '', successes: '', successesCount: 0, points: 0, noteTags: [] as string[], interestLevel: 'medium' as const, supportNeeded: 'none' as const, tags: [] as string[], environmentPreferences: [] as string[] },
+      { id: `s-demo-12-${timestamp}`, name: 'שמעון ראובן הלוי', height: 'short' as const, rowPreference: 'front' as const, groups: [] as string[], preferred: [] as string[], forbidden: [] as string[], notes: 'קל להסחת דעת, מומלץ להושיב רחוק מדלת או חלון.', noteTags: ['קשב'], successes: '', successesCount: 0, points: 0, interestLevel: 'low' as const, supportNeeded: 'high' as const, tags: [] as string[], environmentPreferences: [] as string[] }
     ];
 
     const demoCampaigns = [
-      { id: 'c-demo-1', title: 'מבצע שינון משניות ברכות', target: 200, icon: 'BookOpen', progress: {} as Record<string, number> },
-      { id: 'c-demo-2', title: 'התנהגות מופתית בתפילת שחרית', target: 100, icon: 'CheckSquare', progress: {} as Record<string, number> }
+      { id: `c-demo-1-${timestamp}`, title: 'מבצע שינון משניות ברכות', target: 200, icon: 'BookOpen', progress: {} as Record<string, number> },
+      { id: `c-demo-2-${timestamp}`, title: 'התנהגות מופתית בתפילת שחרית', target: 100, icon: 'CheckSquare', progress: {} as Record<string, number> }
     ];
 
     demoStudents.forEach(s => {
@@ -12146,9 +12164,9 @@ export default function App() {
     });
 
     const demoFurniture = [
-      { id: 'f-demo-1', type: 'board', x: 300, y: -20, width: 600, height: 120, rotation: 0 },
-      { id: 'f-demo-2', type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
-      { id: 'f-demo-3', type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
+      { id: `f-demo-1-${timestamp}`, type: 'board', x: 300, y: -20, width: 600, height: 120, rotation: 0 },
+      { id: `f-demo-2-${timestamp}`, type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
+      { id: `f-demo-3-${timestamp}`, type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
     ];
 
     const demoGroups = [
@@ -12156,17 +12174,14 @@ export default function App() {
       { id: 'נבחרת כדורסל', name: 'נבחרת כדורסל', constraint: 'separate' }
     ];
 
-    const student_points: Record<string, number> = {
-      's-demo-1': 120,
-      's-demo-2': 150,
-      's-demo-3': 90,
-      's-demo-4': 40,
-      's-demo-5': 210,
-      's-demo-6': 80
-    };
+    const student_points: Record<string, number> = {};
+    demoStudents.forEach(s => {
+        student_points[s.id] = (s as any).points || 0;
+    });
 
-    updateCurrentConfig({
-      id: Date.now() + Math.random().toString(),
+    updateCurrentConfig((prev: any) => ({
+      ...prev,
+      id: `demo-${timestamp}`,
       name: "ישיבת עטרת התורה - כיתה ט'",
       rows: 6,
       cols: 9,
@@ -12178,18 +12193,21 @@ export default function App() {
       columnGaps: [3],
       campaigns: demoCampaigns,
       furniture: demoFurniture,
-      student_points,
+      student_points: { ...prev.student_points, ...student_points },
+      student_rewards: prev.student_rewards || {},
+      student_achievements: prev.student_achievements || {},
       analytics_log: [
-        { type: 'points', studentId: 's-demo-1', value: 50, timestamp: Date.now() - 86400000 },
-        { type: 'points', studentId: 's-demo-2', value: 30, timestamp: Date.now() - 172800000 }
+        ...(prev.analytics_log || []),
+        { type: 'points', studentId: demoStudents[0].id, value: 50, timestamp: Date.now() - 86400000 },
+        { type: 'points', studentId: demoStudents[1].id, value: 30, timestamp: Date.now() - 172800000 }
       ],
       rewards: [
-        { id: 'rev-1', title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
-        { id: 'rev-2', title: 'ממתק קטן לכבוד שבת', price: 50, stock: 20, icon: 'Zap' },
-        { id: 'rev-3', title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
-        { id: 'rev-4', title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
+        { id: `rev-1-${timestamp}`, title: '15 דקות הפסקה נוספת', price: 100, stock: 5, icon: 'Clock' },
+        { id: `rev-2-${timestamp}`, title: 'ממתק קטן לכבוד שבת', price: 50, stock: 20, icon: 'Zap' },
+        { id: `rev-3-${timestamp}`, title: 'בחירת מקום ישיבה ליום', price: 200, stock: 3, icon: 'Map' },
+        { id: `rev-4-${timestamp}`, title: 'פטור משיעורי בית', price: 500, stock: 2, icon: 'CheckCircle2' }
       ]
-    });
+    }));
 
     setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "נתוני ההדגמה הישיבתיים נטענו בהצלחה!", type: 'success' }, ...prev]);
   };
@@ -12290,12 +12308,15 @@ export default function App() {
   const isPrinting = (currentConfig as any).isPrinting;
 
   const dashboardStats = useMemo(() => {
+    if (!activeConfig || !Array.isArray(activeConfig.students) || !Array.isArray(activeConfig.grid)) return { studentCount: 0, placedCount: 0, conflicts: 0, satisfaction: 0, attendance: 0 };
+    
     const studentCount = activeConfig.students.length;
     const placedCount = activeConfig.grid.flat().filter(s => s !== null).length;
     
     // Conflict calculation
     let conflictCount = 0;
     activeConfig.grid.forEach((row, r) => {
+      if (!Array.isArray(row)) return;
       row.forEach((sid, c) => {
         if (!sid) return;
         const student = activeConfig.students.find(s => s.id === sid);
@@ -12304,7 +12325,9 @@ export default function App() {
           const nr = r + dr;
           const nc = c + dc;
           if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
-            const neighborId = activeConfig.grid[nr][nc];
+            const rowArr = activeConfig.grid[nr];
+            if (!Array.isArray(rowArr)) return;
+            const neighborId = rowArr[nc];
             if (neighborId && student.forbidden.includes(neighborId)) conflictCount++;
           }
         });
@@ -12316,6 +12339,7 @@ export default function App() {
     const activeStudents = activeConfig.grid.flat().filter(s => s !== null);
     if (activeStudents.length > 0) {
       activeConfig.grid.forEach((row, r) => {
+        if (!Array.isArray(row)) return;
         row.forEach((sid, c) => {
           if (!sid) return;
           const student = activeConfig.students.find(s => s.id === sid);
@@ -12329,7 +12353,8 @@ export default function App() {
             const nr = r + dr;
             const nc = c + dc;
             if (nr >= 0 && nr < activeConfig.rows && nc >= 0 && nc < activeConfig.cols) {
-              return activeConfig.grid[nr][nc];
+              const rowArr = activeConfig.grid[nr];
+              return Array.isArray(rowArr) ? rowArr[nc] : null;
             }
             return null;
           });
@@ -13665,11 +13690,13 @@ Instructions:
   };
 
   const checkViolations = useCallback(() => {
+    if (!currentConfig || !currentConfig.grid || !currentConfig.students) return;
     const grid = currentConfig.grid;
     const students = currentConfig.students;
     const newNotifications: any[] = [];
 
     grid.forEach((row, r) => {
+      if (!Array.isArray(row)) return;
       row.forEach((sid, c) => {
         if (!sid) return;
         const student = students.find(s => s.id === sid);
