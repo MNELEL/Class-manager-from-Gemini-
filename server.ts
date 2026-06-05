@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -11,7 +12,7 @@ async function startServer() {
   console.log(`SERVER_INIT: PORT=${process.env.PORT || 'not set (defaulting to 3000)'}`);
 
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = 3000;
 
   console.log(`SERVER_INIT: Resolved PORT=${PORT}`);
   app.use(express.json());
@@ -531,7 +532,12 @@ ${studentsNeedingSupportList}
 
   // Vite middleware for development
   let viteLoaded = false;
-  if (process.env.NODE_ENV !== "production") {
+  
+  // Cloud Run sets K_SERVICE, making it easy to detect production deploy
+  const isCloudRun = !!process.env.K_SERVICE;
+  const isProd = process.env.NODE_ENV === "production" || isCloudRun;
+
+  if (!isProd) {
     try {
       const viteModuleName = "vite";
       const { createServer: createViteServer } = await import(viteModuleName);

@@ -11794,6 +11794,10 @@ export default function App() {
         setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חשבון Google חובר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
       }
     } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, silently ignore or show a mild info message
+        return;
+      }
       setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
     } finally {
       setIsWorkspaceLoading(false);
@@ -11806,7 +11810,7 @@ export default function App() {
   };
   const [currentConfig, setCurrentConfig] = useState(() => ({
     id: '1',
-    name: 'כיתת מצוינות א׳',
+    name: 'כיתה חדשה',
     rows: 6,
     cols: 9,
     grid: Array(6).fill(null).map(() => Array(9).fill(null)) as (string | null)[][],
@@ -11815,17 +11819,8 @@ export default function App() {
     rowGaps: [] as number[],
     columnGaps: [] as number[],
     teacherDesk: { index: -1, width: 2, height: 1 },
-    groups: [
-      { id: 'none', name: 'ללא קבוצה', constraint: 'none' },
-      { id: 'א', name: 'קבוצה א', constraint: 'none' },
-      { id: 'ב', name: 'קבוצה ב', constraint: 'none' },
-      { id: 'ג', name: 'קבוצה ג', constraint: 'none' },
-    ] as any[],
-    furniture: [
-       { id: 'f1', type: 'board', x: 300, y: -10, width: 600, height: 120, rotation: 0 },
-       { id: 'f2', type: 'cabinet', x: 10, y: 200, width: 100, height: 250, rotation: 90 },
-       { id: 'f3', type: 'plant', x: 1100, y: 600, width: 80, height: 80, rotation: 0 }
-    ] as any[],
+    groups: [] as any[],
+    furniture: [] as any[],  
     availableLessons: [] as any[],
     updatedAt: Date.now(),
     columnGapSize: 32,
@@ -12439,12 +12434,15 @@ export default function App() {
     }
     const satisfaction = activeStudents.length > 0 ? Math.min(100, Math.max(0, Math.round(totalScore / activeStudents.length))) : 0;
 
+    const presentAndLate = activeConfig.students.filter(s => s.status === 'present' || s.status === 'late').length;
+    let attendance = studentCount === 0 ? 0 : Math.round((presentAndLate / studentCount) * 100);
+
     return {
       studentCount,
       placedCount,
       conflicts: Math.floor(conflictCount / 2),
       satisfaction,
-      attendance: 98 // Static/Mock for now as requested
+      attendance
     };
   }, [activeConfig]);
 
@@ -17622,7 +17620,6 @@ Instructions:
             { id: 'dashboard', icon: <PieChartIcon className="w-5 h-5" />, label: 'ראשי' },
             { id: 'attendance', icon: <Calendar className="w-5 h-5" />, label: 'נוכחות' },
             { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
-            { id: 'progress', icon: <LineChart className="w-5 h-5" />, label: 'התקדמות' },
             { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
             { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'כיתה' }
           ] as const).map(nav => (
