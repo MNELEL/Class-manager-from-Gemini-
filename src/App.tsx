@@ -30,6 +30,11 @@ import { generateContent, generateLessonPlan } from './lib/ai';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { QuestionBankView } from './components/QuestionBankView';
+import { ParentsView } from './components/ParentsView';
+import { LessonAnalyzer } from './components/LessonAnalyzer';
+import { WorksheetsView } from './components/WorksheetsView';
+import { StudentsView } from './components/StudentsView';
 import { ContentManagementView } from './components/ContentManagementView';
 import { WeeklyPlanningView } from './components/WeeklyPlanningView';
 import { LandingPage } from './components/LandingPage';
@@ -124,6 +129,7 @@ import {
   Minimize2,
   Monitor,
   Moon,
+  MoreHorizontal,
   MoreVertical,
   MousePointer,
   MousePointer2,
@@ -8568,7 +8574,9 @@ const SettingsView = ({
   customThemes,
   setCustomThemes,
   themeFontOverrides,
-  setThemeFontOverrides
+  setThemeFontOverrides,
+  highContrast,
+  setHighContrast
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -11795,8 +11803,24 @@ export default function App() {
         setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חשבון Google חובר בהצלחה: ${result.user.email}`, type: 'success' }, ...prev]);
       }
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
-        // User closed the popup, silently ignore or show a mild info message
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/popup-blocked' || err?.message?.includes('popup')) {
+        setNotifications(prev => [
+          {
+            id: Date.now() + Math.random(),
+            type: 'error',
+            text: 'חלון ההתחברות של Google נחסם או נסגר על ידי הדפדפן. מאחר שהמערכת פועלת בתור מסגרת (Iframe), יש לאפשר פופ-אפים או לפתוח את האפליקציה בלשונית חדשה.',
+            action: (
+              <button
+                onClick={() => window.open(window.location.href, '_blank')}
+                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-black text-[10.5px] rounded-lg shadow-sm transition-all pointer-events-auto"
+              >
+                <ExternalLink className="w-3.5 h-3.5 animate-pulse" />
+                פתח בלשונית חדשה
+              </button>
+            )
+          },
+          ...prev
+        ]);
         return;
       }
       setNotifications(prev => [{ id: Date.now() + Math.random(), text: `חיבור ל-Google נכשל: ${err.message}`, type: 'error' }, ...prev]);
@@ -11883,6 +11907,8 @@ export default function App() {
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [isFirebaseOnline, setIsFirebaseOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const isGroupedActive = ['grades', 'library', 'gamification', 'tools', 'worksheets', 'question-bank', 'lesson-analyzer', 'curriculum', 'tasks', 'parents', 'events', 'studentDetail'].includes(viewType);
 
   useEffect(() => {
     const handleOnline = () => setIsFirebaseOnline(true);
@@ -12787,6 +12813,7 @@ export default function App() {
     customSystemPrompt: "אתה יועץ פדגוגי מומחה. השב בעברית בלבד."
   });
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [highContrast, setHighContrast] = useState(false);
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
   const [hoveredColGap, setHoveredColGap] = useState<number | null>(null);
   const [hoveredRowGap, setHoveredRowGap] = useState<number | null>(null);
@@ -12908,6 +12935,10 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
   };
 
   useEffect(() => {
+    document.documentElement.dataset.highContrast = highContrast ? "true" : "false";
+  }, [highContrast]);
+
+  useEffect(() => {
     if (activeConfig.students) {
       const today = new Date();
       const birthdaysToday = activeConfig.students.filter((s: any) => {
@@ -12934,6 +12965,29 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
       }
     }
   }, [activeConfig.students]);
+
+  useEffect(() => {
+    if (!activeConfig?.tasks) return;
+    const now = new Date();
+    const overdue = activeConfig.tasks.filter((t: any) => {
+      const dueDate = new Date(t.dueDate);
+      const diffMs = now.getTime() - dueDate.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      return diffDays > 3 && !t.completed;
+    });
+    
+    if (overdue.length > 0) {
+      setNotifications(prev => {
+        const newNotifs = overdue.filter((t: any) => !prev.some((p: any) => p.id === `overdue-${t.id}`));
+        if (newNotifs.length === 0) return prev;
+        return [...newNotifs.map((t: any) => ({ 
+          id: `overdue-${t.id}`, 
+          text: `המשימה "${t.title}" עברה את תאריך היעד ב-${Math.floor((now.getTime() - new Date(t.dueDate).getTime()) / (1000 * 60 * 60 * 24))} ימים!`, 
+          type: 'error' 
+        })), ...prev];
+      });
+    }
+  }, [activeConfig.tasks]);
 
   const runAIShuffle = async () => {
     setLastAIConfig(activeConfig);
@@ -13529,11 +13583,30 @@ Instructions:
     localStorage.setItem('class-manager-config', JSON.stringify(currentConfig));
     localStorage.setItem('desk-history', JSON.stringify(deskHistory));
     
-    if (lastSaved) {
-        setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'השינויים נשמרו בהצלחה', type: 'success' }, ...prev]);
+    if (currentUser && currentUser.uid !== 'guest' && isFirebaseOnline) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          const configRef = doc(db, 'users', currentUser.uid, 'classes', currentConfig.id || 'default');
+          await setDoc(configRef, {
+            ...currentConfig,
+            updatedAt: new Date().toISOString()
+          });
+          setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'סונכרן ונשמר אוטומטית ב-Firebase', type: 'success' }, ...prev]);
+        } catch (error) {
+          console.error("Firebase sync error:", error);
+          setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'שגיאה בסנכרון ל-Firebase, המידע נשמר מקומית', type: 'error' }, ...prev]);
+        }
+      }, 1500); // Debounce
+      
+      setLastSaved(Date.now());
+      return () => clearTimeout(timeoutId);
+    } else {
+      if (lastSaved) {
+          setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'השינויים נשמרו בהצלחה (מקומית)', type: 'success' }, ...prev]);
+      }
+      setLastSaved(Date.now());
     }
-    setLastSaved(Date.now());
-  }, [currentConfig, deskHistory]);
+  }, [currentConfig, deskHistory, currentUser, isFirebaseOnline]);
 
   const studentsInPool = useMemo(() => {
     let pool = currentConfig.students.filter(s => {
@@ -14113,11 +14186,11 @@ Instructions:
       case 'reminders': return <RemindersView config={activeConfig} updateConfig={updateCurrentConfig} students={activeConfig.students} onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
-      case 'students': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Users className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">ניהול תלמידים</h2><p className="text-slate-500 font-medium">עמוד זה יאפשר ניהול מרוכז של פרופיל הכיתה.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
-      case 'worksheets': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><FileText className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">דפי עבודה חכמים (AI)</h2><p className="text-slate-500 font-medium">כאן תוכלו לייצר דפי עבודה מותאמים אישית בעזרת בינה מלאכותית.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
-      case 'question-bank': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Layers className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">בנק שאלות</h2><p className="text-slate-500 font-medium">מאגר שאלות שיתופי.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
-      case 'lesson-analyzer': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Monitor className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">ניתוח שיעור בזמן אמת (AI)</h2><p className="text-slate-500 font-medium">הקלטה וניתוח של השיעור למתן משוב פדגוגי.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
-      case 'parents': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Mail className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">קשר עם הורים</h2><p className="text-slate-500 font-medium">דוחות ושליחת עדכונים להדירים.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
+      case 'students': return <StudentsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setViewType={setViewType} />;
+      case 'worksheets': return <WorksheetsView onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} />;
+      case 'question-bank': return <QuestionBankView onBack={onBackToGrid} currentConfig={activeConfig} />;
+      case 'lesson-analyzer': return <LessonAnalyzer onBack={onBackToGrid} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
+      case 'parents': return <ParentsView students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} />;
       case 'content-management': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
       case 'library': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
       case 'weekly-planning': return <WeeklyPlanningView students={activeConfig.students} onBack={onBackToGrid} />;
@@ -14245,6 +14318,8 @@ Instructions:
           setCustomThemes={setCustomThemes}
           themeFontOverrides={themeFontOverrides}
           setThemeFontOverrides={setThemeFontOverrides}
+          highContrast={highContrast}
+          setHighContrast={setHighContrast}
         />
       );
       case 'studentDetail': {
@@ -14845,66 +14920,84 @@ Instructions:
         {!isSidebarCollapsed && (
           <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2 text-right">ניהול ראשי</h3>
         )}
-        {(['dashboard', 'grid', 'students', 'attendance', 'grades', 'library', 'gamification', 'tools', 'worksheets', 'question-bank', 'lesson-analyzer', 'curriculum', 'tasks', 'parents', 'events', 'studentDetail'] as const).map(nav => (
+        {[
+          { id: 'dashboard', label: 'דשבורד', icon: <BookOpen className="w-5 h-5" /> },
+          { id: 'grid', label: 'מרחב כיתה', icon: <LayoutGrid className="w-5 h-5" /> },
+          { id: 'students', label: 'תלמידים', icon: <Users className="w-5 h-5" /> },
+          { id: 'attendance', label: 'נוכחות', icon: <CalendarCheck className="w-5 h-5" /> },
+        ].map(nav => (
           <button
-            key={nav}
-            onClick={() => setViewTypeWithTransition(nav)}
+            key={nav.id}
+            onClick={() => setViewTypeWithTransition(nav.id as any)}
             className={cn(
               "w-full flex items-center gap-4 rounded-2xl font-bold text-sm transition-all group relative overflow-hidden",
-              viewType === nav 
+              viewType === nav.id 
                 ? "bg-brand-600 text-white shadow-lg shadow-brand-200 dark:shadow-none" 
                 : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50",
               isSidebarCollapsed && !isMobile ? "p-3 justify-center" : "p-4"
             )}
-            title={isSidebarCollapsed ? nav : undefined}
+            title={isSidebarCollapsed ? nav.label : undefined}
           >
             <div className={cn(
               "p-2 rounded-xl transition-colors shrink-0",
-              viewType === nav ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20"
+              viewType === nav.id ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20"
             )}>
-              {nav === 'dashboard' && <BookOpen className="w-5 h-5" />}
-              {nav === 'grid' && <LayoutGrid className="w-5 h-5" />}
-              {nav === 'students' && <Users className="w-5 h-5" />}
-              {nav === 'attendance' && <CalendarCheck className="w-5 h-5" />}
-              {nav === 'grades' && <GraduationCap className="w-5 h-5" />}
-              {nav === 'library' && <Library className="w-5 h-5" />}
-              {nav === 'gamification' && <Trophy className="w-5 h-5" />}
-              {nav === 'tools' && <Wrench className="w-5 h-5" />}
-              {nav === 'worksheets' && <FileText className="w-5 h-5" />}
-              {nav === 'question-bank' && <Layers className="w-5 h-5" />}
-              {nav === 'lesson-analyzer' && <Monitor className="w-5 h-5" />}
-              {nav === 'curriculum' && <ClipboardList className="w-5 h-5" />}
-              {nav === 'tasks' && <CheckSquare className="w-5 h-5" />}
-              {nav === 'parents' && <Mail className="w-5 h-5" />}
-              {nav === 'events' && <Bell className="w-5 h-5" />}
-              {nav === 'studentDetail' && <Eye className="w-5 h-5" />}
+              {nav.icon}
             </div>
             {!isSidebarCollapsed && (
-              <span className="truncate flex-1 text-right">
-                {nav === 'dashboard' && 'דשבורד'}
-                {nav === 'grid' && 'מרחב כיתה'}
-                {nav === 'students' && 'תלמידים'}
-                {nav === 'attendance' && 'נוכחות'}
-                {nav === 'grades' && 'ציונים'}
-                {nav === 'library' && 'ספרייה'}
-                {nav === 'gamification' && 'גמיפיקציה'}
-                {nav === 'tools' && 'כלים למורה'}
-                {nav === 'worksheets' && 'דפי עבודה'}
-                {nav === 'question-bank' && 'בנק שאלות'}
-                {nav === 'lesson-analyzer' && 'ניתוח שיעור'}
-                {nav === 'curriculum' && 'תוכניות'}
-                {nav === 'tasks' && 'שיעורי בית'}
-                {nav === 'parents' && 'הורים'}
-                {nav === 'events' && 'לוח צלילים'}
-                {nav === 'studentDetail' && 'תצוגת תלמיד'}
-              </span>
+              <span className="truncate flex-1 text-right">{nav.label}</span>
             )}
             
-      {viewType === nav && !isSidebarCollapsed && (
+            {viewType === nav.id && !isSidebarCollapsed && (
               <motion.div layoutId="sidebar-active" className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-200 rounded-r-full" />
             )}
           </button>
         ))}
+
+        {/* More Tools Button */}
+        <button
+          onClick={() => setIsMoreMenuOpen(true)}
+          className={cn(
+            "w-full flex items-center gap-4 rounded-2xl font-bold text-sm transition-all group relative overflow-hidden",
+            isGroupedActive 
+              ? "bg-brand-600 text-white shadow-lg shadow-brand-200 dark:shadow-none" 
+              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50",
+            isSidebarCollapsed && !isMobile ? "p-3 justify-center" : "p-4"
+          )}
+          title={isSidebarCollapsed ? "עוד כלים" : undefined}
+        >
+          <div className={cn(
+            "p-2 rounded-xl transition-colors shrink-0",
+            isGroupedActive ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20"
+          )}>
+            <MoreHorizontal className="w-5 h-5" />
+          </div>
+          {!isSidebarCollapsed && (
+            <div className="flex-1 text-right flex flex-col items-start leading-tight">
+              <span className="truncate font-black text-sm">עוד כלים</span>
+              {isGroupedActive && (
+                <span className="text-[10px] opacity-80 font-medium">
+                  {viewType === 'grades' && 'ציונים'}
+                  {viewType === 'library' && 'ספרייה'}
+                  {viewType === 'gamification' && 'גמיפיקציה'}
+                  {viewType === 'tools' && 'כלים למורה'}
+                  {viewType === 'worksheets' && 'דפי עבודה'}
+                  {viewType === 'question-bank' && 'בנק שאלות'}
+                  {viewType === 'lesson-analyzer' && 'ניתוח שיעור'}
+                  {viewType === 'curriculum' && 'תוכניות'}
+                  {viewType === 'tasks' && 'שיעורי בית'}
+                  {viewType === 'parents' && 'הורים'}
+                  {viewType === 'events' && 'לוח צלילים'}
+                  {viewType === 'studentDetail' && 'תצוגת תלמיד'}
+                </span>
+              )}
+            </div>
+          )}
+          
+          {isGroupedActive && !isSidebarCollapsed && (
+            <motion.div layoutId="sidebar-active" className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-200 rounded-r-full" />
+          )}
+        </button>
       </div>
 
       <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2" />
@@ -15530,6 +15623,89 @@ Instructions:
                 <div className="w-3 h-3 bg-brand-400 rounded-full animate-bounce" />
              </div>
              <p className="text-slate-900 dark:text-white font-black text-xl tracking-tight">כבר נפתח...</p>
+          </motion.div>
+        )}
+
+        {isMoreMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMoreMenuOpen(false)}
+            className="fixed inset-0 z-[1100] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-6"
+            dir="rtl"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-6 relative"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="space-y-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">עוד אפשרויות וכלים</h3>
+                  <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">נהל את כל היכולות המתקדמות של הכיתה תחת קורת גג אחת</p>
+                </div>
+                <button
+                  onClick={() => setIsMoreMenuOpen(false)}
+                  className="w-10 h-10 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full flex items-center justify-center hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 transition-all active:scale-90"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Bento Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-1 custom-scrollbar">
+                {[
+                  { id: 'grades', icon: <GraduationCap className="w-6 h-6 text-emerald-500" />, label: 'ציונים', desc: 'מעקב וניהול ציוני תלמידים והערכות' },
+                  { id: 'library', icon: <Library className="w-6 h-6 text-amber-500" />, label: 'ספרייה', desc: 'מאגר חומרים, קבצים ומערכי שיעור' },
+                  { id: 'gamification', icon: <Trophy className="w-6 h-6 text-yellow-500" />, label: 'גמיפיקציה', desc: 'לוח אתגרים, פרסים ותמריצים מדליקים' },
+                  { id: 'tools', icon: <Wrench className="w-6 h-6 text-blue-500" />, label: 'כלים למורה', desc: 'שעוני עצר, רעשנים וכלים שימושיים' },
+                  { id: 'worksheets', icon: <FileText className="w-6 h-6 text-indigo-500" />, label: 'דפי עבודה', desc: 'יצירה וניהול של דפי תרגול לכיתה' },
+                  { id: 'question-bank', icon: <Layers className="w-6 h-6 text-rose-500" />, label: 'בנק שאלות', desc: 'מאגר שאלות מובנה להרכבת מבחנים' },
+                  { id: 'lesson-analyzer', icon: <Monitor className="w-6 h-6 text-cyan-500" />, label: 'ניתוח שיעור', desc: 'ניתוח פדגוגי חכם בעזרת בינה מלאכותית' },
+                  { id: 'curriculum', icon: <ClipboardList className="w-6 h-6 text-purple-500" />, label: 'תוכניות למידה', desc: 'תוכניות לימודים שנתיות ושבועיות' },
+                  { id: 'tasks', icon: <CheckSquare className="w-6 h-6 text-teal-500" />, label: 'שיעורי בית', desc: 'מעקב אחר הגשת משימות ומטלות' },
+                  { id: 'parents', icon: <Mail className="w-6 h-6 text-pink-500" />, label: 'הורים', desc: 'עדכונים וקשר שוטף עם הורי התלמידים' },
+                  { id: 'events', icon: <Bell className="w-6 h-6 text-violet-500" />, label: 'לוח צלילים', desc: 'אפקטים וקולות מנחים לפעילות בכיתה' },
+                  { id: 'studentDetail', icon: <Eye className="w-6 h-6 text-orange-500" />, label: 'תצוגת תלמיד', desc: 'פרופיל אישי מעמיק לצפייה בפרטים משלימים' }
+                ].map((item) => {
+                  const isActive = viewType === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setViewTypeWithTransition(item.id as any);
+                        setIsMoreMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-start gap-4 p-4 rounded-3xl border text-right transition-all group scale-100 active:scale-95",
+                        isActive
+                          ? "bg-brand-50/50 dark:bg-brand-950/20 border-brand-500/50 shadow-md ring-1 ring-brand-500"
+                          : "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-900/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-3 rounded-2.5xl shrink-0 transition-transform group-hover:scale-110 duration-300",
+                        isActive ? "bg-brand-500 text-white" : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm"
+                      )}>
+                        {item.icon}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-black text-slate-800 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                          {item.label}
+                        </p>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed max-w-[200px]">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
@@ -17533,11 +17709,12 @@ Instructions:
                   n.type === 'error' ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-800 dark:text-rose-200 shadow-rose-200 dark:shadow-none" : "bg-white dark:bg-slate-900 border-brand-500 text-slate-700 dark:text-slate-200 shadow-slate-200 dark:shadow-none"
                 )}
               >
-                {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-brand-500" />}
-                <div className="flex-1">
+                {n.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" /> : <CheckCircle2 className="w-5 h-5 text-brand-500 shrink-0" />}
+                <div className="flex-1 flex flex-col gap-1">
                   <p className="text-xs font-black">{n.text}</p>
+                  {n.action && <div className="mt-1">{n.action}</div>}
                 </div>
-                <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+                <button onClick={() => setNotifications(prev => prev.filter(nn => nn.id !== n.id))} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
                   <X className="w-3 h-3" />
                 </button>
               </motion.div>
@@ -17620,24 +17797,12 @@ Instructions:
 
       {/* Desktop/Web Navigation Bar is in the Sidebar, but Mobile Bottom Navigation Bar is here */}
       {!isPresentationMode && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-border flex items-center overflow-x-auto no-scrollbar z-[100]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-border flex items-center justify-around overflow-x-auto no-scrollbar z-[100]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           {([
             { id: 'dashboard', icon: <BookOpen className="w-5 h-5" />, label: 'דשבורד' },
             { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'סידור' },
             { id: 'students', icon: <Users className="w-5 h-5" />, label: 'תלמידים' },
             { id: 'attendance', icon: <CalendarCheck className="w-5 h-5" />, label: 'נוכחות' },
-            { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
-            { id: 'library', icon: <Library className="w-5 h-5" />, label: 'ספרייה' },
-            { id: 'gamification', icon: <Trophy className="w-5 h-5" />, label: 'גמיפיקציה' },
-            { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
-            { id: 'worksheets', icon: <FileText className="w-5 h-5" />, label: 'דפי עבודה' },
-            { id: 'question-bank', icon: <Layers className="w-5 h-5" />, label: 'בנק שאלות' },
-            { id: 'lesson-analyzer', icon: <Monitor className="w-5 h-5" />, label: 'ניתוח שיעור' },
-            { id: 'curriculum', icon: <ClipboardList className="w-5 h-5" />, label: 'תוכניות' },
-            { id: 'tasks', icon: <CheckSquare className="w-5 h-5" />, label: 'שיעורי בית' },
-            { id: 'parents', icon: <Mail className="w-5 h-5" />, label: 'הורים' },
-            { id: 'events', icon: <Bell className="w-5 h-5" />, label: 'לוח צלילים' },
-            { id: 'studentDetail', icon: <Eye className="w-5 h-5" />, label: 'תצוגת תלמיד' },
           ] as const).map(nav => (
             <button
               key={nav.id}
@@ -17646,19 +17811,34 @@ Instructions:
                 setIsSidebarOpen(false);
               }}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 min-w-[70px] min-h-[56px] py-2 transition-all relative flex-none",
-                viewType === nav.id || (nav.id === 'grid' && viewType === 'seating') 
+                "flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[56px] py-1.5 transition-all relative flex-none",
+                viewType === nav.id || (nav.id === 'grid' && (viewType as string) === 'seating') 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {nav.icon}
               <span className="text-[9px] font-black">{nav.label}</span>
-              {viewType === nav.id && (
+              {(viewType === nav.id || (nav.id === 'grid' && (viewType as string) === 'seating')) && (
                 <motion.div layoutId="mobile-nav-active" className="absolute top-0 inset-x-2 h-[3px] bg-primary rounded-b-full" />
               )}
             </button>
           ))}
+
+          {/* More button */}
+          <button
+            onClick={() => setIsMoreMenuOpen(true)}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[56px] py-1.5 transition-all relative flex-none",
+              isGroupedActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MoreHorizontal className="w-5 h-5" />
+            <span className="text-[9px] font-black">עוד כלים</span>
+            {isGroupedActive && (
+              <motion.div layoutId="mobile-nav-active" className="absolute top-0 inset-x-2 h-[3px] bg-primary rounded-b-full" />
+            )}
+          </button>
         </nav>
       )}
 

@@ -1,6 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+[data-high-contrast="true"] {
+  --bg: #000000;
+  --text: #ffffff;
+  --border: #ffff00;
+}
+
+[data-high-contrast="true"] body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+[data-high-contrast="true"] * {
+  border-color: var(--border) !important;
+}
+
 @theme {
   --font-sans: "Plus Jakarta Sans", "Heebo", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", "Heebo", ui-sans-serif, system-ui, sans-serif;
@@ -895,6 +910,15 @@
   
   .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+@media print {
+  .hidden-print { display: none !important; }
+  .print-container { 
+    background: transparent !important; 
+    border: none !important;
+    box-shadow: none !important;
+  }
 }
 
 :root { --sat: env(safe-area-inset-top,0px); --sab: env(safe-area-inset-bottom,0px); }

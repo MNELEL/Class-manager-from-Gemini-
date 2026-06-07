@@ -12,7 +12,7 @@ async function startServer() {
   console.log(`SERVER_INIT: PORT=${process.env.PORT || 'not set (defaulting to 3000)'}`);
 
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   console.log(`SERVER_INIT: Resolved PORT=${PORT}`);
   app.use(express.json());
