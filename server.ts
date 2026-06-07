@@ -532,12 +532,8 @@ ${studentsNeedingSupportList}
 
   // Vite middleware for development
   let viteLoaded = false;
-  
-  // Cloud Run sets K_SERVICE, making it easy to detect production deploy
-  const isCloudRun = !!process.env.K_SERVICE;
-  const isProd = process.env.NODE_ENV === "production" || isCloudRun;
 
-  if (!isProd) {
+  if (process.env.NODE_ENV !== "production" && !process.env.K_SERVICE) {
     try {
       const viteModuleName = "vite";
       const { createServer: createViteServer } = await import(viteModuleName);

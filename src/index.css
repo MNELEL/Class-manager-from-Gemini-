@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&family=Heebo:wght@300;400;500;600;700;800;900&family=Lexend:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--app-font-sans, "Lexend", "Inter", "Heebo", "Assistant", ui-sans-serif, system-ui, sans-serif);
-  --font-display: var(--app-font-display, "Lexend", "Outfit", "Montserrat", sans-serif);
+  --font-sans: "Plus Jakarta Sans", "Heebo", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Heebo", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
   --color-brand-50: #f8fafc;
@@ -850,3 +850,53 @@
 .dark .desk-shadow {
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
 }
+
+/* ClassManager Pro Theme Override */
+@layer base {
+  :root {
+    --background: 40 30% 97%;       /* קרם חם */
+    --foreground: 224 40% 10%;      /* אינדיגו כהה */
+    --card: 0 0% 100%;
+    --card-foreground: 224 40% 10%;
+    --primary: 237 70% 55%;         /* אינדיגו #4f46e5 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 94%;
+    --secondary-foreground: 224 30% 22%;
+    --muted: 220 16% 92%;
+    --muted-foreground: 220 10% 48%;
+    --accent: 237 75% 96%;
+    --accent-foreground: 237 70% 42%;
+    --destructive: 4 82% 56%;
+    --border: 220 16% 88%;
+    --input: 220 16% 90%;
+    --ring: 237 70% 55%;
+    --radius: 0.75rem;
+  }
+  .dark {
+    --background: 224 28% 8%;
+    --foreground: 220 18% 93%;
+    --card: 224 26% 11%;
+    --primary: 237 72% 66%;
+    --secondary: 224 22% 16%;
+    --muted: 224 22% 15%;
+    --accent: 237 50% 20%;
+    --border: 224 22% 18%;
+  }
+}
+
+/* ClassManager Pro CSS Classes */
+@layer utilities {
+  .card-hover { transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s; }
+  .card-hover:hover { box-shadow: 0 6px 24px rgba(79,70,229,0.12); transform: translateY(-2px); border-color: hsl(237 70% 55% / 0.3); }
+
+  .card-academic { border-top: 3px solid hsl(237 70% 55% / 0.22); }
+  .card-glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border: 1px solid hsl(220 16% 88%); }
+  .bg-academic-gradient { background: linear-gradient(135deg, hsl(237 70% 55% / 0.08) 0%, hsl(40 30% 97%) 60%); }
+  
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+:root { --sat: env(safe-area-inset-top,0px); --sab: env(safe-area-inset-bottom,0px); }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+

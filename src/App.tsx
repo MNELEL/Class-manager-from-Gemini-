@@ -67,6 +67,7 @@ import {
   Briefcase,
   Cake,
   Calendar,
+  CalendarCheck,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -11846,7 +11847,7 @@ export default function App() {
   const [practiceConfig, setPracticeConfig] = useState<typeof currentConfig | null>(null);
 
   const activeConfig = useMemo(() => isPracticeMode && practiceConfig ? practiceConfig : currentConfig, [isPracticeMode, practiceConfig, currentConfig]);
-  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management' | 'feedback' | 'weekly-planning'>('dashboard');
+  const [viewType, setViewType] = useState<'grid' | 'table' | 'history' | 'dashboard' | 'attendance' | 'grades' | 'progress' | 'settings' | 'studentDetail' | 'exams' | 'tools' | 'events' | 'reminders' | 'campaigns' | 'campaign-display' | 'analytics' | 'rewards' | 'leaderboard' | 'behaviorLog' | 'workspace' | 'landing' | 'calendar' | 'content-management' | 'tasks' | 'toolkit' | 'groups-management' | 'feedback' | 'weekly-planning' | 'students' | 'library' | 'gamification' | 'worksheets' | 'question-bank' | 'lesson-analyzer' | 'curriculum' | 'parents'>('dashboard');
   const [viewHistory, setViewHistory] = useState<typeof viewType[]>([]);
 
   const setViewTypeWithTransition = (newView: typeof viewType, isBackAction = false) => {
@@ -14112,9 +14113,17 @@ Instructions:
       case 'reminders': return <RemindersView config={activeConfig} updateConfig={updateCurrentConfig} students={activeConfig.students} onBack={onBack} />;
       case 'progress': return <ProgressView onBack={onBack} />;
       case 'exams': return <ExamsView onBack={onBackToGrid} />;
+      case 'students': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Users className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">ניהול תלמידים</h2><p className="text-slate-500 font-medium">עמוד זה יאפשר ניהול מרוכז של פרופיל הכיתה.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
+      case 'worksheets': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><FileText className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">דפי עבודה חכמים (AI)</h2><p className="text-slate-500 font-medium">כאן תוכלו לייצר דפי עבודה מותאמים אישית בעזרת בינה מלאכותית.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
+      case 'question-bank': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Layers className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">בנק שאלות</h2><p className="text-slate-500 font-medium">מאגר שאלות שיתופי.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
+      case 'lesson-analyzer': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Monitor className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">ניתוח שיעור בזמן אמת (AI)</h2><p className="text-slate-500 font-medium">הקלטה וניתוח של השיעור למתן משוב פדגוגי.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
+      case 'parents': return <div className="p-10 flex flex-col items-center justify-center h-full space-y-4"><Mail className="w-16 h-16 text-slate-300" /><h2 className="text-2xl font-black text-slate-800">קשר עם הורים</h2><p className="text-slate-500 font-medium">דוחות ושליחת עדכונים להדירים.</p><button onClick={onBackToGrid} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold">חזרה לכיתה</button></div>;
       case 'content-management': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
+      case 'library': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
       case 'weekly-planning': return <WeeklyPlanningView students={activeConfig.students} onBack={onBackToGrid} />;
+      case 'curriculum': return <WeeklyPlanningView students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaigns': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
+      case 'gamification': return <CampaignsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setNotifications={setNotifications} setViewType={setViewType} />;
       case 'toolkit': return <TeacherToolkit students={activeConfig.students} onBack={onBackToGrid} />;
       case 'campaign-display': return (
         <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -14299,7 +14308,7 @@ Instructions:
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight uppercase group-hover:text-brand-600 transition-colors">CLass&Sscool<span className="text-brand-600 ml-1">pro</span></h1>
+            <h1 className="text-lg font-display font-black text-slate-900 dark:text-white leading-none tracking-tight group-hover:text-brand-600 transition-colors">ClassManager <span className="text-brand-600 ml-1">Pro</span></h1>
           </div>
         </button>
 
@@ -14836,7 +14845,7 @@ Instructions:
         {!isSidebarCollapsed && (
           <h3 className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 px-2 text-right">ניהול ראשי</h3>
         )}
-        {(['dashboard', 'grid', 'workspace', 'behaviorLog', 'campaigns', 'leaderboard', 'rewards', 'analytics', 'attendance', 'grades', 'tasks', 'events', 'reminders', 'progress', 'exams', 'content-management', 'weekly-planning', 'tools'] as const).map(nav => (
+        {(['dashboard', 'grid', 'students', 'attendance', 'grades', 'library', 'gamification', 'tools', 'worksheets', 'question-bank', 'lesson-analyzer', 'curriculum', 'tasks', 'parents', 'events', 'studentDetail'] as const).map(nav => (
           <button
             key={nav}
             onClick={() => setViewTypeWithTransition(nav)}
@@ -14853,45 +14862,41 @@ Instructions:
               "p-2 rounded-xl transition-colors shrink-0",
               viewType === nav ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20"
             )}>
-              {nav === 'dashboard' && <PieChartIcon className="w-5 h-5" />}
+              {nav === 'dashboard' && <BookOpen className="w-5 h-5" />}
               {nav === 'grid' && <LayoutGrid className="w-5 h-5" />}
-              {nav === 'workspace' && <CloudLightning className="w-5 h-5" />}
-              {nav === 'behaviorLog' && <ClipboardList className="w-5 h-5" />}
-              {nav === 'attendance' && <Calendar className="w-5 h-5" />}
+              {nav === 'students' && <Users className="w-5 h-5" />}
+              {nav === 'attendance' && <CalendarCheck className="w-5 h-5" />}
               {nav === 'grades' && <GraduationCap className="w-5 h-5" />}
-              {nav === 'tasks' && <Bell className="w-5 h-5" />}
-              {nav === 'events' && <History className="w-5 h-5" />}
-              {nav === 'reminders' && <Clock className="w-5 h-5" />}
-              {nav === 'campaigns' && <Target className="w-5 h-5" />}
-              {nav === 'rewards' && <Zap className="w-5 h-5" />}
-              {nav === 'leaderboard' && <Trophy className="w-5 h-5" />}
-              {nav === 'analytics' && <BarChart3 className="w-5 h-5" />}
-              {nav === 'progress' && <LineChart className="w-5 h-5" />}
-              {nav === 'exams' && <Bookmark className="w-5 h-5" />}
-              {nav === 'content-management' && <BookOpen className="w-5 h-5" />}
-              {nav === 'weekly-planning' && <CalendarRange className="w-5 h-5" />}
+              {nav === 'library' && <Library className="w-5 h-5" />}
+              {nav === 'gamification' && <Trophy className="w-5 h-5" />}
               {nav === 'tools' && <Wrench className="w-5 h-5" />}
+              {nav === 'worksheets' && <FileText className="w-5 h-5" />}
+              {nav === 'question-bank' && <Layers className="w-5 h-5" />}
+              {nav === 'lesson-analyzer' && <Monitor className="w-5 h-5" />}
+              {nav === 'curriculum' && <ClipboardList className="w-5 h-5" />}
+              {nav === 'tasks' && <CheckSquare className="w-5 h-5" />}
+              {nav === 'parents' && <Mail className="w-5 h-5" />}
+              {nav === 'events' && <Bell className="w-5 h-5" />}
+              {nav === 'studentDetail' && <Eye className="w-5 h-5" />}
             </div>
             {!isSidebarCollapsed && (
               <span className="truncate flex-1 text-right">
-                {nav === 'dashboard' && 'ראשי'}
+                {nav === 'dashboard' && 'דשבורד'}
                 {nav === 'grid' && 'מרחב כיתה'}
-                {nav === 'workspace' && 'Workspace'}
-                {nav === 'behaviorLog' && 'יומן התנהגות'}
+                {nav === 'students' && 'תלמידים'}
                 {nav === 'attendance' && 'נוכחות'}
                 {nav === 'grades' && 'ציונים'}
-                {nav === 'tasks' && 'משימות'}
-                {nav === 'events' && 'יומן אירועים'}
-                {nav === 'reminders' && 'תזכורות'}
-                {nav === 'campaigns' && 'מבצעים'}
-                {nav === 'rewards' && 'מתנות ופרסים'}
-                {nav === 'leaderboard' && 'טבלת ליגה'}
-                {nav === 'analytics' && 'אנליטיקה'}
-                {nav === 'progress' && 'התקדמות'}
-                {nav === 'exams' && 'מבחנים'}
-                {nav === 'content-management' && 'ניהול תוכן'}
-                {nav === 'weekly-planning' && 'תכנון שבועי ויעדים'}
-                {nav === 'tools' && 'ארגז כלים'}
+                {nav === 'library' && 'ספרייה'}
+                {nav === 'gamification' && 'גמיפיקציה'}
+                {nav === 'tools' && 'כלים למורה'}
+                {nav === 'worksheets' && 'דפי עבודה'}
+                {nav === 'question-bank' && 'בנק שאלות'}
+                {nav === 'lesson-analyzer' && 'ניתוח שיעור'}
+                {nav === 'curriculum' && 'תוכניות'}
+                {nav === 'tasks' && 'שיעורי בית'}
+                {nav === 'parents' && 'הורים'}
+                {nav === 'events' && 'לוח צלילים'}
+                {nav === 'studentDetail' && 'תצוגת תלמיד'}
               </span>
             )}
             
@@ -17613,15 +17618,26 @@ Instructions:
         </div>
       )}
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Desktop/Web Navigation Bar is in the Sidebar, but Mobile Bottom Navigation Bar is here */}
       {!isPresentationMode && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-around px-2 py-3 z-[100] pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-border flex items-center overflow-x-auto no-scrollbar z-[100]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           {([
-            { id: 'dashboard', icon: <PieChartIcon className="w-5 h-5" />, label: 'ראשי' },
-            { id: 'attendance', icon: <Calendar className="w-5 h-5" />, label: 'נוכחות' },
+            { id: 'dashboard', icon: <BookOpen className="w-5 h-5" />, label: 'דשבורד' },
+            { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'סידור' },
+            { id: 'students', icon: <Users className="w-5 h-5" />, label: 'תלמידים' },
+            { id: 'attendance', icon: <CalendarCheck className="w-5 h-5" />, label: 'נוכחות' },
             { id: 'grades', icon: <GraduationCap className="w-5 h-5" />, label: 'ציונים' },
+            { id: 'library', icon: <Library className="w-5 h-5" />, label: 'ספרייה' },
+            { id: 'gamification', icon: <Trophy className="w-5 h-5" />, label: 'גמיפיקציה' },
             { id: 'tools', icon: <Wrench className="w-5 h-5" />, label: 'כלים' },
-            { id: 'grid', icon: <LayoutGrid className="w-5 h-5" />, label: 'כיתה' }
+            { id: 'worksheets', icon: <FileText className="w-5 h-5" />, label: 'דפי עבודה' },
+            { id: 'question-bank', icon: <Layers className="w-5 h-5" />, label: 'בנק שאלות' },
+            { id: 'lesson-analyzer', icon: <Monitor className="w-5 h-5" />, label: 'ניתוח שיעור' },
+            { id: 'curriculum', icon: <ClipboardList className="w-5 h-5" />, label: 'תוכניות' },
+            { id: 'tasks', icon: <CheckSquare className="w-5 h-5" />, label: 'שיעורי בית' },
+            { id: 'parents', icon: <Mail className="w-5 h-5" />, label: 'הורים' },
+            { id: 'events', icon: <Bell className="w-5 h-5" />, label: 'לוח צלילים' },
+            { id: 'studentDetail', icon: <Eye className="w-5 h-5" />, label: 'תצוגת תלמיד' },
           ] as const).map(nav => (
             <button
               key={nav.id}
@@ -17630,16 +17646,16 @@ Instructions:
                 setIsSidebarOpen(false);
               }}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all relative flex-1",
-                viewType === nav.id 
-                  ? "text-brand-600 dark:text-brand-400" 
-                  : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                "flex flex-col items-center justify-center gap-0.5 min-w-[70px] min-h-[56px] py-2 transition-all relative flex-none",
+                viewType === nav.id || (nav.id === 'grid' && viewType === 'seating') 
+                  ? "text-primary scale-110" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {nav.icon}
-              <span className="text-[10px] font-black">{nav.label}</span>
+              <span className="text-[9px] font-black">{nav.label}</span>
               {viewType === nav.id && (
-                <motion.div layoutId="mobile-nav-active" className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-1 bg-brand-600 rounded-b-lg" />
+                <motion.div layoutId="mobile-nav-active" className="absolute top-0 inset-x-2 h-[3px] bg-primary rounded-b-full" />
               )}
             </button>
           ))}
