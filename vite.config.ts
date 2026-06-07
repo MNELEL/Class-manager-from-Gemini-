@@ -40,6 +40,7 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
+      outDir: 'dist',
       target: 'es2022',
       rollupOptions: {
         output: {

@@ -87,6 +87,7 @@ import {
   CloudLightning,
   Columns,
   Computer,
+  Monitor,
   CreditCard,
   Download,
   Edit3,
@@ -4709,13 +4710,15 @@ const CampaignDisplay = ({ currentConfig }: { currentConfig: any }) => {
                 </div>
                 <span className="text-[10px] font-black text-emerald-500">{progress}%</span>
              </div>
-             <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative z-10">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  className="h-full bg-emerald-500 rounded-full" 
-                />
-             </div>
+              <div className="h-16 relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[{ name: 'Progress', value: progress }]} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                    <XAxis type="number" domain={[0, 100]} hide />
+                    <YAxis dataKey="name" type="category" hide />
+                    <Bar dataKey="value" fill="#10b981" radius={[4, 4, 4, 4]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform" />
           </div>
         );
@@ -8746,6 +8749,23 @@ const SettingsView = ({
           </div>
         </div>
 
+        {/* Display Settings */}
+        <div className="glass-card p-8 rounded-[3rem] space-y-6">
+          <div className="flex items-center gap-3" dir="rtl">
+            <Monitor className="w-6 h-6 text-indigo-500" />
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">הגדרות תצוגה</h3>
+          </div>
+          <label className="flex items-center justify-between cursor-pointer">
+            <span className="font-bold text-slate-700 dark:text-slate-200">מצב ניגודיות גבוהה</span>
+            <input 
+              type="checkbox" 
+              checked={highContrast} 
+              onChange={(e) => setHighContrast(e.target.checked)}
+              className="w-5 h-5 accent-primary" 
+            />
+          </label>
+        </div>
+        
         {/* Advanced AI */}
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3" dir="rtl">

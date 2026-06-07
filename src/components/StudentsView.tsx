@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
+import {
   Users, Search, Filter, Plus, Edit2, Trash2, 
   ChevronDown, User as UserIcon, BookOpen, 
-  Settings2, AlertCircle, Sparkles, GraduationCap
+  Settings2, AlertCircle, Sparkles, GraduationCap, FileText
 } from 'lucide-react';
 import { Student } from '../types';
 import { cn } from '../lib/utils';
 import { generateContent } from '../lib/ai';
+import { exportStudentPDF } from '../lib/pdf';
 
 export const StudentsView = ({ 
   students, 
@@ -253,6 +254,13 @@ ${text}`,
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => exportStudentPDF(student)}
+                          className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                          title="ייצוא פרופיל PDF"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => { setViewType('studentDetail'); /* we'd ideally pass student ID but viewType 'studentDetail' expects state mapping */ }}
                           className="p-2 text-slate-400 hover:text-primary transition-colors"
