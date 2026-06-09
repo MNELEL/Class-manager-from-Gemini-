@@ -3,11 +3,11 @@ import { motion } from 'motion/react';
 import { 
   Monitor, Mic, UploadCloud, Play, Square, 
   Loader2, FileText, CheckCircle2, ChevronRight, 
-  Save, ListChecks, Sparkles
+  Save, ListChecks, Sparkles, HelpCircle, BookOpen, Edit3
 } from 'lucide-react';
-import { generateContent } from '../lib/ai';
+import { transcribeAndSummarize } from '../lib/lessons.functions';
 
-export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: any) => {
+export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig, currentUser }: any) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
@@ -23,13 +23,26 @@ export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: a
       const recorder = new MediaRecorder(stream);
       
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         chunksRef.current = [];
-        // In a real app we'd transcribe the blob here, for now we mock the transcript
-        setTranscript("זהו סימולציה של תמלול. המורה דיבר על חוקי ניוטון. קודם הסביר על כך שגוף מתמיד במצבו... חלק מהתלמידים קצת הפריעו. יש לשפר את זמן התרגול העצמאי.");
+        
+        // Convert to Buffer and call transcribed function
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        setIsAnalyzing(true);
+        try {
+            const lessonId = await transcribeAndSummarize(buffer, currentConfig.id || 'default', currentUser.uid);
+            alert('השיעור הוקלט וסונכרן בהצלחה! (ID: ' + lessonId + ')');
+        } catch(e) {
+            console.error(e);
+            alert('שגיאה בתמלול השיעור בשרת');
+        } finally {
+            setIsAnalyzing(false);
+        }
       };
 
       mediaRecorderRef.current = recorder;
@@ -67,14 +80,31 @@ export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: a
     setIsAnalyzing(true);
     try {
       const text = await generateContent(
-        `נתח את תמליל השיעור הבא ותחזיר JSON מסודר שתואם בדיוק לסכימה הבאה:
+        `נתח את תמליל השיעור הבא בצורה מקצועית ויסודית ביותר.
+זהו שיעור אמיתי שנמסר, ואנחנו זקוקים לסיכום אמיתי, מדויק ומבוסס עובדות מהתמליל, ללא פשרות.
+כמו כן, עליך לחבר שאלות הבנה מעמיקות ביותר, הבודקות ישירות ובאופן ספציפי את פרטי התוכן והחומר שנמסרו בתוך התמליל עצמו כדי לוודא הטמעה והגשמה פדגוגית של הלמידה. אל תשאל שאלות כלליות או טריוויה פשוטה המבוססת על כותרת הנושא; יש לשאול שאלות הבנה המבוססות על המידע הספציפי שנאמר בשיעור.
+
+חבר בנוסף דף עבודה פדגוגי מפורט להבנת השיעור בנוי בפורמט Markdown הכולל שאלות עומק, שרטוטי הבנה (מתוארים בטקסט), ותרגילי הגשמה.
+
+אנא החזר תגובת JSON תקנית בדיוק לפי הסכימה הבאה:
 {
-  "summary": "סיכום מקיף של השיעור",
-  "key_points": ["נקודת מפתח 1", "נקודת מפתח 2"],
+  "summary": "סיכום מקיף ומבני של החומר האמיתי שנאמר בשיעור",
+  "key_points": ["נקודת מפתח עובדתית 1 מהשיעור", "נקודת מפתח עובדתית 2 מהשיעור"],
   "target_audience": "קהל היעד של השיעור",
-  "suggested_title": "כותרת מוצעת ומעניינת לשיעור",
-  "improvement_suggestions": ["המלצה פדגוגית לשיפור 1", "המלצה פדגוגית לשיפור 2"],
-  "estimated_level": "רמת הפדגוגיה"
+  "suggested_title": "כותרת מפורטת ומתאימה לנושא",
+  "improvement_suggestions": ["המלצה 1 למינוף הפדגוגיה בכיתה", "המלצה 2 לשיפור הקשב וההבנה"],
+  "estimated_level": "רמת הפדגוגיה והעומק",
+  "comprehension_questions": [
+     {
+       "question": "שאלת הבנה עמוקה על חומר ספציפי שנמסר בשיעור (לגופו של עניין)",
+       "answer": "תשובה מלאה ומודל לתשובת התלמיד מתוך הפרטים המדויקים שנמסרו"
+     },
+     {
+       "question": "שאלת יישום והגשמה מעמיקה נוספת (מבוססת על תוכן השיעור בלבד)",
+       "answer": "תשובה מולטי-שלבית מנחה עבור המורה"
+     }
+  ],
+  "worksheet_content": "תוכן דף עבודה עשיר ומפורט ביותר ב-Markdown הכולל תרגילי הבנה יישומיים של החומר הספציפי שהועבר בשיעור"
 }
 
 תמליל השיעור:
@@ -112,12 +142,40 @@ export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: a
       ai_summary: analysisResult.summary,
       ai_key_points: analysisResult.key_points,
       transcript: transcript,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      comprehension_questions: analysisResult.comprehension_questions || []
     };
     
     const libItems = currentConfig.libraryItems || [];
     updateCurrentConfig({ libraryItems: [...libItems, newItem] });
-    alert('השיעור נשמר בהצלחה לספרייה!');
+
+    // Also push to master materials catalog for perfect app synchronization!
+    const savedMaterialsStr = localStorage.getItem('pedagogy_library_materials') || '[]';
+    try {
+      const savedMaterials = JSON.parse(savedMaterialsStr);
+      const newMaterialObj = {
+        id: 'mat-trans-' + Date.now(),
+        title: analysisResult.suggested_title || 'סיכום שיעור מוקלט',
+        type: 'summary',
+        topic: 'ניתוח שיעורים',
+        subtopic: analysisResult.suggested_title,
+        tags: ['שיעור מוקלט', 'תמלול', 'יישומי הבנה'],
+        difficulty: 'medium',
+        gradeLevel: 'כללי',
+        estimatedTime: '45 דקות',
+        details: `${analysisResult.summary}\n\n### ❓ שאלות הבנה לגופו של עניין:\n${(analysisResult.comprehension_questions || []).map((q: any, i: number) => `**שאלת הבנה קריטית ${i+1}: ${q.question}**\n*תשובת מודל:* ${q.answer}`).join('\n\n')}\n\n### 📝 דף עבודה פדגוגי מבוסס תמלול:\n${analysisResult.worksheet_content || ''}`,
+        understandings: analysisResult.key_points || ["הבנת מושגים מתוך השיעור האמיתי"],
+        sections: ['סיכום עיוני', 'שאלות הבנה מעמיקות', 'דף עבודה לביצוע'],
+        order: 'סדר מהלך שיעור מובנה',
+        status: 'analyzed',
+        attachments: []
+      };
+      localStorage.setItem('pedagogy_library_materials', JSON.stringify([newMaterialObj, ...savedMaterials]));
+    } catch(e) {
+      console.error(e);
+    }
+    
+    alert('השיעור ודפי העבודה נשמרו בהצלחה לספריית החומרים הכללית!');
   };
 
   return (
@@ -171,21 +229,54 @@ export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: a
         </div>
 
         {/* Transcript Panel */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-border p-6 shadow-sm flex flex-col h-full">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
-            <FileText className="w-5 h-5 text-primary" />
-            תמליל (Live)
-          </h3>
-          <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 overflow-y-auto mb-4 border border-border/50 text-slate-700 dark:text-slate-300 min-h-[150px]">
-            {transcript || <span className="text-slate-400 italic">התמליל יופיע כאן...</span>}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-border p-6 shadow-sm flex flex-col h-full text-right" dir="rtl">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              תמליל השיעור המעשי
+            </h3>
+            <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 px-2 py-0.5 rounded font-black">ניתן לעריכה והדבקה</span>
           </div>
+
+          <div className="mb-4 text-right">
+            <span className="text-[10px] font-black uppercase text-slate-400 block mb-1.5">הקליטו, העלו קובץ או בחרו שיעור לדוגמא:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setTranscript("היום נעסוק בחיבור שברים עשרוניים במאונך. החוק החשוב ביותר הוא לסדר את המספרים כך שהנקודה העשרונית תהיה בדיוק מתחת לנקודה העשרונית השנייה. למשל, בחיבור של 12.3 ועוד 4.56, נכתוב את 12.3 כ-12.30 כדי ליישר את העמודות. השלב הבא הוא לחבר מימין לשמאל: מאית, עשירית, יחידות ועשרות. נשאלנו על ידי דני מה קורה כאשר הסכום מעבר ל-10; התשובה היא שאנו מעבירים 1 בדיוק כמו בחיבור רגיל. למשל, 0.7 ועוד 0.5 נותן 1.2 והנקודה נשארת במקומה הישר לחלק השלמים.")}
+                className="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 dark:bg-slate-850 dark:text-brand-300 rounded-lg text-[10px] font-black transition-all"
+              >
+                🔢 חיבור שברים עשרוניים
+              </button>
+              <button
+                onClick={() => setTranscript("בשיעור של היום נעמיק בחוק הראשון והשני של ניوتن. החוק הראשון, הידוע גם כחוק ההתמדה, קובע כי גוף יתמיד במצבו - מנוחה או תנועה במהירות קבועה בקו ישר - כל עוד לא פועל עליו כוח חיצוני. נתנו את הדוגמא של שטיח שנפתח מתחת לכוס מים מונחת, או נוסע באוטובוס שעוצר פתאומית ונזרק קדימה. החוק השני מגדיר שהתאוצה של גוף עומדת ביחס ישר לכוח הפועל עליו וביחס הפוך למסתו, כלומר F=m*a. ראינו שאם דוחפים כדור טניס מול דחיפת משאית באותו כוח, התאוצה של כדור הטניס תהיה עצומה בגלל מסתו הקטנה.")}
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-slate-850 dark:text-emerald-350 rounded-lg text-[10px] font-black transition-all"
+              >
+                ⚡ חוקי התנועה של ניوتن
+              </button>
+              <button
+                onClick={() => setTranscript("חברים, היום נדבר על הצהרת כורש שניתנה בשנת 538 לפני הספירה. כורש מלך פרס פנה לגולים בבבל והציע להם לחזור ליהודה ולבנות מחדש את בית המקדש בירושלים. למדנו שההצהרה משקפת את המדיניות הסובלנית של האימפריה הפרסית כלפי העמים המשועבדים לה, המאפשרת אוטונומיה דתית בתמורה לנאמנות פוליטית ותשלום מיסים. ניתחנו את השלכות ההצהרה - קבוצה קטנה של עולי בבל תחת מנהיגות ששבצר וזרובבל הקימה את 'שיבת ציון' והחלה בתהליך הבנייה הקשה שנתקל בקשיים כלכליים רציניים ובעוינות מצד השומרונים.")}
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-slate-850 dark:text-amber-350 rounded-lg text-[10px] font-black transition-all"
+              >
+                📜 הצהרת כורש ושיבת ציון
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            value={transcript}
+            onChange={(e) => setTranscript(e.target.value)}
+            placeholder="תמליל השיעור המשוער או האמיתי שלכם יופיע כאן לאחר דיבור/העלאה, או הקלידו/הדביקו אותו ידנית פה..."
+            className="flex-1 w-full bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 mb-4 border border-border text-slate-700 dark:text-slate-300 min-h-[150px] text-xs font-semibold leading-relaxed outline-none focus:ring-2 focus:ring-primary inline-block text-right"
+            dir="rtl"
+          />
+
           <button 
             onClick={analyzeTranscript}
             disabled={!transcript || isAnalyzing}
-            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-white font-black rounded-xl hover:bg-primary/95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {isAnalyzing ? 'מנתח שיעור...' : 'נתח שיעור עם AI'}
+            {isAnalyzing ? 'מנתח שיעור פדגוגית ב-AI...' : 'נתח ועצב פעילויות ב-AI'}
           </button>
         </div>
       </div>
@@ -247,6 +338,44 @@ export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig }: a
               </ul>
             </div>
           </div>
+
+          {/* CONTENT-BASED COMPREHENSION QUESTIONS */}
+          {analysisResult.comprehension_questions && analysisResult.comprehension_questions.length > 0 && (
+            <div className="border-t border-slate-150/60 dark:border-slate-800 pt-6 space-y-4 text-right" dir="rtl">
+              <h4 className="font-black text-lg text-slate-850 dark:text-white flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-brand-600" />
+                שאלות הבנה מעמיקות לגופו של עניין (מבוסס תוכן השיעור המעשי):
+              </h4>
+              <p className="text-xs text-slate-400 font-bold">שאלות אלו נוצרו במיוחד כדי לוודא את הגשמת מטרות השיעור והבנת התוכן העובדתי שנמסר.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {analysisResult.comprehension_questions.map((q: any, i: number) => (
+                  <div key={i} className="p-4 bg-brand-50/20 dark:bg-slate-850 border border-brand-100/50 dark:border-slate-800 rounded-2xl space-y-2 text-right">
+                    <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded font-black">שאלה {i+1}</span>
+                    <h5 className="text-xs font-black text-slate-800 dark:text-white leading-relaxed">{q.question}</h5>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 rounded-xl p-3 text-[11px] text-slate-500 dark:text-slate-350 leading-relaxed font-semibold">
+                      <strong>תשובת מודל:</strong> {q.answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* DYNAMIC WORKSHEET BLOCK */}
+          {analysisResult.worksheet_content && (
+            <div className="border-t border-slate-150/60 dark:border-slate-800 pt-6 space-y-3 text-right" dir="rtl">
+              <h4 className="font-black text-lg text-slate-850 dark:text-white flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-emerald-600" />
+                טיוטת דף עבודה מבוססת חומרי השיעור:
+              </h4>
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 md:p-6 text-right">
+                <div className="prose dark:prose-invert text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-sans font-medium text-right" dir="rtl">
+                  {analysisResult.worksheet_content}
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

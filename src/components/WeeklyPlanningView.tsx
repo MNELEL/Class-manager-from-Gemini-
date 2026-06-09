@@ -12,7 +12,9 @@ import {
   FileText,
   Target,
   Trophy,
-  Loader2
+  Loader2,
+  Clock,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,6 +23,16 @@ export interface StudentGoal {
   day: string; // 'א' | 'ב' | 'ג' | 'ד' | 'ה'
   text: string;
   completed: boolean;
+}
+
+export interface PacingItem {
+  id: string;
+  week: string;
+  subject: string;
+  topic: string;
+  goals: string;
+  testPlanned: string;
+  status: 'planned' | 'in_progress' | 'completed';
 }
 
 export interface WeeklyPlanningViewProps {
@@ -47,12 +59,61 @@ export const WeeklyPlanningView: React.FC<WeeklyPlanningViewProps> = ({ students
     'א': '', 'ב': '', 'ג': '', 'ד': '', 'ה': ''
   });
 
-  const [activeTab, setActiveTab] = useState<'board' | 'summary'>('board');
+  const [activeTab, setActiveTab] = useState<'board' | 'summary' | 'pacing'>('pacing');
+
+  const [pacingList, setPacingList] = useState<PacingItem[]>(() => {
+    const saved = localStorage.getItem('pedagogy_weekly_pacing');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      {
+        id: 'pace-1',
+        week: 'שבוע 1 (נוכחי)',
+        subject: 'חשבון',
+        topic: 'שברים עשרוניים',
+        goals: 'חיבור וחיסור שברים עשרוניים במאונך, פתרון בעיות לרוחב נושאי הכיתה והבנת ערך המקום והנקודה העשרונית.',
+        testPlanned: 'בוחן קצר על חיבור שברים עשרוניים',
+        status: 'in_progress'
+      },
+      {
+        id: 'pace-2',
+        week: 'שבוע 2',
+        subject: 'מדעים',
+        topic: 'חוקי ניוטון',
+        goals: 'הכרת שלושת חוקי התנועה של אייזק ניוטון, ניתוח כוחות אינרציה, תאוצה, ותגובה הדדית.',
+        testPlanned: 'מבחן חוקי התנועה של ניוטון והבנת מושג הכוח',
+        status: 'planned'
+      },
+      {
+        id: 'pace-3',
+        week: 'שבוע 3',
+        subject: 'היסטוריה',
+        topic: 'הצהרת כורש',
+        goals: 'סקירה פדגוגית של הצהרת כורש, ניתוח מסמך ההצהרה וגורמי שיבת ציון.',
+        testPlanned: 'עבודת סיכום - הצהרת כורש ושיבת ציון',
+        status: 'planned'
+      }
+    ];
+  });
+
+  const [newPace, setNewPace] = useState<Partial<PacingItem>>({
+    week: '',
+    subject: '',
+    topic: '',
+    goals: '',
+    testPlanned: '',
+    status: 'planned'
+  });
 
   // Sync with localStorage
   useEffect(() => {
     localStorage.setItem('classManager_weeklyGoals', JSON.stringify(goals));
   }, [goals]);
+
+  useEffect(() => {
+    localStorage.setItem('pedagogy_weekly_pacing', JSON.stringify(pacingList));
+  }, [pacingList]);
 
   const activeStudent = students.find(s => s.id === selectedStudentId);
   const studentGoals = selectedStudentId ? (goals[selectedStudentId] || []) : [];
@@ -146,7 +207,13 @@ export const WeeklyPlanningView: React.FC<WeeklyPlanningViewProps> = ({ students
         </div>
 
         {/* Navigation tabs внутри вида */}
-        <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800 max-w-sm">
+        <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800 max-w-md w-full">
+          <button 
+            onClick={() => setActiveTab('pacing')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'pacing' ? 'bg-white dark:bg-slate-800 text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            תכנון הספקים שבועי (סילבוס)
+          </button>
           <button 
             onClick={() => setActiveTab('board')}
             className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'board' ? 'bg-white dark:bg-slate-800 text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
@@ -163,58 +230,236 @@ export const WeeklyPlanningView: React.FC<WeeklyPlanningViewProps> = ({ students
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* RIGHT COLUMN: STUDENTS LIST SELECTOR */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">תלמידי הכיתה ({students.length})</span>
-            
-            <div className="space-y-1.5 max-h-[480px] overflow-y-auto custom-scrollbar">
-              {students.map(student => {
-                const sGoals = goals[String(student.id)] || [];
-                const comp = sGoals.filter(g => g.completed).length;
-                const tot = sGoals.length;
-                const pct = tot > 0 ? Math.round((comp / tot) * 100) : 0;
-                const isSelected = student.id === selectedStudentId;
+        {/* RIGHT COLUMN: STUDENTS LIST SELECTOR (Hidden in Pacing view) */}
+        {activeTab !== 'pacing' && (
+          <div className="lg:col-span-3 space-y-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">תלמידי הכיתה ({students.length})</span>
+              
+              <div className="space-y-1.5 max-h-[480px] overflow-y-auto custom-scrollbar">
+                {students.map(student => {
+                  const sGoals = goals[String(student.id)] || [];
+                  const comp = sGoals.filter(g => g.completed).length;
+                  const tot = sGoals.length;
+                  const pct = tot > 0 ? Math.round((comp / tot) * 100) : 0;
+                  const isSelected = student.id === selectedStudentId;
 
-                return (
-                  <button
-                    key={student.id}
-                    onClick={() => setSelectedStudentId(student.id)}
-                    className={`w-full text-right p-3.5 rounded-2xl flex items-center justify-between transition-all border outline-none ${
-                      isSelected 
-                        ? 'bg-brand-50/50 border-brand-200 dark:bg-brand-950/20 dark:border-brand-850' 
-                        : 'border-slate-50 dark:border-slate-850 hover:bg-slate-50/50 bg-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm border shadow-xs ${
-                        isSelected ? 'bg-brand-600 text-white border-brand-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 border-slate-100'
-                      }`}>
-                        <User className="w-4 h-4" />
+                  return (
+                    <button
+                      key={student.id}
+                      onClick={() => setSelectedStudentId(student.id)}
+                      className={`w-full text-right p-3.5 rounded-2xl flex items-center justify-between transition-all border outline-none ${
+                        isSelected 
+                          ? 'bg-brand-50/50 border-brand-200 dark:bg-brand-950/20 dark:border-brand-850' 
+                          : 'border-slate-50 dark:border-slate-850 hover:bg-slate-50/50 bg-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm border shadow-xs ${
+                          isSelected ? 'bg-brand-600 text-white border-brand-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 border-slate-100'
+                        }`}>
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className={`text-xs font-black ${isSelected ? 'text-brand-700 dark:text-brand-400' : 'text-slate-700 dark:text-slate-200'}`}>{student.name}</p>
+                          {student.group && <p className="text-[9px] text-slate-400 font-bold">{student.group}</p>}
+                        </div>
                       </div>
-                      <div>
-                        <p className={`text-xs font-black ${isSelected ? 'text-brand-700 dark:text-brand-400' : 'text-slate-700 dark:text-slate-200'}`}>{student.name}</p>
-                        {student.group && <p className="text-[9px] text-slate-400 font-bold">{student.group}</p>}
-                      </div>
-                    </div>
 
-                    {tot > 0 ? (
-                      <div className="text-left font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg font-black text-slate-600 dark:text-slate-350">
-                        {comp}/{tot} ({pct}%)
-                      </div>
-                    ) : (
-                      <span className="text-[9px] text-slate-350 italic">טרם הוגדרו</span>
-                    )}
-                  </button>
-                );
-              })}
+                      {tot > 0 ? (
+                        <div className="text-left font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg font-black text-slate-600 dark:text-slate-350">
+                          {comp}/{tot} ({pct}%)
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-slate-355 italic">טרם הוגדרו</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* LEFT COLUMN: ACTIVE VIEW CARD RENDERER */}
-        <div className="lg:col-span-9">
-          {activeTab === 'board' ? (
+        <div className={activeTab === 'pacing' ? 'lg:col-span-12' : 'lg:col-span-9'}>
+          {activeTab === 'pacing' ? (
+            /* PACING SILLABUS TRACKER VIEW */
+            <div className="space-y-6">
+              {/* Sync Banner */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-150/40 dark:border-amber-900/30 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-4 text-amber-800 dark:text-amber-200">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-2xl shrink-0">
+                  <Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-black text-base text-amber-900 dark:text-amber-300">סנכרון פדגוגי והספקים שבועי ב-AI</h4>
+                  <p className="text-xs font-semibold mt-1 opacity-90 leading-relaxed">
+                    הגדירו את נושאי ההספק הלימודי השבועיים שלכם מטה. מערכת הספרייה תסנכרן את המידע מעצמה ותציע לכם חומרי עמוד מותאמים, דפי עבודה ממוקדים ומבחנים פדגוגיים שנוצרו במיוחד ב-AI על פי חומרי ההספק שהוגדרו!
+                  </p>
+                </div>
+              </div>
+
+              {/* Add New Pacing Entry */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-lg font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-brand-600" />
+                  הוספת יעד תכנון והספק שבועי חדש בכיתה
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-450 mb-1">שבוע</label>
+                    <input 
+                      type="text" 
+                      placeholder="לדוגמא: שבוע 4" 
+                      value={newPace.week || ''} 
+                      onChange={e => setNewPace(prev => ({ ...prev, week: e.target.value }))}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-450 mb-1">מקצוע</label>
+                    <input 
+                      type="text" 
+                      placeholder="لדוגמא: אזרחות, אנגלית" 
+                      value={newPace.subject || ''} 
+                      onChange={e => setNewPace(prev => ({ ...prev, subject: e.target.value }))}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-450 mb-1">נושא ממוקד להספק</label>
+                    <input 
+                      type="text" 
+                      placeholder="לדוגמא: אחוזים, הצהרת זכויות" 
+                      value={newPace.topic || ''} 
+                      onChange={e => setNewPace(prev => ({ ...prev, topic: e.target.value }))}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-450 mb-1">מטרות והספק לימודי שבועי</label>
+                    <input 
+                      type="text" 
+                      placeholder="לדוגמא: הבנת משמעות האחוז..." 
+                      value={newPace.goals || ''} 
+                      onChange={e => setNewPace(prev => ({ ...prev, goals: e.target.value }))}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs font-bold"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button 
+                      onClick={() => {
+                        if (!newPace.week || !newPace.subject || !newPace.topic) {
+                          alert('אנא מלאו את שדות השבוע, המקצוע והנושא לפחות לפעולת סנכרון נכונה.');
+                          return;
+                        }
+                        const entry: PacingItem = {
+                          id: 'pace-' + Date.now(),
+                          week: newPace.week,
+                          subject: newPace.subject,
+                          topic: newPace.topic,
+                          goals: newPace.goals || 'כללי',
+                          testPlanned: newPace.testPlanned || `בוחן מיוחד מבוסס AI בנושא ${newPace.topic}`,
+                          status: 'planned'
+                        };
+                        setPacingList(prev => [...prev, entry]);
+                        setNewPace({ week: '', subject: '', topic: '', goals: '', testPlanned: '', status: 'planned' });
+                      }}
+                      className="w-full py-2.5 bg-brand-600 text-white font-black text-xs rounded-xl hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Adding / הוסף
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pacing List Items */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-350">תוכנית הספקים כיתתית מתוזמנת</span>
+                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 px-2 rounded-lg font-black flex items-center gap-1">
+                    🟢 מסונכרן פדגוגית לספרייה
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {pacingList.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        item.status === 'in_progress' 
+                          ? 'bg-brand-50/20 border-brand-200 dark:border-brand-900/50' 
+                          : 'bg-slate-50/20 border-slate-100 dark:border-slate-850'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 border ${
+                          item.status === 'in_progress' 
+                            ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                            : item.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
+                          {item.status === 'in_progress' ? <Clock className="w-5 h-5 animate-spin-slow" /> : item.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-brand-600 uppercase bg-brand-50 dark:bg-brand-950/40 px-2 py-0.5 rounded">
+                              {item.week}
+                            </span>
+                            <span className="text-xs font-black text-slate-400 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded">
+                              {item.subject}
+                            </span>
+                            <h4 className="text-base font-black text-slate-800 dark:text-white">
+                              נושא: <span className="text-primary underline decoration-brand-400">{item.topic}</span>
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                            <strong>מטרות והספק:</strong> {item.goals}
+                          </p>
+                          <p className="text-xs text-slate-400 font-semibold mt-1">
+                            <strong>הערכה שנקבעה:</strong> {item.testPlanned}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 justify-end self-end md:self-center border-t md:border-none pt-3 md:pt-0 w-full md:w-auto">
+                        <select 
+                          value={item.status} 
+                          onChange={(e) => {
+                            const newStatus = e.target.value as any;
+                            setPacingList(prev => prev.map(p => p.id === item.id ? { ...p, status: newStatus } : p));
+                          }}
+                          className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-xs font-black outline-none focus:ring-2 focus:ring-brand-500 text-slate-700 dark:text-slate-350"
+                        >
+                          <option value="planned">📅 מתוכנן בהמשך</option>
+                          <option value="in_progress">⚡ בביצוע השבוע</option>
+                          <option value="completed">✅ הושלם בהצלחה</option>
+                        </select>
+
+                        <button 
+                          onClick={() => {
+                            if (confirm('האם לבטל יעד תכנון זה מלוח ההספקים?')) {
+                              setPacingList(prev => prev.filter(p => p.id !== item.id));
+                            }
+                          }}
+                          className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all"
+                          title="מחק יעד"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {pacingList.length === 0 && (
+                    <div className="p-12 text-center text-slate-400 italic">
+                      לא הוגדרו הספקים לימודיים. הוסיפו הספק ממוקד למעלה.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'board' ? (
             activeStudent ? (
               <div className="space-y-6">
                 

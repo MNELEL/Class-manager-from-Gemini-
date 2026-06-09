@@ -279,6 +279,113 @@ export const ContentManagementView = ({
         localStorage.setItem('pedagogy_library_topics', JSON.stringify(topics));
     }, [topics]);
 
+    // PACING INTEGRATION STATES
+    const [pacingList, setPacingList] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pedagogy_weekly_pacing');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) { console.error(e); }
+        }
+        return [
+            {
+                id: 'pace-1',
+                week: 'שבוע 1 (נוכחי)',
+                subject: 'חשבון',
+                topic: 'שברים עשרוניים',
+                goals: 'חיבור וחיסור שברים עשרוניים במאונך, פתרון בעיות לרוחב נושאי הכיתה והבנת ערך המקום והנקודה העשרונית.',
+                testPlanned: 'בוחן קצר על חיבור שברים עשרוניים',
+                status: 'in_progress'
+            },
+            {
+                id: 'pace-2',
+                week: 'שבוע 2',
+                subject: 'מדעים',
+                topic: 'חוקי ניוטון',
+                goals: 'הכרת שלושת חוקי התנועה של אייזק ניוטון, ניתוח כוחות אינרציה, תאוצה, ותגובה הדדית.',
+                testPlanned: 'מבחן חוקי התנועה של ניוטון והבנת מושג הכוח',
+                status: 'planned'
+            },
+            {
+                id: 'pace-3',
+                week: 'שבוע 3',
+                subject: 'היסטוריה',
+                topic: 'הצהרת כורש',
+                goals: 'סקירה פדגוגית של הצהרת כורש, ניתוח מסמך ההצהרה וגורמי שיבת ציון.',
+                testPlanned: 'עבודת סיכום - הצהרת כורש ושיבת ציון',
+                status: 'planned'
+            }
+        ];
+    });
+
+    const [isPacingAILoading, setIsPacingAILoading] = useState<string | null>(null);
+
+    const generatePacingMaterialAI = async (topic: string, subject: string, type: 'exam' | 'worksheet', goalsText: string) => {
+        setIsPacingAILoading(topic + '-' + type);
+        try {
+            const promptStr = `Create a comprehensive Hebrew educational document of type "${type === 'exam' ? 'quiz / exam' : 'worksheet'}" about the topic "${topic}" (Subject: "${subject}").
+The weekly learning targets were: "${goalsText}".
+Make sure the questions are highly content-focused and test the deep pedagogical understandings of the material specified. Do not write generic questions; compose realistic questions requiring thinking.
+
+Provide your entire response in Hebrew as a valid, parsable JSON matching this schema exactly (No formatting tricks):
+{
+  "title": "A descriptive Hebrew title",
+  "estimatedTime": "Time to complete, e.g. 30 דקות",
+  "understandings": ["understanding 1", "understanding 2"],
+  "sections": ["Section 1", "Section 2"],
+  "details": "A comprehensive mark-down string containing the actual worksheet or exam paper layout, with detailed questions, spaces for student answers, and correct answers listed clearly at the bottom for teacher reference.",
+  "tags": ["tag1", "tag2"]
+}`;
+
+            const response = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptStr,
+                    systemInstruction: "You are an expert pedagogical content assistant. You write detailed exams and worksheets that require real comprehension and content verification, and format them as valid JSON.",
+                    model: "gemini-3.5-flash"
+                })
+            });
+
+            const data = await response.json();
+            if (data.text) {
+                let cleanJson = data.text.trim();
+                const jsonMatch = cleanJson.match(/```json\s*([\s\S]*?)\s*```/) || cleanJson.match(/([\{\[][\s\S]*[\}\]])/);
+                if (jsonMatch) {
+                    cleanJson = jsonMatch[1];
+                } else if (cleanJson.startsWith('```')) {
+                    cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '').trim();
+                }
+                
+                const parsed = JSON.parse(cleanJson);
+                const generatedMaterial: Material = {
+                    id: 'mat-pace-' + Date.now(),
+                    title: parsed.title || `${type === 'exam' ? 'מבחן הערכה' : 'דף תרגול'} בנושא ${topic}`,
+                    type: type,
+                    topic: subject,
+                    subtopic: topic,
+                    tags: parsed.tags || [topic, subject],
+                    difficulty: 'medium',
+                    gradeLevel: 'כיתה ה׳',
+                    estimatedTime: parsed.estimatedTime || '30 דקות',
+                    details: parsed.details || `תוכן מקורי מבוסס תכנון בנושא ${topic}`,
+                    understandings: parsed.understandings || [`הערכת הבנה פדגוגית בנושא ${topic}`],
+                    sections: parsed.sections || ['חלק א', 'חלק ב'],
+                    order: 'מבוסס יעד הספק שבועי מתוכנן',
+                    status: 'analyzed',
+                    attachments: []
+                };
+
+                setMaterials(prev => [generatedMaterial, ...prev]);
+                setSelectedMaterial(generatedMaterial);
+                alert(`נולד בהצלחה! השאלון/דף העבודה "${generatedMaterial.title}" נוצר ונוסף בהצלחה לספרייה שלכם!`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('אירעה שגיאה ביצירת חומר העזר ב-AI. אנא נסו שנית.');
+        } finally {
+            setIsPacingAILoading(null);
+        }
+    };
+
     const insertMarkdown = (before: string, after: string = '') => {
         if (!detailsTextareaRef.current) return;
         const textarea = detailsTextareaRef.current;
@@ -1216,6 +1323,89 @@ export const ContentManagementView = ({
                                     {statsBreakdown.total} סך הכל פריטים
                                 </span>
                             </div>
+
+                            {/* PACING SUGGESTIONS SYNCHRONIZER BOARD */}
+                            {pacingList && pacingList.some(item => item.status === 'in_progress' || item.status === 'planned') && (
+                                <div className="mb-6 p-5 bg-gradient-to-br from-brand-50/40 to-indigo-50/20 dark:from-slate-850 dark:to-slate-900 border border-brand-100/50 dark:border-slate-800 rounded-2xl text-right space-y-4" dir="rtl">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl">💡</span>
+                                            <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">מומלץ השבוע על פי תוכנית ההספקים השבועית:</h4>
+                                        </div>
+                                        <span className="text-[10px] uppercase font-black tracking-widest text-brand-600 bg-brand-100/40 px-2 py-0.5 rounded-md">סנכרון תכנון שבועי פעיל</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {pacingList.filter(item => item.status === 'in_progress' || item.status === 'planned').slice(0, 2).map(item => {
+                                            // Find matching materials in library
+                                            const matches = materials.filter(m => 
+                                                m.title.includes(item.topic) || 
+                                                (m.subtopic && m.subtopic.includes(item.topic)) ||
+                                                (m.tags && m.tags.some(t => t.includes(item.topic)))
+                                            );
+
+                                            return (
+                                                <div key={item.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700/80 space-y-3 shadow-xs text-right">
+                                                    <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-700/50 pb-2">
+                                                        <span className="text-[10px] bg-slate-100 dark:bg-slate-600 px-2 py-0.5 rounded font-black text-slate-500 dark:text-slate-200 font-sans">
+                                                            {item.week} • {item.subject}
+                                                        </span>
+                                                        <span className="text-xs font-black text-brand-700 dark:text-brand-400">{item.topic}</span>
+                                                    </div>
+
+                                                    <p className="text-[11px] text-slate-400 dark:text-slate-350 font-semibold leading-relaxed">
+                                                        <strong>תכנון הספק השבוע:</strong> {item.goals}
+                                                    </p>
+
+                                                    <div className="space-y-2 pt-2">
+                                                        {matches.length > 0 ? (
+                                                            <div className="space-y-1.5">
+                                                                <span className="text-[9px] font-black text-slate-400 block">📚 חומרי עזר קיימים בספרייה עבור {item.topic}:</span>
+                                                                <div className="flex flex-col gap-1">
+                                                                    {matches.map(m => (
+                                                                        <button
+                                                                            key={m.id}
+                                                                            onClick={() => {
+                                                                                setSelectedMaterial(m);
+                                                                                setGeneratedQuiz(null);
+                                                                            }}
+                                                                            className="text-right text-xs font-black text-brand-600 hover:underline flex items-center gap-1.5"
+                                                                        >
+                                                                            📁 {m.title} <span className="text-[9px] font-normal opacity-60">({m.type === 'exam' ? 'מבחן' : m.type === 'worksheet' ? 'דף עבודה' : 'שיעור'})</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[10px] text-amber-600 font-bold bg-amber-50/40 p-1.5 rounded">
+                                                                ⚠️ אין עדיין חומרי עמוד מותאמים לספרייה בקטגוריה זו.
+                                                            </p>
+                                                        )}
+
+                                                        {/* Gen AI actions list */}
+                                                        <div className="flex items-center gap-2 pt-2 border-t border-slate-50 dark:border-slate-700/40">
+                                                            <button 
+                                                                disabled={isPacingAILoading !== null}
+                                                                onClick={() => generatePacingMaterialAI(item.topic, item.subject, 'worksheet', item.goals)}
+                                                                className="flex-1 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-1 focus:ring-2 focus:ring-emerald-350"
+                                                            >
+                                                                {isPacingAILoading === `${item.topic}-worksheet` ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : '➕ דף עבודה ב-AI'}
+                                                            </button>
+                                                            <button 
+                                                                disabled={isPacingAILoading !== null}
+                                                                onClick={() => generatePacingMaterialAI(item.topic, item.subject, 'exam', item.goals)}
+                                                                className="flex-1 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-1 focus:ring-2 focus:ring-brand-350"
+                                                            >
+                                                                {isPacingAILoading === `${item.topic}-exam` ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : '💯 מבחן הערכה ב-AI'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* List layout cards */}
                             <div className="space-y-2.5">

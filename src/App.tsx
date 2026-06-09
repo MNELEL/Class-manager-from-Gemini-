@@ -128,7 +128,6 @@ import {
   Menu,
   Minus,
   Minimize2,
-  Monitor,
   Moon,
   MoreHorizontal,
   MoreVertical,
@@ -795,20 +794,15 @@ const SatisfactionGauge = ({ score }: { score: number }) => (
 // --- Helper Components ---
 
 
-const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, is3DView, totalCols, totalRows, isLocked = false }: any) => {
+const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCurrentConfig, totalCols, totalRows, isLocked = false }: any) => {
   return (
     <motion.div
       layoutId="teacher-desk"
-      whileHover={is3DView 
-        ? { scale: 1.04, y: -16, rotateX: -45, rotateY: -1, boxShadow: '0px 45px 80px rgba(0,0,0,0.45)' } 
-        : { scale: 1.04, y: -4, boxShadow: '0px 12px 24px rgba(0,0,0,0.18)' }
-      }
+      whileHover={{ scale: 1.04, y: -4, boxShadow: '0px 12px 24px rgba(0,0,0,0.18)' }}
       animate={{
-        rotateX: is3DView ? -50 : 0,
-        z: is3DView ? 60 : 0,
-        boxShadow: is3DView 
-          ? '0px 30px 60px rgba(0,0,0,0.3)' 
-          : '0px 4px 12px rgba(0,0,0,0.1)'
+        rotateX: 0,
+        z: 0,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.1)'
       }}
       transition={{ 
         type: "spring", 
@@ -818,7 +812,6 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
       style={{
         gridColumn: `${colPos} / span ${width}`,
         gridRow: `${rowPos} / span ${height}`,
-        transformStyle: 'preserve-3d',
       }}
       draggable={editMode === 'structure' && !isLocked}
       onDragStart={(e: any) => {
@@ -945,7 +938,6 @@ const DeskCell = ({
   onDrop,
   updateCurrentConfig,
   currentConfig,
-  is3DView,
   activeDeskIdx,
   onShowHistory,
   onShowProfile,
@@ -959,8 +951,6 @@ const DeskCell = ({
   isMultiSelectMode = false,
   conflicts = [],
   isLocked = false,
-  showSeatLabels3D = true,
-  showNames3D = true,
   printConfigOptions,
   isAddingCustomDesk = false
 }: any) => {
@@ -1119,36 +1109,23 @@ const DeskCell = ({
           }
         }
       }}
-      whileHover={is3DView 
-        ? { 
-            scale: (currentConfig.deskScales?.[idx] || 1) * 1.06, 
-            y: -18, 
-            rotateX: -45, 
-            rotateY: -2,
-            boxShadow: '0px 45px 80px rgba(0,0,0,0.45)'
-          } 
-        : { 
-            scale: (currentConfig.deskScales?.[idx] || 1) * 1.05, 
-            y: -6,
-            boxShadow: '0px 12px 24px rgba(0,0,0,0.12)'
-          }
-      }
+      whileHover={{ 
+        scale: (currentConfig.deskScales?.[idx] || 1) * 1.05, 
+        y: -6,
+        boxShadow: '0px 12px 24px rgba(0,0,0,0.12)'
+      }}
       whileTap={{ scale: (currentConfig.deskScales?.[idx] || 1) * 0.98 }}
       animate={{
         scale: isSelected 
           ? (currentConfig.deskScales?.[idx] || 1) * 1.1 
           : (currentConfig.deskScales?.[idx] || 1),
         y: isSelected ? -15 : 0,
-        rotateX: is3DView && !isHidden ? -50 : 0,
+        rotateX: 0,
         rotateY: 0,
-        z: is3DView && !isHidden ? (idx === activeDeskIdx || isSelected ? 40 : 0) : 0,
+        z: 0,
         boxShadow: idx === activeDeskIdx || isSelected
-          ? (is3DView 
-              ? '0px 40px 70px -10px rgba(0,0,0,0.4)' 
-              : '0px 15px 30px rgba(0,0,0,0.15)')
-          : (is3DView 
-              ? '0px 15px 25px -5px rgba(0,0,0,0.15)' 
-              : '0px 2px 8px rgba(0,0,0,0.06)')
+          ? '0px 15px 30px rgba(0,0,0,0.15)'
+          : '0px 2px 8px rgba(0,0,0,0.06)'
       }}
       transition={{ 
         type: "spring", 
@@ -1159,7 +1136,6 @@ const DeskCell = ({
       style={{ 
         gridColumn: colPos, 
         gridRow: rowPos,
-        transformStyle: 'preserve-3d',
       }}
       onClick={() => {
         if (isAddingCustomDesk) {
@@ -1196,9 +1172,7 @@ const DeskCell = ({
             }));
           }
         } else if (!isHidden && !isObstruction) {
-          if (is3DView && student) {
-             setSelectedStudentId(student.id);
-          } else if (student && editMode === 'placement') {
+          if (student && editMode === 'placement') {
              if (setQuickPrefsStudentId) setQuickPrefsStudentId(student.id);
           } else {
              onShowHistory(idx);
@@ -1207,7 +1181,6 @@ const DeskCell = ({
       }}
       className={cn(
         "aspect-square rounded-[1.5rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
-        is3DView && !isHidden && "border-b-[12px] border-slate-300 dark:border-slate-700",
         isPrinting ? (
           (!student && !printConfigOptions?.showGridLines)
             ? "border-none bg-transparent opacity-0 pointer-events-none"
@@ -1268,30 +1241,7 @@ const DeskCell = ({
         </motion.div>
       )}
 
-      {/* Spotlight for 3D View */}
-      {is3DView && (isSelected || isOver) && !isPrinting && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="absolute -top-[160px] left-1/2 -translate-x-1/2 w-[240px] h-[240px] pointer-events-none z-0"
-        >
-          <div 
-            className="w-full h-full animate-pulse"
-            style={{
-              background: isSelected 
-                ? 'radial-gradient(circle at center, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)'
-                : 'radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)',
-              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-              filter: 'blur(15px)',
-              transform: 'perspective(400px) rotateX(15deg)',
-            }}
-          />
-          {/* Ground Glow */}
-          <div 
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[20%] bg-white/20 blur-xl rounded-[100%]"
-          />
-        </motion.div>
-      )}
+
 
       {/* Conflict Overlay Pulse */}
       {hasConflict && student && (
@@ -1436,45 +1386,7 @@ const DeskCell = ({
         </>
       )}
 
-      {/* 3D Chair representation */}
-      {is3DView && !isHidden && !isObstruction && (
-        <div 
-          className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-12 h-12 bg-slate-300 dark:bg-slate-800 rounded-lg shadow-lg border-b-8 border-slate-400 dark:border-black flex flex-col items-center"
-          style={{ transform: 'translateZ(-20px) rotateX(10deg)' }}
-        >
-          <div className="w-10 h-8 bg-slate-400/50 dark:bg-slate-700/50 rounded-sm mt-1" />
-        </div>
-      )}
-      
-       {((is3DView ? showSeatLabels3D : (isPrinting ? printConfigOptions?.showDeskNumbers : showDeskNumbers))) && <span className={cn("absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400 print:text-slate-500", is3DView ? "-top-10" : "-top-7")}>#{idx + 1}</span>}
-       
-       {is3DView && student && !isPrinting && (
-         <div 
-           className="absolute -top-[124px] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center pointer-events-none select-none transition-all duration-300"
-           style={{ transform: 'translateZ(15px)' }}
-         >
-           <div className={cn(
-             "px-2.5 py-1 rounded-full text-[11px] font-black tracking-tight border shadow-lg flex items-center gap-1.5 whitespace-nowrap",
-             getPerformanceScore(student) >= 85 
-               ? "bg-emerald-500 border-emerald-400 text-white" 
-               : getPerformanceScore(student) >= 70 
-                 ? "bg-amber-500 border-amber-400 text-white" 
-                 : "bg-rose-500 border-rose-400 text-white"
-           )}>
-             <Award className="w-3.5 h-3.5 text-white shrink-0" />
-             <span>ציון ביצוע: {getPerformanceScore(student)}</span>
-           </div>
-           {/* Micro pointer pointing down */}
-           <div className={cn(
-             "w-2 h-2 -mt-1 rotate-45 border-r border-b",
-             getPerformanceScore(student) >= 85 
-               ? "bg-emerald-500 border-emerald-400" 
-               : getPerformanceScore(student) >= 70 
-                 ? "bg-amber-500 border-amber-400" 
-                 : "bg-rose-500 border-rose-400"
-           )} />
-         </div>
-       )}
+       {((isPrinting ? printConfigOptions?.showDeskNumbers : showDeskNumbers)) && <span className="absolute left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400 print:text-slate-500 -top-7">#{idx + 1}</span>}
       
       {student ? (
         <motion.div 
@@ -1542,7 +1454,7 @@ const DeskCell = ({
                <span className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight">
                  {isPrinting
                    ? (printConfigOptions?.showNames ? student.name : "")
-                   : (showNames3D ? student.name : `שולחן ${idx + 1}`)}
+                   : student.name}
                </span>
              </div>
               
@@ -8579,7 +8491,9 @@ const SettingsView = ({
   themeFontOverrides,
   setThemeFontOverrides,
   highContrast,
-  setHighContrast
+  setHighContrast,
+  isDarkMode,
+  setIsDarkMode
 }: any) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -8753,17 +8667,63 @@ const SettingsView = ({
         <div className="glass-card p-8 rounded-[3rem] space-y-6">
           <div className="flex items-center gap-3" dir="rtl">
             <Monitor className="w-6 h-6 text-indigo-500" />
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">הגדרות תצוגה</h3>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">ערכות נושא והנגשה לשירות עצמי (PWA Themes)</h3>
           </div>
-          <label className="flex items-center justify-between cursor-pointer">
-            <span className="font-bold text-slate-700 dark:text-slate-200">מצב ניגודיות גבוהה</span>
-            <input 
-              type="checkbox" 
-              checked={highContrast} 
-              onChange={(e) => setHighContrast(e.target.checked)}
-              className="w-5 h-5 accent-primary" 
-            />
-          </label>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium text-right" dir="rtl">כוונון ערכת הנושא של היישום לשיפור חווית המשתמש והנגישות הכללית:</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" dir="rtl">
+            {/* Light Card */}
+            <button
+              onClick={() => {
+                setIsDarkMode(false);
+                setHighContrast(false);
+              }}
+              className={cn(
+                "p-5 rounded-2xl border-2 flex flex-col items-center text-center gap-2 transition-all cursor-pointer",
+                (!highContrast && !isDarkMode)
+                  ? "border-indigo-600 bg-indigo-50/50 text-indigo-900 font-bold scale-102"
+                  : "border-slate-100 dark:border-slate-850 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+              )}
+            >
+              <Sun className="w-8 h-8 text-amber-500" />
+              <span className="text-sm font-black text-slate-800 dark:text-white">ערכת נושא בהירה</span>
+              <span className="text-xs text-slate-400">חזות נקייה, מוארת וקלאסית</span>
+            </button>
+
+            {/* Dark Card */}
+            <button
+              onClick={() => {
+                setIsDarkMode(true);
+                setHighContrast(false);
+              }}
+              className={cn(
+                "p-5 rounded-2xl border-2 flex flex-col items-center text-center gap-2 transition-all cursor-pointer",
+                (!highContrast && isDarkMode)
+                  ? "border-indigo-600 bg-indigo-950/20 text-slate-100 font-bold scale-102"
+                  : "border-slate-100 dark:border-slate-850 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+              )}
+            >
+              <Moon className="w-8 h-8 text-indigo-400" />
+              <span className="text-sm font-black text-slate-800 dark:text-white">ערכת נושא כהה</span>
+              <span className="text-xs text-slate-400 font-medium">חזות כהה, שקטה ומגנה על העיניים</span>
+            </button>
+
+            {/* High Contrast Card */}
+            <button
+              onClick={() => {
+                setHighContrast(true);
+              }}
+              className={cn(
+                "p-5 rounded-2xl border-2 flex flex-col items-center text-center gap-2 transition-all cursor-pointer text-right",
+                (highContrast)
+                  ? "border-yellow-400 bg-black text-yellow-400 font-bold scale-102 ring-2 ring-yellow-400"
+                  : "border-slate-100 dark:border-slate-850 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
+              )}
+            >
+              <Eye className="w-8 h-8 text-yellow-500" />
+              <span className="text-sm font-black text-slate-800 dark:text-white">ניגודיות גבוהה</span>
+              <span className="text-xs text-slate-400 font-medium">הנגשה מלאה בשילוב שחור, לבן וצהוב</span>
+            </button>
+          </div>
         </div>
         
         {/* Advanced AI */}
@@ -12415,8 +12375,7 @@ export default function App() {
     { title: "גרירה ושחרור", text: "פשוט גררו תלמידים מהמאגר או בין השולחנות כדי לעצב את הכיתה.", icon: <MousePointer className="w-10 h-10 text-indigo-600" /> },
     { title: "אופטימיזציית AI Smart Sort", text: "אלגוריתם ה-AI שלנו סורק אלפי אפשרויות כדי למצוא את הסידור המושלם. הוא מאזן בין צרכים לימודיים, חברתיים ופיזיים בשניות.", icon: <Brain className="w-10 h-10 text-brand-600" /> },
     { title: "מנהל האילוצים", text: "ה-AI מתחשב באילוצים חכמים: גובה תלמידים (נמוכים מלפנים), הפרדת מפריעים, הצמדת חברים, ושמירה על הומוגניות קבוצתית בכל שולחן.", icon: <ListChecks className="w-10 h-10 text-sky-600" /> },
-    { title: "פתרון קונפליקטים חכם", text: "כשיש סתירה בין אילוצים, ה-AI מדרג עדיפויות. המערכת תסמן לכם קונפליקטים שנותרו ותסביר בדיוק למה הם נוצרו ואיך ניתן לשפר.", icon: <Zap className="w-10 h-10 text-amber-500" /> },
-    { title: "תצוגת 3D", text: "חדש! מעכשיו תוכלו לראות את הכיתה בפרספקטיבה תלת-ממדית.", icon: <Box className="w-10 h-10 text-amber-600" /> }
+    { title: "פתרון קונפליקטים חכם", text: "כשיש סתירה בין אילוצים, ה-AI מדרג עדיפויות. המערכת תסמן לכם קונפליקטים שנותרו ותסביר בדיוק למה הם נוצרו ואיך ניתן לשפר.", icon: <Zap className="w-10 h-10 text-amber-500" /> }
   ];
 
   const isPrinting = (currentConfig as any).isPrinting;
@@ -12987,9 +12946,9 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
   }, [activeConfig.students]);
 
   useEffect(() => {
-    if (!activeConfig?.tasks) return;
+    if (!(activeConfig as any)?.tasks) return;
     const now = new Date();
-    const overdue = activeConfig.tasks.filter((t: any) => {
+    const overdue = (activeConfig as any).tasks.filter((t: any) => {
       const dueDate = new Date(t.dueDate);
       const diffMs = now.getTime() - dueDate.getTime();
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
@@ -13007,7 +12966,7 @@ ${activeConfig.students.map((s: any) => `- ${s.name} (id: ${s.id})`).join('\n')}
         })), ...prev];
       });
     }
-  }, [activeConfig.tasks]);
+  }, [(activeConfig as any).tasks]);
 
   const runAIShuffle = async () => {
     setLastAIConfig(activeConfig);
@@ -13609,6 +13568,7 @@ Instructions:
           const configRef = doc(db, 'users', currentUser.uid, 'classes', currentConfig.id || 'default');
           await setDoc(configRef, {
             ...currentConfig,
+            grid: Array.isArray(currentConfig.grid) ? currentConfig.grid.flat() : [],
             updatedAt: new Date().toISOString()
           });
           setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'סונכרן ונשמר אוטומטית ב-Firebase', type: 'success' }, ...prev]);
@@ -14209,7 +14169,7 @@ Instructions:
       case 'students': return <StudentsView students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} onBack={onBackToGrid} setViewType={setViewType} />;
       case 'worksheets': return <WorksheetsView onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} />;
       case 'question-bank': return <QuestionBankView onBack={onBackToGrid} currentConfig={activeConfig} />;
-      case 'lesson-analyzer': return <LessonAnalyzer onBack={onBackToGrid} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
+      case 'lesson-analyzer': return <LessonAnalyzer onBack={onBackToGrid} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} currentUser={currentUser} />;
       case 'parents': return <ParentsView students={activeConfig.students} onBack={onBackToGrid} updateCurrentConfig={updateCurrentConfig} />;
       case 'content-management': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
       case 'library': return <ContentManagementView onBack={onBackToGrid} students={activeConfig.students} currentConfig={activeConfig} updateCurrentConfig={updateCurrentConfig} />;
@@ -14340,6 +14300,8 @@ Instructions:
           setThemeFontOverrides={setThemeFontOverrides}
           highContrast={highContrast}
           setHighContrast={setHighContrast}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
         />
       );
       case 'studentDetail': {
@@ -14544,7 +14506,6 @@ Instructions:
             onClick={() => {
               setIsPresentationMode(true);
               setViewType('grid');
-              setIs3DView(true);
               setEditMode('placement');
             }}
             className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl transition-all group"
@@ -14714,10 +14675,6 @@ Instructions:
     updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
 
     try {
-      // Temporarily switch off 3D if active for better printing
-      const was3D = is3DView;
-      if (was3D) setIs3DView(false);
-      
       // Wait for layout and state to settle
       await new Promise(resolve => setTimeout(resolve, 800));
       
@@ -14739,7 +14696,6 @@ Instructions:
       
       pdf.save(`classroom-layout-${currentConfig.name || 'export'}.pdf`);
       
-      if (was3D) setIs3DView(true);
       setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: "הקובץ מוכן להורדה", type: 'info' }, ...prev]);
     } catch (error) {
       console.error('Export failed:', error);
@@ -14757,8 +14713,6 @@ Instructions:
     setIsPrintModalOpen(false);
     // Set printing mode to hide UI elements and fit nicely
     updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: true }));
-    const was3D = is3DView;
-    if (was3D) setIs3DView(false);
     
     setNotifications((prev: any) => [
       { id: Date.now() + Math.random(), text: "מכין הדפסה מהירה...", type: 'info' },
@@ -14769,7 +14723,6 @@ Instructions:
     setTimeout(() => {
       window.print();
       updateCurrentConfig((prev: any) => ({ ...prev, isPrinting: false }));
-      if (was3D) setIs3DView(true);
     }, 450);
   };
   
@@ -15788,7 +15741,7 @@ Instructions:
         className={cn(
         "flex flex-col h-screen overflow-hidden font-sans rtl selection:bg-brand-100 transition-colors",
         isDarkMode && "dark",
-        accessibility.highContrast && "high-contrast grayscale"
+        (highContrast || accessibility.highContrast) && "high-contrast grayscale"
       )} 
       data-theme={theme}
       style={{ 
@@ -16112,12 +16065,12 @@ Instructions:
                      <div className="w-px h-6 bg-slate-200/50 mx-1" />
 
                      <button
-                        onClick={() => setIs3DView(!is3DView)}
+
                         className={cn(
                           "px-4 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2",
                           is3DView ? "bg-amber-100 text-amber-700 shadow-sm border border-amber-200" : "bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100"
                         )}
-                        title="תצוגת תלת-ממד"
+                        title="תצוגת תלת-ממד" style={{ display: 'none' }}
                      >
                         <Box className="w-4 h-4" />
                         <span>3D</span>
@@ -16148,9 +16101,9 @@ Instructions:
                      </button>
 
                      {is3DView && (
-                       <div className="flex items-center gap-3 bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-2xl">
+                       <div className="flex items-center gap-3 bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-2xl" style={{ display: 'none' }}>
                          <div className="flex items-center gap-1">
-                           {(['standard', 'birdsEye', 'studentLevel', 'free'] as const).map(angle => (
+                           {([] as const).map(angle => (
                              <button
                                key={angle}
                                onClick={() => {
@@ -16538,8 +16491,8 @@ Instructions:
                        gridTemplateRows: Array.from({ length: activeConfig.rows }).map((_, i) => 
                          `${activeConfig.rowGapSize ? (activeConfig.rowGaps.includes(i) ? `${isMobile ? '36px' : '56px'} ${activeConfig.rowGapSize}px` : (isMobile ? '36px' : '56px')) : (activeConfig.rowGaps.includes(i) ? (isMobile ? '36px 16px' : '56px 32px') : (isMobile ? '36px' : '56px'))}`
                        ).join(' '),
-                       transformStyle: 'preserve-3d',
-                       perspective: '1200px',
+
+
                        ...(is3DView ? {
                          transform: cameraAngle === 'birdsEye' 
                            ? `rotateX(${rotationX}deg) rotateY(${rotationY}deg) rotateZ(0deg) translateZ(-50px) translateX(${panX}px) translateY(${panY}px) scale(${zoomLevel})`
@@ -17743,7 +17696,7 @@ Instructions:
         </div>
       )}
 
-      {isPresentationMode && is3DView && (
+      {isPresentationMode && false && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[250] bg-slate-900/95 dark:bg-black/95 text-white backdrop-blur-md px-6 py-4 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border border-slate-700/50 flex flex-wrap items-center gap-6 justify-center" dir="rtl">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black text-slate-300">תוויות מושבים:</span>

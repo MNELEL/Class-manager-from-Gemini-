@@ -3,10 +3,26 @@ import path from "path";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import multer from 'multer';
 
 dotenv.config();
 
+// Initialize Firebase Admin dynamically to avoid build-time issues
+let db: any;
+let storage: any;
+
+async function initFirebase() {
+  const admin = await import("firebase-admin");
+  const app = admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    });
+  db = app.firestore();
+  storage = app.storage();
+}
+
 async function startServer() {
+  await initFirebase();
   console.log("SERVER_INIT: Starting startServer function...");
   console.log(`SERVER_INIT: NODE_ENV=${process.env.NODE_ENV}`);
   console.log(`SERVER_INIT: PORT=${process.env.PORT || 'not set (defaulting to 3000)'}`);
@@ -16,6 +32,8 @@ async function startServer() {
 
   console.log(`SERVER_INIT: Resolved PORT=${PORT}`);
   app.use(express.json());
+
+  const upload = multer({ storage: multer.memoryStorage() });
 
   console.log("SERVER_INIT: Initializing AI fallbacks...");
   let genAI: GoogleGenAI | null = null;
@@ -36,6 +54,57 @@ async function startServer() {
     }
     return genAI;
   };
+
+  app.post("/api/audio/transcribe", upload.single('audio'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).send("No file uploaded");
+      const { classId, userId } = req.body;
+      const audioBuffer = req.file.buffer;
+
+      // 1. Save to Storage
+      const fileName = `lessons/${userId}/${classId}/${Date.now()}.mp3`;
+      const file = storage.bucket().file(fileName);
+      await file.save(audioBuffer, { contentType: 'audio/mp3' });
+      
+      // 2. Call Gemini (Multimodal)
+      const ai = getGenAI();
+      const result = await ai.models.generateContent({
+        model: "gemini-2.0-flash", 
+        contents: [
+            {
+                role: "user",
+                parts: [{
+                    inlineData: {
+                        mimeType: "audio/mp3",
+                        data: audioBuffer.toString("base64")
+                    }
+                }, {
+                    text: "Transcribe this lesson accurately in Hebrew. Then, summarize it and extract 5 key pedagogical points based ONLY on the content. Return JSON."
+                }]
+            }
+        ]
+      });
+
+      const responseText = result.response.text();
+      const analysis = JSON.parse(responseText.replace(/```json/g, "").replace(/```/g, ""));
+
+      // 3. Store in Firestore
+      const lessonRef = await db.collection("lesson_transcripts").add({
+        classId,
+        userId,
+        audioPath: fileName,
+        transcript: analysis.transcript,
+        summary: analysis.summary,
+        keyPoints: analysis.keyPoints,
+        createdAt: new Date().toISOString()
+      });
+
+      res.json({ lessonId: lessonRef.id });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Check if error is related to billing or API credit exhaustions
   function isBillingOrQuotaError(error: any): boolean {
@@ -533,7 +602,7 @@ ${studentsNeedingSupportList}
   // Vite middleware for development
   let viteLoaded = false;
 
-  if (process.env.NODE_ENV !== "production" && !process.env.K_SERVICE) {
+  if (process.env.NODE_ENV !== "production") {
     try {
       const viteModuleName = "vite";
       const { createServer: createViteServer } = await import(viteModuleName);
@@ -550,6 +619,9 @@ ${studentsNeedingSupportList}
   
   if (!viteLoaded) {
     const distPath = path.join(process.cwd(), 'dist');
+    console.log(`[SERVER] Static files serving from: ${distPath}`);
+    console.log(`[SERVER] distPath exists: ${fs.existsSync(distPath)}`);
+    console.log(`[SERVER] index.html exists: ${fs.existsSync(path.join(distPath, 'index.html'))}`);
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
