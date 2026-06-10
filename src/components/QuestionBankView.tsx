@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Layers, Search, Filter, BookOpen, Download, 
   Printer, ChevronRight, CheckCircle2 
@@ -7,6 +7,7 @@ import {
 
 export const QuestionBankView = ({ onBack, currentConfig }: any) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Use Worksheets from Library or just mock for now
   const savedWorksheets = currentConfig.libraryItems?.filter((i: any) => i.type === 'worksheet' || i.source_type === 'worksheet') || [
@@ -20,8 +21,8 @@ export const QuestionBankView = ({ onBack, currentConfig }: any) => {
   return (
     <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-6 h-full overflow-y-auto no-scrollbar pb-32">
       <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-50 transition-colors">
-          <ChevronRight className="w-5 h-5" />
+        <button onClick={onBack} className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-100 transition-all hover:scale-105 active:scale-90 cursor-pointer">
+          <ChevronRight className="w-5 h-5 text-slate-700 dark:text-slate-300" />
         </button>
         <div>
           <h2 className="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-3">
@@ -43,40 +44,56 @@ export const QuestionBankView = ({ onBack, currentConfig }: any) => {
             className="w-full pl-4 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-primary outline-none"
           />
         </div>
-        <button className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors">
+        <button className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all hover:scale-105 active:scale-95 cursor-pointer">
           <Filter className="w-5 h-5" />
         </button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filtered.map((item: any) => (
-          <div key={item.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-border p-6 shadow-sm hover:shadow-md transition-all group flex flex-col h-full card-hover">
-            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 inner-shadow">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div className="flex-1 space-y-2 mb-6">
-              <h3 className="font-bold text-xl text-slate-800 dark:text-white line-clamp-2">{item.title}</h3>
-              <p className="text-slate-500 font-medium">מקצוע: {item.subject}</p>
-              <div className="flex flex-wrap gap-2 pt-2">
-                <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md text-xs font-bold">
-                  {item.numQuestions} שאלות
-                </span>
-                <span className="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md text-xs font-bold">
-                  קושי: {item.difficulty}
-                </span>
+        {filtered.map((item: any) => {
+          const isSelected = selectedId === item.id;
+          return (
+            <div 
+              key={item.id} 
+              onClick={() => setSelectedId(isSelected ? null : item.id)}
+              className={`bg-white dark:bg-slate-900 rounded-3xl border p-6 shadow-sm transition-all duration-200 group flex flex-col h-full cursor-pointer ${
+                isSelected 
+                  ? 'border-primary ring-2 ring-primary/20 bg-primary/5 dark:bg-primary/5 scale-[1.015] shadow-md'
+                  : 'border-border hover:border-slate-300 dark:hover:border-slate-700 hover:scale-[1.01]'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 inner-shadow transition-colors ${
+                isSelected ? 'bg-primary text-white' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600'
+              }`}>
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div className="flex-1 space-y-2 mb-6">
+                <h3 className="font-bold text-xl text-slate-800 dark:text-white line-clamp-2 flex items-center gap-2">
+                  <span>{item.title}</span>
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-primary animate-ping shrink-0" />}
+                </h3>
+                <p className="text-slate-500 font-medium text-sm">מקצוע: {item.subject}</p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md text-xs font-bold">
+                    {item.numQuestions} שאלות
+                  </span>
+                  <span className="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md text-xs font-bold">
+                    קושי: {item.difficulty}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 pt-4 border-t border-border mt-auto" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 text-sm flex items-center justify-center gap-2 cursor-pointer">
+                  <Printer className="w-4 h-4" /> הדפס
+                </button>
+                <button className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer">
+                  <Download className="w-4 h-4" />
+                </button>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2 pt-4 border-t border-border mt-auto">
-              <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl font-bold transition-colors text-sm flex items-center justify-center gap-2">
-                <Printer className="w-4 h-4" /> הדפס
-              </button>
-              <button className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl transition-colors">
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       {filtered.length === 0 && (

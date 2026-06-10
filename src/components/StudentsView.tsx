@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Filter, Plus, Edit2, Trash2, 
   ChevronDown, User as UserIcon, BookOpen, 
-  Settings2, AlertCircle, Sparkles, GraduationCap, FileText
+  Settings2, AlertCircle, Sparkles, GraduationCap, FileText, CheckCircle2
 } from 'lucide-react';
 import { Student } from '../types';
 import { cn } from '../lib/utils';
 import { generateContent } from '../lib/ai';
 import { exportStudentPDF } from '../lib/pdf';
+import { StudentReportModal } from './StudentReportModal';
 
 export const StudentsView = ({ 
   students, 
@@ -24,7 +25,13 @@ export const StudentsView = ({
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const [showImportForm, setShowImportForm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [importing, setImporting] = useState(false);
+
+  // Key Interaction States
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Derive unique groups
   const allGroups = useMemo(() => {
@@ -43,21 +50,31 @@ export const StudentsView = ({
     });
   }, [students, searchTerm, selectedGroup]);
 
-  const handleSaveStudent = (newStudent: Student) => {
+  const handleSaveStudent = async (newStudent: Student) => {
+    setIsSaving(true);
+    // Visual Simulator delay to showcase full form submitting spinner state
+    await new Promise(resolve => setTimeout(resolve, 750));
+
     let newStudents = [...students];
     if (editingStudent) {
       newStudents = newStudents.map(s => s.id === newStudent.id ? newStudent : s);
+      setToast({ text: 'פרופיל התלמיד עודכן בהצלחה בהיסטוריה הכיתתית!', type: 'success' });
     } else {
       newStudents.push({ ...newStudent, id: String(Date.now()) });
+      setToast({ text: `התלמיד החדש "${newStudent.name}" נוסף בהצלחה!`, type: 'success' });
     }
     updateCurrentConfig({ students: newStudents });
+    setIsSaving(false);
     setShowForm(false);
     setEditingStudent(null);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('האם למחוק תלמיד זה?')) {
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`האם למחוק את התלמיד ${name}?`)) {
       updateCurrentConfig({ students: students.filter((s: Student) => s.id !== id) });
+      setToast({ text: `התלמיד "${name}" הוסר מהכיתה בהצלחה.`, type: 'info' });
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
@@ -104,15 +121,18 @@ ${text}`,
       if (parsed && parsed.students) {
         const newStudents = parsed.students.map((s: any) => ({
           ...s,
-          id: String(Date.now()) + Math.random().toString(36).substr(2, 9)
+          id: String(Date.now() + Math.random())
         }));
         
         updateCurrentConfig({ students: [...students, ...newStudents] });
+        setToast({ text: `ייבוא מוצלח! ${newStudents.length} תלמידים נוספו לכיתה בעזרת AI.`, type: 'success' });
+        setTimeout(() => setToast(null), 4000);
         setShowImportForm(false);
       }
     } catch (err) {
       console.error(err);
-      alert('אירעה שגיאה בניתוח הטקסט');
+      setToast({ text: 'אירעה שגיאה בניתוח הטקסט ע"י הבינה המלאכותית.', type: 'error' });
+      setTimeout(() => setToast(null), 4000);
     } finally {
       setImporting(false);
     }
@@ -129,19 +149,26 @@ ${text}`,
           </h2>
           <p className="text-slate-500 font-medium mt-1">רשימת התלמידים בכיתה, פרופיל אישי, ואפיון חכם.</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <button 
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-850 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 dark:text-amber-400 px-4 py-2.5 rounded-xl font-bold hover:scale-[1.02] hover:shadow-sm cursor-pointer transition-all duration-200 border border-amber-200/40"
+          >
+            <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            הפק דוח פרופילים מלא
+          </button>
           <button 
             onClick={() => setShowImportForm(true)}
-            className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm"
+            className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold hover:scale-[1.02] hover:shadow-sm cursor-pointer transition-all duration-200"
           >
-            <Sparkles className="w-5 h-5 text-indigo-500" />
+            <Sparkles className="w-4 h-4 text-indigo-500" />
             ייבוא חכם (AI)
           </button>
           <button 
             onClick={() => { setEditingStudent(null); setShowForm(true); }}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-all shadow-sm"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl font-bold hover:bg-primary/95 hover:scale-[1.02] hover:shadow-md active:scale-95 cursor-pointer transition-all duration-200"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             הוסף תלמיד חדש
           </button>
         </div>
@@ -211,14 +238,33 @@ ${text}`,
                     </td>
                   </tr>
                 ) : filteredStudents.map((student: Student) => (
-                  <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                  <tr 
+                    key={student.id} 
+                    onClick={() => setSelectedStudentId(selectedStudentId === student.id ? null : student.id)}
+                    className={cn(
+                      "transition-all duration-150 cursor-pointer border-r-4",
+                      selectedStudentId === student.id
+                        ? "bg-primary/5 dark:bg-primary/10 border-r-primary border-b border-border shadow-sm scale-[0.998]"
+                        : "hover:bg-slate-50/50 dark:hover:bg-slate-800/20 border-r-transparent"
+                    )}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full font-bold flex items-center justify-center transition-all",
+                          selectedStudentId === student.id 
+                            ? "bg-primary text-white scale-110 shadow-md"
+                            : "bg-primary/10 text-primary"
+                        )}>
                           {student.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                          <p className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>{student.name}</span>
+                            {selectedStudentId === student.id && (
+                              <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-black animate-pulse">פרופיל פעיל</span>
+                            )}
+                          </p>
                           {(student.gender || student.height) && (
                             <p className="text-xs text-slate-500">
                               {student.gender === 'male' ? 'בן' : student.gender === 'female' ? 'בת' : ''} {student.height ? `- ${student.height}` : ''}
@@ -248,35 +294,35 @@ ${text}`,
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-xs text-slate-600">
-                        {student.preferredRow && <span>שורה: <b className="text-slate-800">{student.preferredRow}</b></span>}
-                        {student.frontPrefer && <span className="bg-emerald-100 text-emerald-800 px-1.5 rounded">קדמי</span>}
+                        {student.preferredRow && <span>שורה: <b className="text-slate-800 dark:text-slate-200">{student.preferredRow}</b></span>}
+                        {student.frontPrefer && <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 rounded font-bold">קדמי</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
                         <button 
                           onClick={() => exportStudentPDF(student)}
-                          className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                          className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:scale-115 active:scale-90 transition-all cursor-pointer"
                           title="ייצוא פרופיל PDF"
                         >
                           <FileText className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => { setViewType('studentDetail'); /* we'd ideally pass student ID but viewType 'studentDetail' expects state mapping */ }}
-                          className="p-2 text-slate-400 hover:text-primary transition-colors"
+                          onClick={() => { setViewType('studentDetail'); }}
+                          className="p-2 text-slate-400 hover:text-primary hover:scale-115 active:scale-90 transition-all cursor-pointer"
                           title="צפה בפרופיל"
                         >
                           <BookOpen className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => { setEditingStudent(student); setShowForm(true); }}
-                          className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                          className="p-2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:scale-115 active:scale-90 transition-all cursor-pointer"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(student.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                          onClick={() => handleDelete(student.id, student.name)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:scale-115 active:scale-90 transition-all cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -291,26 +337,51 @@ ${text}`,
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredStudents.map((student: Student) => (
-            <div key={student.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 card-hover relative group">
-              <div className="absolute top-3 left-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingStudent(student); setShowForm(true); }} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500 hover:text-emerald-600">
+            <div 
+              key={student.id} 
+              onClick={() => setSelectedStudentId(selectedStudentId === student.id ? null : student.id)}
+              className={cn(
+                "bg-white dark:bg-slate-900 rounded-2xl border p-5 flex flex-col items-center text-center gap-3 relative group transition-all duration-200 cursor-pointer",
+                selectedStudentId === student.id
+                  ? "border-primary ring-2 ring-primary/20 bg-primary/5 dark:bg-primary/10 scale-[1.015] shadow-md"
+                  : "border-border hover:border-slate-300 dark:hover:border-slate-700 hover:scale-[1.01] hover:shadow-sm"
+              )}
+            >
+              <div 
+                className={cn(
+                  "absolute top-3 left-3 flex gap-1 transition-all duration-200",
+                  selectedStudentId === student.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button onClick={() => { setEditingStudent(student); setShowForm(true); }} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer hover:scale-105 active:scale-95">
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => handleDelete(student.id)} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500 hover:text-red-500">
+                <button onClick={() => handleDelete(student.id, student.name)} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500 hover:text-red-500 transition-colors cursor-pointer hover:scale-105 active:scale-95">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 text-primary flex items-center justify-center text-2xl font-black shadow-inner">
+              <div className={cn(
+                "w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-inner transition-all duration-300",
+                selectedStudentId === student.id
+                  ? "bg-primary text-white scale-105 shadow-md"
+                  : "bg-gradient-to-tr from-primary/20 to-primary/5 text-primary"
+              )}>
                 {student.name.charAt(0)}
               </div>
               <div>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">{student.name}</h3>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
+                  <span>{student.name}</span>
+                  {selectedStudentId === student.id && (
+                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  )}
+                </h3>
                 <p className="text-xs text-slate-500">{student.groups?.join(', ') || 'ללא קבוצה'}</p>
               </div>
               {student.pedagogicalDiagnoses && student.pedagogicalDiagnoses.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1 mt-2">
                   {student.pedagogicalDiagnoses.map(d => (
-                    <span key={d} className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest bg-amber-50 text-amber-600">
+                    <span key={d} className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
                       {d}
                     </span>
                   ))}
@@ -325,7 +396,7 @@ ${text}`,
       <div className="md:hidden fixed bottom-24 left-4 z-50">
         <button 
           onClick={() => { setEditingStudent(null); setShowForm(true); }}
-          className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+          className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-90 transition-transform cursor-pointer"
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -401,6 +472,15 @@ ${text}`,
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showReportModal && (
+          <StudentReportModal 
+            students={students} 
+            onClose={() => setShowReportModal(false)} 
+          />
         )}
       </AnimatePresence>
 
@@ -483,16 +563,47 @@ ${text}`,
                 </div>
                 
                 <div className="pt-6 border-t border-border flex justify-end gap-3">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2.5 font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowForm(false)} 
+                    disabled={isSaving}
+                    className="px-5 py-2.5 font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+                  >
                     ביטול
                   </button>
-                  <button type="submit" className="px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-sm">
-                    שמור תלמיד
+                  <button 
+                    type="submit" 
+                    disabled={isSaving}
+                    className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/95 transition-all active:scale-95 shadow-sm disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        שומר...
+                      </>
+                    ) : (
+                      'שמור תלמיד'
+                    )}
                   </button>
                 </div>
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Elegant Toast Notifications */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-6 left-6 z-[300] bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-bold text-sm border border-slate-800/10"
+          >
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            <span>{toast.text}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

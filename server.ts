@@ -12,13 +12,18 @@ let db: any;
 let storage: any;
 
 async function initFirebase() {
-  const admin = await import("firebase-admin");
-  const app = admin.initializeApp({
+  try {
+    const admin: any = await import("firebase-admin");
+    const app = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     });
-  db = app.firestore();
-  storage = app.storage();
+    db = app.firestore();
+    storage = app.storage();
+    console.log("SERVER_INIT: Firebase Admin successfully initialized.");
+  } catch (error: any) {
+    console.warn("SERVER_INIT: Firebase Admin could not be initialized. Transcription API will be inactive. Details:", error.message || error);
+  }
 }
 
 async function startServer() {
@@ -57,6 +62,9 @@ async function startServer() {
 
   app.post("/api/audio/transcribe", upload.single('audio'), async (req, res) => {
     try {
+      if (!db || !storage) {
+        throw new Error("ממשק Firebase אינו מוגדר או זמין כעת.");
+      }
       if (!req.file) return res.status(400).send("No file uploaded");
       const { classId, userId } = req.body;
       const audioBuffer = req.file.buffer;
@@ -85,7 +93,7 @@ async function startServer() {
         ]
       });
 
-      const responseText = result.response.text();
+      const responseText = result.text || "";
       const analysis = JSON.parse(responseText.replace(/```json/g, "").replace(/```/g, ""));
 
       // 3. Store in Firestore

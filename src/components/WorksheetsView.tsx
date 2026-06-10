@@ -8,6 +8,9 @@ import { generateContent } from '../lib/ai';
 export const WorksheetsView = ({ onBack }: any) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [worksheet, setWorksheet] = useState<any>(null);
+  
+  // Track selected answers in preview for pristine interactive feedback
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, any>>({});
 
   const handleGenerate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,6 +22,7 @@ export const WorksheetsView = ({ onBack }: any) => {
     const numQuestions = parseInt(fd.get('numQuestions') as string) || 5;
 
     setIsGenerating(true);
+    setSelectedAnswers({}); // Clear previous answers state to keep transitions fresh
     try {
       const responseText = await generateContent(
         `יצר דף עבודה בנושא "${topic}" במקצוע "${subject}" עבור כיתה "${gradeLevel}".
@@ -70,8 +74,8 @@ export const WorksheetsView = ({ onBack }: any) => {
     <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-6 h-full overflow-y-auto no-scrollbar pb-32">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-50 transition-colors hidden-print">
-            <ChevronRight className="w-5 h-5" />
+          <button onClick={onBack} className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-90 cursor-pointer hidden-print">
+            <ChevronRight className="w-5 h-5 text-slate-700 dark:text-slate-350" />
           </button>
           <div>
             <h2 className="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-3">
@@ -111,7 +115,7 @@ export const WorksheetsView = ({ onBack }: any) => {
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">רמת קושי</label>
-              <select name="difficulty" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none">
+              <select name="difficulty" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none cursor-pointer">
                 <option value="קל">קל</option>
                 <option value="בינוני">בינוני</option>
                 <option value="קשה">קשה</option>
@@ -122,9 +126,9 @@ export const WorksheetsView = ({ onBack }: any) => {
             <button 
               type="submit" 
               disabled={isGenerating}
-              className="w-full mt-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/95 hover:scale-[1.02] hover:shadow-md active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
-              {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+              {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5 animate-pulse" />}
               {isGenerating ? 'מייצר דף עבודה...' : 'חולל דף עם AI'}
             </button>
           </form>
@@ -134,13 +138,13 @@ export const WorksheetsView = ({ onBack }: any) => {
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-border shadow-sm min-h-[500px] flex flex-col print-container">
           {worksheet ? (
             <div className="p-8">
-              <div className="flex justify-between items-start border-b-2 border-slate-200 pb-6 mb-6">
+              <div className="flex justify-between items-start border-b-2 border-slate-200 dark:border-slate-800 pb-6 mb-6">
                 <div>
-                  <h1 className="text-3xl font-black text-slate-900 mb-2">{worksheet.title}</h1>
-                  <p className="text-slate-600 font-medium">{worksheet.instructions}</p>
+                  <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">{worksheet.title}</h1>
+                  <p className="text-slate-600 dark:text-slate-400 font-medium">{worksheet.instructions}</p>
                 </div>
                 <div className="flex gap-2 hidden-print">
-                  <button onClick={handlePrint} className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl transition-colors shrink-0">
+                  <button onClick={handlePrint} className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer" title="הדפיס כעת">
                     <Printer className="w-5 h-5" />
                   </button>
                 </div>
@@ -151,37 +155,80 @@ export const WorksheetsView = ({ onBack }: any) => {
                   <div key={q.id || idx} className="space-y-3">
                     <div className="flex gap-3">
                       <span className="font-bold text-slate-400 select-none">{idx + 1}.</span>
-                      <h3 className="font-bold text-lg text-slate-800">{q.question}</h3>
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{q.question}</h3>
                     </div>
                     
                     {q.type === 'multiple_choice' && q.options && (
                       <div className="pr-8 space-y-2">
-                        {q.options.map((opt: string, i: number) => (
-                          <label key={i} className="flex items-center gap-3">
-                            <input type="radio" name={`q_${q.id}`} className="w-4 h-4 accent-slate-600" />
-                            <span className="text-slate-700">{opt}</span>
-                          </label>
-                        ))}
+                        {q.options.map((opt: string, i: number) => {
+                          const isSelected = selectedAnswers[q.id] === i;
+                          return (
+                            <label 
+                              key={i} 
+                              onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: i }))}
+                              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                isSelected 
+                                  ? 'bg-primary/5 dark:bg-primary/10 border-primary text-primary font-bold shadow-xs' 
+                                  : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <input 
+                                type="radio" 
+                                name={`q_${q.id}`} 
+                                checked={isSelected}
+                                readOnly
+                                className="w-4 h-4 accent-primary" 
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
 
                     {q.type === 'true_false' && (
                       <div className="pr-8 flex gap-6">
-                        <label className="flex items-center gap-2 border border-slate-200 rounded-lg px-4 py-2 w-32 justify-center">
-                          <input type="radio" name={`q_${q.id}`} className="w-4 h-4 accent-slate-600" />
-                          <span className="font-bold text-slate-700">נכון</span>
+                        <label 
+                          onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: 'true' }))}
+                          className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 w-32 justify-center cursor-pointer transition-all ${
+                            selectedAnswers[q.id] === 'true'
+                              ? 'bg-primary/5 dark:bg-primary/10 border-primary text-primary font-bold shadow-xs'
+                              : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <input 
+                            type="radio" 
+                            name={`q_${q.id}`} 
+                            checked={selectedAnswers[q.id] === 'true'}
+                            readOnly
+                            className="w-4 h-4 accent-primary" 
+                          />
+                          <span className="font-bold text-slate-700 dark:text-slate-300">נכון</span>
                         </label>
-                        <label className="flex items-center gap-2 border border-slate-200 rounded-lg px-4 py-2 w-32 justify-center">
-                          <input type="radio" name={`q_${q.id}`} className="w-4 h-4 accent-slate-600" />
-                          <span className="font-bold text-slate-700">לא נכון</span>
+                        <label 
+                          onClick={() => setSelectedAnswers(prev => ({ ...prev, [q.id]: 'false' }))}
+                          className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 w-32 justify-center cursor-pointer transition-all ${
+                            selectedAnswers[q.id] === 'false'
+                              ? 'bg-primary/5 dark:bg-primary/10 border-primary text-primary font-bold shadow-xs'
+                              : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <input 
+                            type="radio" 
+                            name={`q_${q.id}`} 
+                            checked={selectedAnswers[q.id] === 'false'}
+                            readOnly
+                            className="w-4 h-4 accent-primary" 
+                          />
+                          <span className="font-bold text-slate-700 dark:text-slate-300">לא נכון</span>
                         </label>
                       </div>
                     )}
 
                     {q.type === 'open' && (
                       <div className="pr-8 mt-2">
-                        <div className="border-b-2 border-dotted border-slate-300 w-full mt-8"></div>
-                        <div className="border-b-2 border-dotted border-slate-300 w-full mt-8"></div>
+                        <div className="border-b-2 border-dotted border-slate-300 dark:border-slate-700 w-full mt-8"></div>
+                        <div className="border-b-2 border-dotted border-slate-300 dark:border-slate-700 w-full mt-8"></div>
                       </div>
                     )}
                   </div>

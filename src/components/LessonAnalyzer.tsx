@@ -6,6 +6,7 @@ import {
   Save, ListChecks, Sparkles, HelpCircle, BookOpen, Edit3
 } from 'lucide-react';
 import { transcribeAndSummarize } from '../lib/lessons.functions';
+import { generateContent } from '../lib/ai';
 
 export const LessonAnalyzer = ({ onBack, currentConfig, updateCurrentConfig, currentUser }: any) => {
   const [isRecording, setIsRecording] = useState(false);

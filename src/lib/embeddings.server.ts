@@ -8,14 +8,17 @@ if (!apiKey) {
 const ai = new GoogleGenAI({ apiKey });
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const result = await ai.models.embedContent({
+  const result: any = await ai.models.embedContent({
     model: "text-embedding-004", // Use the supported embedding model
-    content: { parts: [{ text }] },
+    contents: text,
   });
   
-  if (!result.embedding?.values) {
+  const embeddingObj = result.embedding || result.embeddings;
+  const values = embeddingObj?.values || (Array.isArray(embeddingObj) ? embeddingObj[0]?.values : embeddingObj?.values);
+  
+  if (!values) {
     throw new Error("Failed to generate embedding");
   }
   
-  return result.embedding.values;
+  return values;
 }

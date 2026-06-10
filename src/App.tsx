@@ -11788,16 +11788,7 @@ export default function App() {
           {
             id: Date.now() + Math.random(),
             type: 'error',
-            text: 'חלון ההתחברות של Google נחסם או נסגר על ידי הדפדפן. מאחר שהמערכת פועלת בתור מסגרת (Iframe), יש לאפשר פופ-אפים או לפתוח את האפליקציה בלשונית חדשה.',
-            action: (
-              <button
-                onClick={() => window.open(window.location.href, '_blank')}
-                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-black text-[10.5px] rounded-lg shadow-sm transition-all pointer-events-auto"
-              >
-                <ExternalLink className="w-3.5 h-3.5 animate-pulse" />
-                פתח בלשונית חדשה
-              </button>
-            )
+            text: 'חלון ההתחברות של Google נסגר או נחסם. במידה ואתם משתמשים בתצוגה המקדימה בסטודיו, יש לפתוח את האפליקציה במסך מלא (בעזרת כפתור Open App למעלה), לוודא שאימות Google מופעל ב-Firebase, או פשוט להיכנס כ"מורה אורח" למטה.',
           },
           ...prev
         ]);
@@ -12021,6 +12012,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authHint, setAuthHint] = useState<string | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
@@ -12042,13 +12034,17 @@ export default function App() {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
         console.log("Firebase connection established.");
+        setIsFirebaseOnline(true);
       } catch (error: any) {
         if (error.code === 'permission-denied') {
           console.log("Firebase connection verified (permission denied as expected).");
-        } else if (error.message && error.message.includes('the client is offline')) {
+          setIsFirebaseOnline(true);
+        } else if (error.message && (error.message.includes('the client is offline') || error.code === 'unavailable')) {
           console.info("Firebase: Client is currently offline. This is usually transient and Firestore will reconnect automatically.");
+          setIsFirebaseOnline(false);
         } else {
-          console.debug("Firebase initial check:", error.message);
+          console.debug("Firebase initial check failed, falling back to local mode:", error.message);
+          setIsFirebaseOnline(false);
         }
       }
     };
@@ -12095,8 +12091,27 @@ export default function App() {
         }
       }
     } catch (err: any) {
-      setAuthError(err.message);
-      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שגיאת התחברות: " + err.message, type: 'error' }, ...prev]);
+      console.error("Auth error:", err);
+      let errorMsg = err.message;
+      let hintMsg = 'אם הרשמת דוא"ל חסומה בפרויקט, אנא התחבר עם Google או היכנס ישירות כאורח ללא שמירה בענן.';
+      
+      if (err.code === 'auth/network-request-failed') {
+          errorMsg = 'שגיאת רשת בגישה לשרתי ההתחברות.';
+          hintMsg = 'נראה שיש חסימת רשת (לרוב בגלל חוסם פרסומות, דפדפן אנונימי או חסימת עוגיות צד-שלישי). אנא נטרל חוסמי פרסומות או היכנס למטה כ"מורה אורח".';
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+          errorMsg = 'פרטי ההתחברות שגויים.';
+          hintMsg = 'אנא ודא שהאימייל והסיסמה נכונים.';
+      } else if (err.code === 'auth/invalid-email') {
+          errorMsg = 'כתובת אימייל לא תקינה.';
+          hintMsg = 'אנא ודא שהקלדת את האימייל בפורמט נכון (למשל name@gmail.com).';
+      } else if (err.code === 'auth/email-already-in-use') {
+          errorMsg = 'כתובת אימייל זו כבר רשומה במערכת.';
+          hintMsg = 'אנא עבור למסך ההתחברות (במקום הרשמה).';
+      }
+
+      setAuthError(errorMsg);
+      setAuthHint(hintMsg);
+      setNotifications(prev => [{ id: Date.now() + Math.random(), text: "שגיאת התחברות: " + errorMsg, type: 'error' }, ...prev]);
     } finally {
       setIsAuthLoading(false);
     }
@@ -15822,7 +15837,7 @@ Instructions:
                 {authError && (
                   <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40 space-y-1">
                     <p className="text-rose-600 dark:text-rose-400 text-xs font-bold leading-normal">{authError}</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] leading-normal font-medium">אם הרשמת דוא"ל חסומה בפרויקט, אנא התחבר מהירה עם Google או היכנס ישירות כאורח ללא שמירה בענן.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] leading-normal font-medium">{authHint || 'אם הרשמת דוא"ל חסומה בפרויקט, אנא התחבר עם Google או היכנס ישירות כאורח ללא שמירה בענן.'}</p>
                   </div>
                 )}
 

@@ -1,6 +1,6 @@
-// Import from API instead
 import { generateEmbedding } from "./embeddings.server";
 import { GoogleGenAI } from "@google/genai";
+import { db } from "./firebase-admin";
 
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: apiKey! });
@@ -47,7 +47,7 @@ export async function generateResourceFromTranscript(transcriptId: string, resou
         }]
     });
 
-    const resourceContent = result.response.text();
+    const resourceContent = result.text || "";
     
     // Store resource
     const resourceRef = await db.collection("teaching_resources").add({
