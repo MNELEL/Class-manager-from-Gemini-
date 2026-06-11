@@ -823,7 +823,7 @@ const TeacherDesk = ({ index, width, height, colPos, rowPos, editMode, updateCur
         }
       }}
       className={cn(
-        "bg-slate-700 text-white rounded-3xl border-b-[15px] border-slate-900 shadow-2xl flex flex-col items-center justify-center gap-3 z-40 transition-all relative group overflow-hidden",
+        "bg-slate-700 text-white rounded-3xl border-b-[15px] border-slate-900 shadow-2xl flex flex-col items-center justify-center gap-3 z-40 transition-all relative group classroom-desk",
         editMode === 'structure' ? (isLocked ? "ring-4 ring-slate-400/50 cursor-not-allowed" : "ring-4 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)] cursor-move") : "cursor-default border-b-[10px]"
       )}
     >
@@ -1181,6 +1181,7 @@ const DeskCell = ({
       }}
       className={cn(
         "aspect-square rounded-[1.5rem] transition-all flex flex-col items-center justify-center cursor-pointer relative group",
+        (!isHidden && !isObstruction) && "classroom-desk",
         isPrinting ? (
           (!student && !printConfigOptions?.showGridLines)
             ? "border-none bg-transparent opacity-0 pointer-events-none"
@@ -13580,12 +13581,33 @@ Instructions:
     if (currentUser && currentUser.uid !== 'guest' && isFirebaseOnline) {
       const timeoutId = setTimeout(async () => {
         try {
+          const sanitizeForFirestore = (val: any, inArray = false): any => {
+            if (val === null || val === undefined) return null;
+            if (Array.isArray(val)) {
+              if (inArray) {
+                return JSON.stringify(val);
+              }
+              return val.map(item => sanitizeForFirestore(item, true));
+            }
+            if (typeof val === 'object') {
+              if (val instanceof Date) return val.toISOString();
+              const res: any = {};
+              for (const key of Object.keys(val)) {
+                res[key] = sanitizeForFirestore(val[key], inArray);
+              }
+              return res;
+            }
+            return val;
+          };
+
           const configRef = doc(db, 'users', currentUser.uid, 'classes', currentConfig.id || 'default');
-          await setDoc(configRef, {
+          const sanitizedConfig = sanitizeForFirestore({
             ...currentConfig,
             grid: Array.isArray(currentConfig.grid) ? currentConfig.grid.flat() : [],
             updatedAt: new Date().toISOString()
           });
+
+          await setDoc(configRef, sanitizedConfig);
           setNotifications((prev: any) => [{ id: Date.now() + Math.random(), text: 'סונכרן ונשמר אוטומטית ב-Firebase', type: 'success' }, ...prev]);
         } catch (error) {
           console.error("Firebase sync error:", error);

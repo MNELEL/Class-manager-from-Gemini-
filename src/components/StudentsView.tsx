@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Filter, Plus, Edit2, Trash2, 
   ChevronDown, User as UserIcon, BookOpen, 
-  Settings2, AlertCircle, Sparkles, GraduationCap, FileText, CheckCircle2
+  Settings2, AlertCircle, Sparkles, GraduationCap, FileText, CheckCircle2, Download
 } from 'lucide-react';
 import { Student } from '../types';
 import { cn } from '../lib/utils';
@@ -78,6 +78,65 @@ export const StudentsView = ({
     }
   };
 
+  const exportToCSV = () => {
+    if (!students || students.length === 0) {
+      setToast({ text: 'אין תלמידים להציג או לייצא כעת.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    // Define CSV Headers in Hebrew
+    const headers = [
+      'מזהה ייחודי',
+      'שם מלא',
+      'מגדר',
+      'גובה / מידות',
+      'קבוצות',
+      'שורה מועדפת',
+      'העדפת ישיבה קדמית',
+      'אפיון פדגוגי / קשיים',
+      'הערות מיוחדות'
+    ];
+
+    // Build Rows
+    const rows = students.map((s: Student) => [
+      s.id || '',
+      s.name || '',
+      s.gender === 'male' ? 'בן' : s.gender === 'female' ? 'בת' : '',
+      s.height || '',
+      (s.groups || []).join('; '),
+      s.preferredRow || '',
+      s.frontPrefer ? 'כן' : 'לא',
+      (s.pedagogicalDiagnoses || []).join('; '),
+      s.notes || ''
+    ]);
+
+    // Format fields with quotes to handle commas or newlines safely
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(val => {
+          const stringVal = String(val).replace(/"/g, '""'); // escape double quotes
+          return `"${stringVal}"`;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Add Unicode BOM (\uFEFF) for Excel RTL encoding support
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `גיבוי_תלמידים_כיתה_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setToast({ text: 'קובץ ה-CSV גובה והורד בהצלחה למחשבך!', type: 'success' });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleAIImport = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -150,6 +209,13 @@ ${text}`,
           <p className="text-slate-500 font-medium mt-1">רשימת התלמידים בכיתה, פרופיל אישי, ואפיון חכם.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-850 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 dark:text-emerald-400 px-4 py-2.5 rounded-xl font-bold hover:scale-[1.02] hover:shadow-sm cursor-pointer transition-all duration-200 border border-emerald-200/40"
+          >
+            <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            גיבוי וייצוא CSV
+          </button>
           <button 
             onClick={() => setShowReportModal(true)}
             className="flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-850 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 dark:text-amber-400 px-4 py-2.5 rounded-xl font-bold hover:scale-[1.02] hover:shadow-sm cursor-pointer transition-all duration-200 border border-amber-200/40"
